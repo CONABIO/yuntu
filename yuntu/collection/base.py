@@ -92,7 +92,7 @@ class simpleCollection(metaCollection):
                           media_fields=None,
                           subgroup=None,
                           iterate=True):
-        return colMethods.collectionGetAnnotatedMedia(col,
+        return colMethods.collectionGetAnnotatedMedia(self,
                                                       noteid,
                                                       query,
                                                       media_fields,
