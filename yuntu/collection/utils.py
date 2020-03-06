@@ -18,6 +18,23 @@ def audioArray(dataArr,mediaDir):
 
     return [Audio(row["media_info"],fromConfig=True) for row in dataArr]
 
+def annAudioIterator(dataArr,mediaDir):
+    for row in dataArr:
+        path = row["media_info"]["path"]
+        if os.path.dirname(path) == "":
+            row["media_info"]["path"] = os.path.join(mediaDir,path)
+
+        yield AnnotatedAudio(row["media_info"], metadata=row, fromConfig=True, annotations=row["data"])
+
+def annAudioArray(dataArr,mediaDir):
+    for i in range(len(dataArr)):
+        row = dataArr[i]
+        path = row["media_info"]["path"]
+        if os.path.dirname(path) == "":
+            dataArr[i]["media_info"]["path"] = os.path.join(mediaDir,path)
+
+    return [AnnotatedAudio(row["media_info"], metadata=row, fromConfig=True, annotations=row["data"]) for row in dataArr]
+    
 def metadataArray(dataArr,mediaDir):
     for i in range(len(dataArr)):
         row = dataArr[i]
@@ -53,7 +70,7 @@ def signalArray(dataArr,mediaDir,readSr):
         signal = au.getSignal()
         au.clearMedia()
         results.append({"id":dataArr[i]["orid"],"md5":dataArr[i]["md5"],"signal":signal})
-        
+
     return results
 
 def signalIterator(dataArr,mediaDir,readSr):
@@ -83,7 +100,7 @@ def specArray(dataArr,mediaDir,readSr,n_fft,hop_length):
         freqs,spec = au.getSpec(n_fft=n_fft,hop_length=hop_length)
         au.clearMedia()
         results.append({"id":dataArr[i]["orid"],"md5":dataArr[i]["md5"],"freqs":freqs,"spec":spec})
-        
+
     return results
 
 def specIterator(dataArr,mediaDir,readSr,n_fft,hop_length):
@@ -97,7 +114,7 @@ def specIterator(dataArr,mediaDir,readSr,n_fft,hop_length):
             au.setReadSr(readSr)
         freqs,spec = au.getSpec(n_fft=n_fft,hop_length=hop_length)
         au.clearMedia()
-        
+
         yield {"id":dataArr[i]["orid"],"md5":dataArr[i]["md5"],"freqs":freqs,"spec":spec}
 
 def buildColDirStruct(colPath,parts=["db","parsers","sql"]):
@@ -115,4 +132,3 @@ def buildColDirStruct(colPath,parts=["db","parsers","sql"]):
         os.mkdir(sqlPath)
 
     return True
-

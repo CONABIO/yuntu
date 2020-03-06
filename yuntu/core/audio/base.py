@@ -30,7 +30,7 @@ class Audio(Media):
             self.loadBasicInfo()
         else:
             self.readBasicInfo()
-            
+
     def loadBasicInfo(self):
         return auMethods.audioLoadBasicInfo(self)
 
@@ -45,10 +45,10 @@ class Audio(Media):
 
     def setReadSr(self,sr):
         return auMethods.audioSetReadSr(self,sr)
-    
+
     def setMetadata(self,metadata):
         return auMethods.audioSetMetadata(self,metadata)
-        
+
     def setMask(self,startTime,endTime):
         return auMethods.audioSetMask(self,startTime,endTime)
 
@@ -62,7 +62,7 @@ class Audio(Media):
         return auMethods.audioGetSignal(self,preProcess)
 
     def getZcr(self,channel=0,frame_length=1024,hop_length=512,preProcess=None):
-        return auMethods.audioGetZcr(self,channel,frame_length,hop_length,preProcess)  
+        return auMethods.audioGetZcr(self,channel,frame_length,hop_length,preProcess)
 
     def getSpec(self, channel=0, n_fft=1024, hop_length=512,preProcess=None):
         return auMethods.audioGetSpec(self,channel,n_fft,hop_length,preProcess)
@@ -75,12 +75,75 @@ class Audio(Media):
 
     def writeChunks(self,basePath,chop,thresh,media_format="wav",sr=None):
         return auMethods.audioWriteChunks(self,basePath,chop,thresh,media_format,sr)
-    
+
     def listen(self):
         return auMethods.audioListen(self)
 
 
+class AnnotatedAudio(Audio):
+    def __init__(self,
+                 config,
+                 readSr=None,
+                 fromConfig=False,
+                 metadata=None,
+                 annotations=None):
+        super(AnnotatedAudio, self).__init__(config,
+                                             readSr,
+                                             fromConfig,
+                                             metadata)
+        self.annotations = {}
+        self.groups = {}
+        if annotations is not None:
+            self.setAnn(annotations)
 
+    def setAnn(self,
+               annotations):
+        return auMethods.audioSetAnn(self,
+                                     annotations)
 
+    def getAnn(self,
+               noteids=None,
+               groups=None):
+        return auMethods.audioGetAnn(self,
+                                     noteids,
+                                     groups)
 
+    def getAnnGroups(self):
+        return self.groups
 
+    def getAnnLimits(self,
+                     noteids=None,
+                     groups=None):
+        return auMethods.audioGetAnnLimits(self,
+                                           noteids,
+                                           groups)
+
+    def getAnnMatrices(self,
+                       noteids=None,
+                       groups=None,
+                       slices=True,
+                       slice_dim=1,
+                       window=None,
+                       mask_window=None,
+                       channel=0,
+                       n_fft=1024,
+                       hop_length=512,
+                       preProcess=None):
+        return auMethods.audioGetAnnMatrices(self,
+                                             noteids,
+                                             groups,
+                                             slices,
+                                             slice_dim,
+                                             window,
+                                             mask_window,
+                                             channel,
+                                             n_fft,
+                                             hop_length,
+                                             preProcess)
+
+    def getAnnGeoms(self,
+                    noteids=None,
+                    groups=None):
+        return auMethods.audioGetAnnGeoms(self,
+                                          noteids,
+                                          groups)

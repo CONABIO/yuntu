@@ -1,40 +1,44 @@
+"""Base classes for collections."""
 from abc import abstractmethod, ABCMeta
 import yuntu.collection.methods as colMethods
 
+
 class metaCollection(object):
+    """Base class for all collections."""
+
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def getMedia(self,query):
-        pass
+    def getMedia(self, query):
+        """Return Audio objects on query."""
 
     @abstractmethod
     def getType(self):
-        pass
+        """Return collection type."""
 
     @abstractmethod
-    def insertMedia(self,dataArray,parseSeq):
-        pass
+    def insertMedia(self, dataArray, parseSeq):
+        """Insert new entries to collection."""
 
     @abstractmethod
-    def dump(self,basePath):
-        pass
+    def dump(self, basePath):
+        """Produce file with full database as SQL statements."""
 
     @abstractmethod
-    def materialize(self,basePath):
-        pass
+    def materialize(self, basePath):
+        """Produce a local copy of all data."""
 
     @abstractmethod
     def load(self):
-        pass
+        """Load existing collection."""
 
     @abstractmethod
     def build(self):
-        pass
+        """Build collection."""
 
     @abstractmethod
     def serve(self):
-        pass
+        """Mount flask server with predefined actions."""
 
 class simpleCollection(metaCollection):
     __metaclass__ = ABCMeta
@@ -84,7 +88,7 @@ class simpleCollection(metaCollection):
 
     def getMetadata(self,orid=None,query=None,iterate=True):
         return colMethods.collectionGetMetadata(self,orid,query,iterate)
-    
+
     def getAnnotations(self,noteid=None,query=None,iterate=True):
         return colMethods.collectionGetAnnotations(self,noteid,query,iterate)
 

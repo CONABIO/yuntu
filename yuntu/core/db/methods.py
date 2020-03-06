@@ -305,6 +305,76 @@ def lDbTimedInsert(db,dataArray,parseSeq,timeField,tzField,format='%d-%m-%Y %H:%
     return db.insert(dataArray,parseSeq,timeConf={"timeField":timeField,"tzField":tzField,"format":format})
 
 
+def lDbCrossSelectAnn(db,query,media_fields,subgroup=None):
+    extra_group_by = ""
+    extra_group_att = ""
+    if subgroup is not None:
+        for i in range(len(subgroup)):
+            gname = subgroup[i]
+            comma = ""
+            if i != 0:
+                comma = ","
+            if gname != "orid":
+                if "." in gname:
+                    att_levels = gname.split(".")
+                    jsfield = att_levels[0]
+                    innerfields = ".".join(att_levels[1:])
+                    extra_group_by += comma + "json_extract(" + jsfield + \
+                                      ",'$." + innerfields + "')"
+                    extra_group_att += comma + "'gkey_" + gname.replace(".", "_") + \
+                                       "'," + "json_extract(" + jsfield + \
+                                       ",'$." + innerfields + "')"
+                else:
+                    extra_group_by += comma + gname
+                    extra_group_att += comma + "'gkey_" + gname + "'," + gname
+    media_att = ""
+    if media_fields is not None:
+        for i in range(len(media_fields)):
+            field_name = media_fields[i]
+            comma = ","
+            if field_name != "orid" and field_name != "media_info":
+                if "." in field_name:
+                    att_levels = field_name.split(".")
+                    jsfield = att_levels[0]
+                    innerfields = ".".join(att_levels[1:])
+                    media_att += comma + "'" + field_name.replace(".", "_") + \
+                                       "'," + "json_extract(b." + jsfield + \
+                                       ",'$." + innerfields + "')"
+                else:
+                    media_att += comma + "'" + field_name + "',b." + field_name
+
+
+    if extra_group_by != "":
+        statement = "json_object('orid', a.orid,'media_info'," + \
+                    "json(b.media_info)" + media_att + ",'data',json_group_array(json(a.ann_group)))" + \
+                    " as results FROM (SELECT orid,json_object(" + extra_group_att + \
+                    ",'atype','group','data',json_group_array(json_object('id',id," +\
+                    "'notetype',notetype,'orid',orid,'file_start', " + \
+                    "file_start,'file_end',file_end,'start_time', " + \
+                    "start_time,'end_time',end_time,'duration', " + \
+                    "duration,'max_freq',max_freq,'min_freq',min_freq, " + \
+                    "'verts',json(verts),'wkt',wkt,'label',json(label),'groups'," + \
+                    "json(groups),'metadata',json(metadata)))) as ann_group " + \
+                    "FROM annotations WHERE " + \
+                    lDbParseQuery(query) + " GROUP BY orid,"+extra_group_by+") as a " +\
+                    "INNER JOIN parsed as b " + \
+                    "ON a.orid = b.orid GROUP BY a.orid"
+    else:
+        statement = "json_object('orid', a.orid, 'media_info'," + \
+                    "json(b.media_info)" + media_att + \
+                    ",'data',json_group_array(json_object('id', a.id,'atype','single'," + \
+                    "'notetype',a.notetype,'orid',a.orid,'file_start', " + \
+                    "a.file_start,'file_end',a.file_end,'start_time', " + \
+                    "a.start_time,'end_time',a.end_time,'duration', " + \
+                    "a.duration,'max_freq',a.max_freq,'min_freq',a.min_freq, " + \
+                    "'verts',json(a.verts),'wkt',a.wkt,'label',json(a.label),'groups'," + \
+                    "json(a.groups),'metadata',json(a.metadata)))) as results " + \
+                    "FROM (SELECT * FROM annotations WHERE " + \
+                    lDbParseQuery(query) + ") as a INNER JOIN parsed as b " + \
+                    "ON a.orid = b.orid GROUP BY a.orid"
+    return db.select(freeSt=statement)
+
+
 def lDbAnnotate(db,dataArray):
     cnn = db.connection
     cursor = cnn.cursor()

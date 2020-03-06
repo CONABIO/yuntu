@@ -5,11 +5,11 @@ import shutil
 import datetime,time
 from  tempfile import NamedTemporaryFile
 from yuntu.core.db.base import embeddedDb,RAMDb
-from yuntu.core.db.methods import lDbUpdateField,lDbTimedInsert
+from yuntu.core.db.methods import lDbUpdateField,lDbTimedInsert,lDbCrossSelectAnn
 from yuntu.core.db.utils import addTimeFields,loadParser
 from yuntu.core.datastore.base import simpleDatastore, directDatastore,mongodbDatastore,audioMothDatastore,postgresqlDatastore
 from yuntu.collection.server import yuntuServer
-from yuntu.collection.utils import audioIterator, audioArray, metadataIterator, metadataArray, specIterator, specArray, buildColDirStruct
+from yuntu.collection.utils import audioIterator, audioArray, annAudioArray, annAudioIterator, metadataIterator, metadataArray, specIterator, specArray, buildColDirStruct
 from yuntu.core.common.utils import loadJsonFile,dumpJsonFile,binaryMD5,cleanDirectory
 
 
@@ -188,7 +188,7 @@ def collectionGetAnnotations(col,noteid=None,query=None,iterate=True):
     if noteid is not None:
         query = {"id":noteid}
     matches = col.db.find(query=query,table="annotations")
-    
+
     if iterate:
         return annotationIterator(matches)
     else:
@@ -436,5 +436,26 @@ def collectionBuildTime(col):
     return collectionSaveInfo(col)
 
 
-def collectionServer(col,port=9797):
-    return yuntuServer(col,port)
+def collectionServer(col, port=9797):
+    return yuntuServer(col, port)
+
+
+def collectionGetAnnotatedMedia(col,
+                                noteid=None,
+                                query=None,
+                                media_fields=None,
+                                subgroup=None,
+                                iterate=True):
+    if noteid is not None:
+        query = {"id": noteid}
+
+    internal_data_dir = os.path.join(col.colPath, "media")
+    matches = [x["results"] for x in lDbCrossSelectAnn(col.db,
+                                                       query,
+                                                       media_fields,
+                                                       subgroup)]
+    internal_data_dir = os.path.join(col.colPath, "media")
+
+    if iterate:
+        return annAudioIterator(matches, internal_data_dir)
+    return annAudioArray(matches, internal_data_dir)
