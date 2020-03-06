@@ -141,7 +141,7 @@ def lDbNoRowFactory(cursor,row):
 def lDbRowFactory(cursor,row):
     d = {}
     for idx, col in enumerate(cursor.description):
-        if col[0] in ["metadata","media_info","parse_seq","source","conf","groups","label","verts"]:
+        if col[0] in ["metadata","media_info","parse_seq","source","conf","groups","label","verts","results"]:
             d[col[0]] = json.loads(row[idx])
         else:
             d[col[0]] = row[idx]

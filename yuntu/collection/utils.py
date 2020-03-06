@@ -1,13 +1,14 @@
 import os
-from yuntu.core.audio.base import Audio
+from yuntu.core.audio.base import Audio, AnnotatedAudio
 
 def audioIterator(dataArr,mediaDir):
-    for row in dataArr:
+    for row in dataArr:        
         path = row["media_info"]["path"]
         if os.path.dirname(path) == "":
             row["media_info"]["path"] = os.path.join(mediaDir,path)
 
         yield Audio(row["media_info"],fromConfig=True)
+
 
 def audioArray(dataArr,mediaDir):
     for i in range(len(dataArr)):
