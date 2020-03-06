@@ -86,6 +86,19 @@ class simpleCollection(metaCollection):
     def getMedia(self,orid=None,query=None,iterate=True):
         return colMethods.collectionQuery(self,orid,query,iterate)
 
+    def getAnnotatedMedia(self,
+                          noteid=None,
+                          query=None,
+                          media_fields=None,
+                          subgroup=None,
+                          iterate=True):
+        return colMethods.collectionGetAnnotatedMedia(col,
+                                                      noteid,
+                                                      query,
+                                                      media_fields,
+                                                      subgroup,
+                                                      iterate)
+
     def getMetadata(self,orid=None,query=None,iterate=True):
         return colMethods.collectionGetMetadata(self,orid,query,iterate)
 
