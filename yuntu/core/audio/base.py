@@ -1,6 +1,5 @@
 """Base classes for audio manipulation."""
 from abc import ABC, abstractmethod
-from yuntu.core.database.base import Recording
 import yuntu.core.audio.utils as audio_utils
 
 
@@ -42,17 +41,32 @@ class Audio(Media):
         self.meta = meta
         self.build(insert)
 
-    def build(self, insert):
-        if isinstance(self.meta, Recording):
-            self.db_entry = self.meta
-            self.media_info = self.db_entry.media_info
-            self.timeexp = self.db_entry.timeexp
-            self.path = self.db_entry.path
-            self.metadata = self.db_entry.metadata
+    def is_recording(self, metadata):
+        if not hasattr(metadata, 'media_info'):
+            return False
 
-        elif "path" not in self.meta or "timeexp" not in self.meta:
+        if not hasattr(metadata, 'timeexp'):
+            return False
+
+        if not hasattr(metadata, 'path'):
+            return False
+
+        if not hasattr(metadata, 'metadata'):
+            return False
+
+        return True
+
+    def build(self, insert):
+        if not hasattr(self.meta, 'path') or not hasattr(self.meta, 'timeexp'):
             raise ValueError("Config dictionary must include both, path \
                              and time expansion.")
+        if self.is_recording(self.meta):
+            self.db_entry = self.meta
+            self.timeexp = self.db_entry.timeexp
+            self.path = self.db_entry.path
+            self.media_info = self.db_entry.media_info
+            self.metadata = self.db_entry.metadata
+
         if self.db_entry is None:
             self.timeexp = self.meta["timeexp"]
             self.path = self.meta["path"]

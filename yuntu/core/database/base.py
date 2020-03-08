@@ -54,7 +54,7 @@ class DatabaseManager:
         datastore = self.build_datastore_model()
         annotation = self.build_annotation_model()
 
-        foreign, storage, remote = self.build_extra_datastores()
+        foreign, storage, remote = self.build_extra_datastores(datastore)
         models = {
             'recording': recording,
             'datastore': datastore,
@@ -77,11 +77,11 @@ class DatabaseManager:
         """Construct the annotation entity."""
         return build_base_annotation_model(self.db)
 
-    def build_extra_datastores(self):
+    def build_extra_datastores(self, datastore):
         """Build supplemental datastores for specific behaviours."""
-        foreign = build_foreign_db_datastore_model(self.models.datastore)
-        storage = build_storage_model(self.models.datastore)
-        remote = build_remote_storage_model(self.models.datastore)
+        foreign = build_foreign_db_datastore_model(datastore)
+        storage = build_storage_model(datastore)
+        remote = build_remote_storage_model(storage)
         return foreign, storage, remote
 
     def get_model_class(self, model):

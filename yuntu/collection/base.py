@@ -9,7 +9,7 @@ class Collection(ABC):
 
     db_config = {
         'provider': 'sqlite',
-        'configs': {
+        'config': {
             'filename': ':memory:',
             'create_db': True
         }
