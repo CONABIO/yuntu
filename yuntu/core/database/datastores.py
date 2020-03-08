@@ -12,7 +12,7 @@ def build_base_datastore_model(db):
         """Basic datastore entity for yuntu."""
         id = PrimaryKey(int, auto=True)
         parser = Required(str)
-        recordings = Set(lambda: 'Recording')
+        recordings = Set('Recording')
         metadata = Required(Json)
 
     return Datastore

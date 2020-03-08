@@ -22,7 +22,7 @@ def build_base_recording_model(db):
         timeexp = Required(float)
         spectrum = Required(str)
         media_info = Required(Json)
-        annotations = Set(lambda: 'Annotation')
+        annotations = Set('Annotation')
         metadata = Required(Json)
 
         def before_insert(self):

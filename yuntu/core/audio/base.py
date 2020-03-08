@@ -56,17 +56,17 @@ class Audio(Media):
 
         return True
 
-    @classmethod
-    def from_recording_instance(cls, recording, mask=None):
-        data = {
-            'db_entry': recording,
-            'timeexp': recording.timeexp,
-            'path': recording.path,
-            'media_info': recording.media_info,
-            'metadata': recording.metadata,
-            'mask': mask
-        }
-        return cls(**data)
+    # @classmethod
+    # def from_recording_instance(cls, recording, mask=None):
+    #     data = {
+    #         'db_entry': recording,
+    #         'timeexp': recording.timeexp,
+    #         'path': recording.path,
+    #         'media_info': recording.media_info,
+    #         'metadata': recording.metadata,
+    #         'mask': mask
+    #     }
+    #     return cls(**data)
 
     def build(self):
         if not isinstance(self.meta, dict):
