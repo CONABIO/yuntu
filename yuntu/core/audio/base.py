@@ -36,10 +36,10 @@ class Audio(Media):
     samplerate = None
     meta = {}
 
-    def __init__(self, meta, mask=None, insert=False):
+    def __init__(self, meta, mask=None):
         self.mask = mask
         self.meta = meta
-        self.build(insert)
+        self.build()
 
     def is_recording(self, metadata):
         if not hasattr(metadata, 'media_info'):
@@ -56,17 +56,31 @@ class Audio(Media):
 
         return True
 
-    def build(self, insert):
-        if not hasattr(self.meta, 'path') or not hasattr(self.meta, 'timeexp'):
+    @classmethod
+    def from_recording_instance(cls, recording, mask=None):
+        data = {
+            'db_entry': recording,
+            'timeexp': recording.timeexp,
+            'path': recording.path,
+            'media_info': recording.media_info,
+            'metadata': recording.metadata,
+            'mask': mask
+        }
+        return cls(**data)
+
+    def build(self):
+        if not isinstance(self.meta, dict):
+            try:
+                self.db_entry = self.meta
+                self.timeexp = self.db_entry.timeexp
+                self.path = self.db_entry.path
+                self.media_info = self.db_entry.media_info
+                self.metadata = self.db_entry.metadata
+            except Exception as error:
+                raise error("Input object is not a recording instance.")
+        elif "path" not in self.meta or "timeexp" not in self.meta:
             raise ValueError("Config dictionary must include both, path \
                              and time expansion.")
-        if self.is_recording(self.meta):
-            self.db_entry = self.meta
-            self.timeexp = self.db_entry.timeexp
-            self.path = self.db_entry.path
-            self.media_info = self.db_entry.media_info
-            self.metadata = self.db_entry.metadata
-
         if self.db_entry is None:
             self.timeexp = self.meta["timeexp"]
             self.path = self.meta["path"]
