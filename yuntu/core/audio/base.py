@@ -1,6 +1,5 @@
 """Base classes for audio manipulation."""
 from abc import ABC, abstractmethod
-from pony.orm import db_session
 from yuntu.core.database.base import Recording
 import yuntu.core.audio.utils as audio_utils
 
@@ -27,38 +26,40 @@ class Media(ABC):
 class Audio(Media):
     """Base class for all audio."""
 
-    db_instance = None
+    db_entry = None
     path = None
     timeexp = None
     media_info = None
+    metadata = None
     read_sr = None
     mask = None
     signal = None
     samplerate = None
     meta = {}
 
-    def __init__(self, meta, insert=False):
+    def __init__(self, meta, mask=None, insert=False):
+        self.mask = mask
         self.meta = meta
         self.build(insert)
 
     def build(self, insert):
         if isinstance(self.meta, Recording):
-            self.db_instance = self.meta
-            self.media_info = self.db_instance.media_info
-            self.timeexp = self.db_instance.timeexp
-            self.path = self.db_instance.path
-        elif "id" in self.meta:
-            self.retrieve()
-        elif insert:
-            self.insert()
+            self.db_entry = self.meta
+            self.media_info = self.db_entry.media_info
+            self.timeexp = self.db_entry.timeexp
+            self.path = self.db_entry.path
+            self.metadata = self.db_entry.metadata
+
         elif "path" not in self.meta or "timeexp" not in self.meta:
             raise ValueError("Config dictionary must include both, path \
                              and time expansion.")
-        if self.db_instance is None:
+        if self.db_entry is None:
             self.timeexp = self.meta["timeexp"]
             self.path = self.meta["path"]
             self.media_info = audio_utils.read_info(self.meta["path"],
                                                     self.meta["timeexp"])
+            if "metadata" in self.meta:
+                self.metadata = self.meta["metadata"]
         self.read_sr = self.media_info["samplerate"]
 
     def set_read_sr(self, read_sr=None):
@@ -68,6 +69,16 @@ class Audio(Media):
         if self.signal is not None and self.read_sr != read_sr:
             self.clear()
         self.read_sr = read_sr
+
+    def slice(self, limits=None):
+        """Should return a new Audio object with mask initialized at limits."""
+        if limits is not None:
+            offset = limits[0]
+            duration = limits[1] - limits[0]
+            mask = (offset, duration)
+        else:
+            mask = None
+        return Audio(self.meta, mask)
 
     def set_mask(self, limits=None):
         """Set read mask.
@@ -124,33 +135,6 @@ class Audio(Media):
         """Clear cached data."""
         self.signal = None
         self.samplerate = None
-
-    @db_session
-    def insert(self):
-        """Insert intself to database."""
-        if self.db_instance is None:
-            if "media_info" not in self.meta:
-                path = self.meta["path"]
-                timeexp = self.meta["timeexp"]
-                self.meta["media_info"] = audio_utils.read_info(path,
-                                                                timeexp)
-            if "hash" not in self.meta:
-                self.meta["hash"] = audio_utils.hash_file(self.meta["path"])
-            self.db_instance = Recording(**self.meta)
-            self.media_info = self.db_instance.media_info
-            self.timeexp = self.db_instance.timeexp
-            self.path = self.db_instance.path
-            self.unset_mask()
-
-    @db_session
-    def retrieve(self):
-        """Retrieve from database."""
-        if self.db_instance is None:
-            self.db_instance = Recording[self.meta["id"]]
-            self.media_info = self.db_instance.media_info
-            self.timeexp = self.db_instance.timeexp
-            self.path = self.db_instance.path
-            self.unset_mask()
 
     def read(self):
         """Read signal from file (mask sensitive, lazy loading)."""

@@ -23,6 +23,7 @@ except Exception:
     score += 1
 
 print("3. Try to insert audio with wrong attributes.")
+meta["metadata"] = {"sitio": "Estación de los Tuxtlas", "estado": "Veracruz"}
 meta["spectrum"] = "ultrasonic"
 try:
     Audio(meta, insert=True)
@@ -32,7 +33,6 @@ except Exception:
     score += 1
 
 print("4. Inserting Audio with full attributes.")
-meta["metadata"] = {"sitio": "Estación de los Tuxtlas", "estado": "Veracruz"}
 meta["spectrum"] = "audible"
 Audio(meta, insert=True)
 print("4. SUCCESS!")

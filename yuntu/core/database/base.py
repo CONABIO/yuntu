@@ -1,47 +1,127 @@
 """Base definition for yuntu databases."""
+from collections import namedtuple
+from pony.orm import Database
+from pony.orm import db_session
 
-from pony.orm import Database, Required, Optional, PrimaryKey, Set, Json
-
-YuntuDb = Database()
-
-
-class Datastore(YuntuDb.Entity):
-    """Basic datastore entity for yuntu."""
-
-    id = PrimaryKey(int, auto=True)
-    parser = Required(str)
-    recordings = Set(lambda: Recording)
-    metadata = Required(Json)
+from yuntu.core.database.annotations import build_base_annotation_model
+from yuntu.core.database.recordings import build_base_recording_model
+from yuntu.core.database.datastores import build_base_datastore_model
+from yuntu.core.database.datastores import build_foreign_db_datastore_model
+from yuntu.core.database.datastores import build_storage_model
+from yuntu.core.database.datastores import build_remote_storage_model
 
 
-class Recording(YuntuDb.Entity):
-    """Basic recording entity for yuntu."""
-
-    id = PrimaryKey(int, auto=True)
-    datastore = Optional(Datastore)
-    path = Required(str)
-    hash = Required(str)
-    timeexp = Required(float)
-    spectrum = Required(str)
-    media_info = Required(Json)
-    annotations = Set(lambda: Annotation)
-    metadata = Required(Json)
-
-    def before_insert(self):
-        if self.spectrum not in ["audible", "ultrasonic"]:
-            raise ValueError("Invalid spectrum. Options are: 'audible', \
-                             'ultrasonic'")
-        if self.spectrum == "audible":
-            if self.media_info["samplerate"] > 50000:
-                raise ValueError("Not an audible recording.")
-        elif self.media_info["samplerate"] <= 50000:
-            raise ValueError("Not an ultrasonic recording.")
+MODELS = [
+    'recording',
+    'annotation',
+    'datastore',
+    'foreign_db_store',
+    'storage',
+    'remote_storage'
+]
+Models = namedtuple('Models', MODELS)
 
 
-class Annotation(YuntuDb.Entity):
-    """Basic annotation entity for yuntu."""
+class DatabaseManager:
+    """Base manager for databases.
 
-    id = PrimaryKey(int, auto=True)
-    recording = Required(Recording)
-    label = Required(Json)
-    metadata = Required(Json)
+    Handles database creation, initialization and communication with
+    collections.
+    """
+
+    def __init__(self, provider, config=None):
+        if config is None:
+            config = {}
+
+        self.provider = provider
+        self.config = config
+        self.db = Database()
+
+        self.models = self.build_models()
+        self.init_db()
+
+    def init_db(self):
+        """Initialize database.
+
+        Will bind with database and generate all tables.
+        """
+        self.db.bind(self.provider, **self.config)
+        self.db.generate_mapping(create_tables=True)
+
+    def build_models(self):
+        """Construct all database entities."""
+        recording = self.build_recording_model()
+        datastore = self.build_datastore_model()
+        annotation = self.build_annotation_model()
+
+        foreign, storage, remote = self.build_extra_datastores()
+        models = {
+            'recording': recording,
+            'datastore': datastore,
+            'annotation': annotation,
+            'foreign_db_store': foreign,
+            'storage': storage,
+            'remote_storage': remote
+        }
+        return Models(**models)
+
+    def build_datastore_model(self):
+        """Construct the datastore entity."""
+        return build_base_datastore_model(self.db)
+
+    def build_recording_model(self):
+        """Construct the recording entity."""
+        return build_base_recording_model(self.db)
+
+    def build_annotation_model(self):
+        """Construct the annotation entity."""
+        return build_base_annotation_model(self.db)
+
+    def build_extra_datastores(self):
+        """Build supplemental datastores for specific behaviours."""
+        foreign = build_foreign_db_datastore_model(self.models.datastore)
+        storage = build_storage_model(self.models.datastore)
+        remote = build_remote_storage_model(self.models.datastore)
+        return foreign, storage, remote
+
+    def get_model_class(self, model):
+        """Return model class if exists or raise error."""
+        model_dict = self.models._asdict()
+
+        if model not in model_dict:
+            options = model_dict.keys()
+            options_str = ', '.join(options)
+            message = (
+                f'The model {model} is not installed in the database. '
+                f'Admisible options: {options_str}')
+            raise NotImplementedError(message)
+
+        return model_dict[model]
+
+    @db_session
+    def select(self, query, model="recording"):
+        """Query entries from database."""
+        model_class = self.get_model_class(model)
+
+        if query is None:
+            return model_class.select()
+
+        return model_class.select(query)
+
+    @db_session
+    def delete(self, query, model="recording"):
+        """Delete entries using filter."""
+        model_class = self.get_model_class(model)
+        return [obj.delete() for obj in model_class.select(query)]
+
+    @db_session
+    def update(self, query, set_obj, model="recording"):
+        """Update matches."""
+        model_class = self.get_model_class(model)
+        return [obj.set(**set_obj) for obj in model_class.select(query)]
+
+    @db_session
+    def insert(self, meta_arr, model="recording"):
+        """Directly insert new media entries without a datastore."""
+        model_class = self.get_model_class(model)
+        return [model_class(**meta) for meta in meta_arr]

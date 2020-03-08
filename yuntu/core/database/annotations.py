@@ -1,43 +1,72 @@
 """Distinct types of annotations."""
-from pony.orm import Required, Optional, Set, Json
-from .base import Annotation
+from pony.orm import Required
+from pony.orm import Optional
+from pony.orm import PrimaryKey
+from pony.orm import Json
 
 
-class Interval(Annotation):
-    """Interval annotation."""
+WEAK_ANNOTATION = 'weak'
+INTERVAL_ANNOTATION = 'interval'
+BBOX_ANNOTATION = 'bbox'
+LINESTRING_ANNOTATION = 'linestring'
 
-    start_time = Required(float)
-    end_time = Required(float)
-
-
-class Bbox(Interval):
-    """Bounding box annotation."""
-
-    max_freq = Required(float)
-    min_freq = Required(float)
-    wkt = Required(str)
-    vertices = Required(Json)
+ANNOTATION_TYPES = [
+    WEAK_ANNOTATION,
+    INTERVAL_ANNOTATION,
+    BBOX_ANNOTATION,
+    LINESTRING_ANNOTATION,
+]
 
 
-class MultiLineString(Bbox):
-    """Multilinestring annotation."""
+def build_base_annotation_model(db):
+    """Create base annotation model."""
+    class Annotation(db.Entity):
+        """Basic annotation entity for yuntu."""
 
-    linestrings = Set(lambda: Linestring)
+        id = PrimaryKey(int, auto=True)
+        recording = Required('Recording')
 
+        notetype = Required(str)
+        label = Required(Json)
+        metadata = Required(Json)
 
-class Linestring(Bbox):
-    """Linestring annotation."""
+        start_time = Optional(float)
+        end_time = Optional(float)
+        max_freq = Optional(float)
+        min_freq = Optional(float)
 
-    multilinestring = Optional(MultiLineString)
+        wkt = Optional(str)
+        vertices = Optional(Json)
 
+        def before_insert(self):
+            if self.notetype not in ANNOTATION_TYPES:
+                message = f'Notetype {self.notetype} not implemented'
+                raise NotImplementedError(message)
 
-class MultiPolygon(Bbox):
-    """Multilinestring annotation."""
+            if self.notetype == WEAK_ANNOTATION:
+                return
 
-    polygons = Optional(lambda: Polygon)
+            if self.start_time is None or self.end_time is None:
+                message = (
+                    f'Annotation type {self.notetype} requires setting '
+                    'a starting and ending time (start_time and end_time)')
+                raise ValueError(message)
 
+            if self.notetype == INTERVAL_ANNOTATION:
+                return
 
-class Polygon(Bbox):
-    """Polygon annotation."""
+            if self.max_freq is None or self.min_freq is None:
+                message = (
+                    f'Annotation type {self.notetype} requires setting '
+                    'a maximum and minimum frequency (max_freq and min_freq)')
+                raise ValueError(message)
 
-    multipolygon = Optional(MultiPolygon)
+            if self.notetype == BBOX_ANNOTATION:
+                return
+
+            if self.wkt is None or self.verts is None:
+                message = (
+                    f'Annotation type {self.notetype} requires setting '
+                    'a wkt string and vertices array (wkt and vertices)')
+                raise ValueError(message)
+    return Annotation
