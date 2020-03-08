@@ -80,3 +80,48 @@ def write_media(path,
                     signal,
                     samplerate,
                     format=media_format)
+
+
+def get_channel(signal, channel, nchannels):
+    """Return correct channel in any case."""
+    if nchannels > 1:
+        return np.squeeze(signal[[channel], :])
+    return signal
+
+
+def channel_mean(signal, keepdims=False):
+    """Return channel mean."""
+    return np.mean(signal,
+                   axis=0,
+                   keepdims=keepdims)
+
+
+def stft(signal,
+         n_fft,
+         hop_length,
+         win_length=None,
+         window='hann',
+         center=True):
+    """Shor Time Fourier Transform."""
+    return librosa.stft(signal,
+                        n_fft,
+                        hop_length,
+                        win_length,
+                        window,
+                        center)
+
+
+def spectrogram(signal,
+                n_fft,
+                hop_length):
+    """Return standard spectrogram."""
+    return np.abs(stft(signal,
+                       n_fft,
+                       hop_length))
+
+
+def spec_frequencies(samplerate,
+                     n_fft):
+    """Return frequency vector for stft parameters."""
+    return librosa.core.fft_frequencies(sr=samplerate,
+                                        n_fft=n_fft)

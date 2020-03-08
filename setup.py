@@ -31,18 +31,10 @@ setup(
         'smartinez@conabio.gob.mx, '
         'erobredo@conabio.gob.mx'
     ),
-    install_requires=[
-        'numpy',
-        'pandas',
-        'flask',
-        'pytz',
-        'dask',
-        'librosa',
-        'pysqlite3',
-        'psycopg2',
-        'pymongo',
-	'matplotlib'
-    ],
+    install_requires=['numpy',
+                      'pony',
+                      'librosa',
+                      'pymongo'],
     classifiers=[
         'Programming Language :: Python :: 3.6',
     ],

@@ -9,16 +9,18 @@ class Collection(ABC):
     """Base class for all collections."""
 
     db_provider = 'sqlite'
-    db_config = None
+    db_config = {"filename": ":memory:"}
 
     def __init__(self, db_config=None):
         """Initialize collection."""
-        self.db_config = db_config
+        if db_config is not None:
+            self.db_config = db_config
         self.init_db()
 
     def init_db(self):
         """Bind database to provider."""
         YuntuDb.bind(self.db_provider, **self.db_config)
+        YuntuDb.generate_mapping(create_tables=True)
 
     @db_session
     def insert(self, meta_arr):
@@ -40,6 +42,37 @@ class Collection(ABC):
         """Delete matches."""
         return [rec.delete for rec in Recording.select(query)]
 
+    @db_session
+    def annotations(self, query=None, iterate=True):
+        """Retrieve annotations from database."""
+        if query is None:
+            matches = Annotation.select()
+        else:
+            matches = Annotation.select(query)
+        if iterate:
+            def iterator():
+                for meta in matches:
+                    yield meta
+            return iterator
+        return matches
+
+    @db_session
+    def media(self, query=None, iterate=True):
+        """Retrieve audio objects."""
+        if query is None:
+            matches = Recording.select()
+        else:
+            matches = Recording.select(query)
+        if iterate:
+            def iterator():
+                for meta in matches:
+                    yield Audio(meta)
+            return iterator
+        return [Audio(meta) for meta in matches]
+
+    def pull(self, datastore):
+        """Pull data from datastore and insert into collection."""
+
     def transform(self, query, parser, mode):
         """Transform matches by parser."""
 
@@ -51,26 +84,3 @@ class Collection(ABC):
 
     def materialize(self, dir_path):
         """Persist collection in 'dir_path' including recordings."""
-
-    @db_session
-    def annotations(self, query, iterate=True):
-        """Retrieve annotations from database."""
-        if iterate:
-            def iterator(query):
-                for meta in Annotation.select(query):
-                    yield meta
-            return iterator
-        return Annotation.select(query)
-
-    @db_session
-    def media(self, query, iterate=True):
-        """Retrieve audio objects."""
-        if iterate:
-            def iterator(query):
-                for meta in Recording.select(query):
-                    yield Audio(meta)
-            return iterator
-        return [Audio(rec) for rec in Recording.select(query)]
-
-    def pull(self, datastore):
-        """Pull data from datastore and inserto to collection."""

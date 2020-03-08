@@ -25,7 +25,7 @@ class Media(ABC):
 
 
 class Audio(Media):
-    """Class for all audio."""
+    """Base class for all audio."""
 
     db_instance = None
     path = None
@@ -35,35 +35,30 @@ class Audio(Media):
     mask = None
     signal = None
     samplerate = None
+    meta = {}
 
     def __init__(self, meta, insert=False):
-        self.build(meta, insert)
+        self.meta = meta
+        self.build(insert)
 
-    @db_session
-    def build(self, meta, insert):
-        if isinstance(meta, Recording):
-            self.db_instance = meta
-        if "path" not in meta or "timeexp" not in meta:
-            raise ValueError("Config dictionary must include both, path \
-                             and time expansion.")
-        if "id" in meta:
-            self.db_instance = Recording[meta["id"]]
-        elif insert:
-            if "media_info" not in meta:
-                meta["media_info"] = audio_utils.read_info(meta["path"],
-                                                           meta["timeexp"])
-            if "hash" not in meta:
-                meta["hash"] = audio_utils.hash_file(meta["path"])
-            self.db_instance = Recording(**meta)
-        if self.db_instance is not None:
+    def build(self, insert):
+        if isinstance(self.meta, Recording):
+            self.db_instance = self.meta
             self.media_info = self.db_instance.media_info
             self.timeexp = self.db_instance.timeexp
             self.path = self.db_instance.path
-        else:
-            self.timeexp = meta["timeexp"]
-            self.path = meta["path"]
-            self.media_info = audio_utils.read_info(meta["path"],
-                                                    meta["timeexp"])
+        elif "id" in self.meta:
+            self.retrieve()
+        elif insert:
+            self.insert()
+        elif "path" not in self.meta or "timeexp" not in self.meta:
+            raise ValueError("Config dictionary must include both, path \
+                             and time expansion.")
+        if self.db_instance is None:
+            self.timeexp = self.meta["timeexp"]
+            self.path = self.meta["path"]
+            self.media_info = audio_utils.read_info(self.meta["path"],
+                                                    self.meta["timeexp"])
         self.read_sr = self.media_info["samplerate"]
 
     def set_read_sr(self, read_sr=None):
@@ -85,26 +80,77 @@ class Audio(Media):
             offset = limits[0]
             duration = limits[1] - limits[0]
             self.mask = (offset, duration)
+        else:
+            self.mask = None
         self.clear()
 
     def unset_mask(self):
         """Unset read mask."""
         self.set_mask()
 
-    def get_signal(self, refresh=False):
+    def get_signal(self, pre_proc=None, refresh=False):
         """Read signal from file (mask sensitive, lazy loading)."""
         if self.signal is not None and not refresh:
             return self.signal
         self.read()
+        if pre_proc:
+            return pre_proc(self.signal)
         return self.signal
 
-    def get_spec(self):
+    def get_spec(self,
+                 channel=0,
+                 n_fft=1024,
+                 hop_length=512,
+                 pre_proc=None,
+                 refresh=False):
         """Compute spectrogram (mask sensitive)."""
+        if channel is None:
+            signal = audio_utils.channel_mean(self.get_signal(pre_proc,
+                                                              refresh))
+        elif channel > self.media_info["nchannels"]:
+            raise ValueError("Channel outside range.")
+        else:
+            signal = audio_utils.get_channel(self.get_signal(pre_proc,
+                                                             refresh),
+                                             channel,
+                                             self.media_info["nchannels"])
+        spec = audio_utils.spectrogram(signal,
+                                       n_fft=n_fft,
+                                       hop_length=hop_length)
+        freqs = audio_utils.spec_frequencies(self.samplerate, n_fft)
+        return spec, freqs
 
     def clear(self):
         """Clear cached data."""
         self.signal = None
         self.samplerate = None
+
+    @db_session
+    def insert(self):
+        """Insert intself to database."""
+        if self.db_instance is None:
+            if "media_info" not in self.meta:
+                path = self.meta["path"]
+                timeexp = self.meta["timeexp"]
+                self.meta["media_info"] = audio_utils.read_info(path,
+                                                                timeexp)
+            if "hash" not in self.meta:
+                self.meta["hash"] = audio_utils.hash_file(self.meta["path"])
+            self.db_instance = Recording(**self.meta)
+            self.media_info = self.db_instance.media_info
+            self.timeexp = self.db_instance.timeexp
+            self.path = self.db_instance.path
+            self.unset_mask()
+
+    @db_session
+    def retrieve(self):
+        """Retrieve from database."""
+        if self.db_instance is None:
+            self.db_instance = Recording[self.meta["id"]]
+            self.media_info = self.db_instance.media_info
+            self.timeexp = self.db_instance.timeexp
+            self.path = self.db_instance.path
+            self.unset_mask()
 
     def read(self):
         """Read signal from file (mask sensitive, lazy loading)."""
@@ -114,8 +160,9 @@ class Audio(Media):
                                                                   self.read_sr,
                                                                   offset,
                                                                   duration)
-        self.signal, self.samplerate = audio_utils.read_media(self.path,
-                                                              self.read_sr)
+        else:
+            self.signal, self.samplerate = audio_utils.read_media(self.path,
+                                                                  self.read_sr)
 
     def write(self,
               path,
