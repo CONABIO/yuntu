@@ -30,13 +30,12 @@ def build_base_annotation_model(db):
         label = Required(Json)
         metadata = Required(Json)
 
-        start_time = Optional(float)
-        end_time = Optional(float)
-        max_freq = Optional(float)
-        min_freq = Optional(float)
+        start_time = Required(float)
+        end_time = Required(float)
+        max_freq = Required(float)
+        min_freq = Required(float)
 
-        wkt = Optional(str)
-        vertices = Optional(Json)
+        wkt = Required(str)
 
         def before_insert(self):
             if self.notetype not in ANNOTATION_TYPES:
