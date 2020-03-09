@@ -71,6 +71,7 @@ class Chart:
 class Atlas:
     """A collection of compatible charts within boundaries."""
 
+    _geometry = None
     _atlas = {}
     shape = None
 
@@ -80,6 +81,9 @@ class Atlas:
                  freq_win,
                  freq_hop,
                  bounds):
+        if time_win > bounds[1] - bounds[0] or \
+          freq_win > bounds[3] - bounds[2]:
+            raise ValueError("Window larger than bounds.")
         self.time_win = time_win
         self.time_hop = time_hop
         self.freq_win = freq_win
@@ -92,10 +96,56 @@ class Atlas:
         for coords in self._atlas:
             yield self._atlas[coords], coords
 
+    def __and__(self, other):
+        """Return atlas intersection.
+
+        Returns new atlas where bounds are the intersection of self and other
+        bounds and windows and hops are minimal.
+        """
+        start_time = max(self.bounds[0], other.bounds[0])
+        end_time = min(self.bounds[1], other.bounds[1])
+        min_freq = max(self.bounds[2], other.bounds[2])
+        max_freq = min(self.bounds[3], other.bounds[3])
+
+        if end_time - start_time <= 0 or max_freq - min_freq <= 0:
+            return None
+
+        time_win = min(self.time_win, other.time_win)
+        freq_win = min(self.freq_win, other.freq_win)
+        time_hop = min(self.time_hop, other.time_hop)
+        freq_hop = min(self.freq_hop, other.freq_hop)
+
+        return Atlas(time_win, time_hop, freq_win, freq_hop,
+                     (start_time, end_time, min_freq, max_freq))
+
+    def __or__(self, other):
+        """Return atlas union.
+
+        Returns new atlas where bounds are the union of self and other
+        bounds and windows and hops are maximal.
+        """
+        start_time = min(self.bounds[0], other.bounds[0])
+        end_time = max(self.bounds[1], other.bounds[1])
+        min_freq = min(self.bounds[2], other.bounds[2])
+        max_freq = max(self.bounds[3], other.bounds[3])
+
+        if end_time - start_time <= 0 or max_freq - min_freq <= 0:
+            return None
+
+        time_win = max(self.time_win, other.time_win)
+        freq_win = max(self.freq_win, other.freq_win)
+        time_hop = max(self.time_hop, other.time_hop)
+        freq_hop = max(self.freq_hop, other.freq_hop)
+
+        return Atlas(time_win, time_hop, freq_win, freq_hop,
+                     (start_time, end_time, min_freq, max_freq))
+
     def build(self):
         """Build system of charts based on input parameters."""
-        ref_system, self.shape = reference_system(self.time_win, self.time_hop,
-                                                  self.freq_win, self.freq_hop,
+        ref_system, self.shape = reference_system(self.time_win,
+                                                  self.time_hop,
+                                                  self.freq_win,
+                                                  self.freq_hop,
                                                   self.bounds)
         for coords in ref_system:
             self._atlas[coords] = Chart(*ref_system[coords])
@@ -123,6 +173,12 @@ class Atlas:
         return [(self._atlas[coords], coords)
                 for coords in self._atlas
                 if self._atlas[coords].geometry.contains(geometry)]
+
+    @property
+    def geometry(self):
+        if self._geometry is None:
+            self._geometry = bbox_to_polygon(self.bounds)
+        return self._geometry
 
     def plot(self, ax=None, outpath=None, **kwargs):
         """Plot atlas."""
