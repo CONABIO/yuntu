@@ -15,6 +15,7 @@ from yuntu.core.audio.utils import write_media
 
 class Media(ABC):
     """Abstract class for any media object."""
+
     @abstractmethod
     def read(self):
         """Read media from file."""
@@ -43,6 +44,7 @@ MediaInfoType = Dict[str, Union[int, float]]
 
 
 def media_info_is_complete(media_info: MediaInfoType) -> bool:
+    """Check if media info has all required fields."""
     for field in MEDIA_INFO_FIELDS:
         if field not in media_info:
             return False
@@ -62,9 +64,37 @@ class Audio(Media):
             metadata: Optional[Dict[str, Any]] = None,
             id: Optional[str] = None,
             lazy: Optional[bool] = False,
-            read_samplerate: Optional[int] = None,
-            db_entry=None):
+            read_samplerate: Optional[int] = None):
+        """Construct an Audio object.
 
+        Parameters
+        ----------
+        path: str, optional
+            Path to audio file.
+        data: np.array, optional
+            Numpy array with audio data
+        timeexp: int, optional
+            Time expansion factor of audio file. Will default
+            to 1.
+        media_info: dict, optional
+            Dictionary holding all audio file media information.
+            This information consists of number of channels (nchannels),
+            sample width in bytes (sampwidth), sample rate in Hertz
+            (samplerate), length of wav array (length), duration of
+            audio in seconds (duration), and file size in bytes (filesize).
+        metadata: dict, optional
+            A dictionary holding any additional information on the
+            audio file.
+        id: str, optional
+            A identifier for this audiofile.
+        lazy: bool, optional
+            A boolean flag indicating whether loading of audio data
+            is done only when required. Defaults to false.
+        read_samplerate: int, optional
+            The samplerate used to read the audio data. If different
+            from the native sample rate, the audio will be resampled
+            at read.
+        """
         if path is None and data is None:
             message = 'Either data or path must be supplied'
             raise ValueError(message)
@@ -93,9 +123,6 @@ class Audio(Media):
             read_samplerate = self.media_info[SAMPLE_RATE]
         self.read_samplerate = read_samplerate
 
-        if db_entry is not None:
-            self.db_entry = db_entry
-
         self._data = data
         if not lazy and data is None:
             self._data = self._load()
@@ -106,6 +133,7 @@ class Audio(Media):
             recording,
             lazy: Optional[bool] = False,
             read_samplerate: Optional[int] = None):
+        """Create a new Audio object from a database recording instance."""
         data = {
             'db_entry': recording,
             'timeexp': recording.timeexp,
@@ -123,6 +151,7 @@ class Audio(Media):
             dictionary: Dict[Any, Any],
             lazy: Optional[bool] = False,
             read_samplerate: Optional[int] = None):
+        """Create a new Audio object from a dictionary of metadata."""
         if 'path' not in dictionary:
             message = 'No path was provided in the dictionary argument'
             raise ValueError(message)
@@ -142,7 +171,7 @@ class Audio(Media):
             cls,
             array: np.array,
             samplerate: int):
-
+        """Create a new Audio object from a numpy array."""
         shape = array.shape
         if len(shape) == 1:
             channels = 1
@@ -169,12 +198,18 @@ class Audio(Media):
 
     @property
     def data(self):
+        """Return the wav data."""
         if not hasattr(self, '_data') or self._data is None:
             self._data = self._load()
         return self._data
 
     @property
     def times(self):
+        """Get the time array.
+
+        This is an array of the same length as the wav data array and holds
+        the time (in seconds) corresponding to each piece of the wav array.
+        """
         length = self.media_info[LENGTH]
         duration = self.media_info[DURATION]
         return np.linspace(0, duration, length)
@@ -183,6 +218,7 @@ class Audio(Media):
             self,
             samplerate: int,
             lazy: Optional[bool] = False):
+        """Get a new Audio object with the resampled audio."""
         return Audio(
             self.path,
             timeexp=self.timeexp,
@@ -227,6 +263,7 @@ class Audio(Media):
         del self._data
 
     def get_index_from_time(self, time):
+        """Get the index of the wav array corresponding to the given time."""
         if time < 0:
             raise ValueError('No negative times are allowed')
 
@@ -237,11 +274,39 @@ class Audio(Media):
         return index
 
     def read(self, start=None, end=None):
+        """Read a section of the wav array.
+
+        Parameters
+        ----------
+        start: float, optional
+            Time at which read starts, in seconds. If not provided
+            start will be defined as the recording start. Should
+            be larger than 0.
+        end: float, optional
+            Time at which read ends, in seconds. If not provided
+            end will be defined as the recording end. Should be
+            less than the duration of the audio.
+
+        Returns
+        -------
+        np.array
+            The wav data contained in the demanded temporal limits.
+
+        Raises
+        ------
+        ValueError
+            When start is less than end, or end is larger than the
+            duration of the audio, or start is less than 0.
+        """
         if start is None:
             start = 0
 
         if end is None:
             end = self.media_info[LENGTH]
+
+        if start > end:
+            message = 'Read start should be less than read end.'
+            raise ValueError(message)
 
         start_index = self.get_index_from_time(start)
         end_index = self.get_index_from_time(end)
@@ -252,10 +317,11 @@ class Audio(Media):
         signal, _ = read_media(self.path, self.read_samplerate)
         return signal
 
-    def write(self,
-              path,
-              media_format="wav",
-              samplerate=None):
+    def write(
+            self,
+            path: str,
+            media_format: Optional[str] = "wav",
+            samplerate: Optional[int] = None):
         """Write media to path."""
         signal = self.data
 
@@ -270,12 +336,14 @@ class Audio(Media):
                     media_format)
 
     def listen(self, speed_modifier: Optional[float] = 1):
+        """Return HTML5 audio element player of current audio."""
         # pylint: disable=import-outside-toplevel
         from IPython.display import Audio as HTMLAudio
         rate = self.media_info[SAMPLE_RATE] * speed_modifier
         return HTMLAudio(data=self.data, rate=rate)
 
     def plot(self, ax=None, **kwargs):
+        """Plot soundwave in the given axis."""
         # pylint: disable=import-outside-toplevel
         import matplotlib.pyplot as plt
 
