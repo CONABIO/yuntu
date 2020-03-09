@@ -63,9 +63,9 @@ def build_base_annotation_model(db):
             if self.notetype == BBOX_ANNOTATION:
                 return
 
-            if self.wkt is None or self.verts is None:
+            if self.wkt is None:
                 message = (
                     f'Annotation type {self.notetype} requires setting '
-                    'a wkt string and vertices array (wkt and vertices)')
+                    'a wkt string.')
                 raise ValueError(message)
     return Annotation

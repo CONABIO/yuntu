@@ -33,7 +33,9 @@ setup(
     ),
     install_requires=['numpy',
                       'pony',
+                      'matplotlib',
                       'librosa',
+		      'shapely',
                       'pymongo'],
     classifiers=[
         'Programming Language :: Python :: 3.6',
