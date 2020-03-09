@@ -3,6 +3,8 @@ import math
 import numpy as np
 import shapely.wkt
 from shapely.geometry.polygon import Polygon
+from shapely.geometry.multipolygon import MultiPolygon
+from shapely.geometry.multilinestring import MultiLineString
 import matplotlib.pyplot as plt
 
 
@@ -74,3 +76,13 @@ def reference_system(time_win, time_hop,
     min_cells = np.amin(cells, axis=0)
     return ref_sys, cells.shape, (min_cells[0], max_cells[0]), \
                                  (min_cells[1], max_cells[1])
+
+
+def build_multigeometry(geom_arr, geom_type="Polygon"):
+    """Build multigeometry from geometry array."""
+    if geom_type not in ["Polygon", "LineString"]:
+        raise NotImplementedError("Cannot build multigeometry from " +
+                                  geom_type)
+    if geom_type == "Polygon":
+        return MultiPolygon(geom_arr)
+    return MultiLineString(geom_arr)

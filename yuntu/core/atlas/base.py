@@ -5,18 +5,18 @@ frequency.
 """
 from yuntu.core.atlas.utils import bbox_to_polygon, \
                                    plot_geometry, \
-                                   reference_system
+                                   reference_system, \
+                                   build_multigeometry
 
 
 class Chart:
     """A delimited region of time and frequency."""
 
-    _bbox = None
-    _wkt = None
-    _geometry = None
-
     def __init__(self, start_time, end_time, min_freq, max_freq):
         """Initialize chart."""
+        self._bbox = None
+        self._wkt = None
+        self._geometry = None
         self.start_time = start_time
         self.end_time = end_time
         self.min_freq = min_freq
@@ -39,7 +39,7 @@ class Chart:
 
     def to_tuple(self):
         """Chart to tuple."""
-        return tuple(self.bbox)
+        return self.bbox
 
     @property
     def bbox(self):
@@ -71,12 +71,6 @@ class Chart:
 class Atlas:
     """A collection of compatible charts within boundaries."""
 
-    _geometry = None
-    _atlas = {}
-    shape = None
-    xrange = None
-    yrange = None
-
     def __init__(self,
                  time_win,
                  time_hop,
@@ -93,6 +87,12 @@ class Atlas:
                center[0] > bounds[1] or \
                center[1] > bounds[3]:
                 raise ValueError("Center outside bounds.")
+        self._bbox = None
+        self._geometry = None
+        self._atlas = {}
+        self.shape = None
+        self.xrange = None
+        self.yrange = None
         self.time_win = time_win
         self.time_hop = time_hop
         self.freq_win = freq_win
@@ -187,9 +187,19 @@ class Atlas:
                 if self._atlas[coords].geometry.contains(geometry)]
 
     @property
+    def bbox(self):
+        """Return bounding box of atlas."""
+        if self._bbox is None:
+            self._bbox = bbox_to_polygon(self.bounds)
+        return self._bbox
+
+    @property
     def geometry(self):
+        """Return atlas geometry as MultiPolygon."""
         if self._geometry is None:
-            self._geometry = bbox_to_polygon(self.bounds)
+            geom_arr = [self._atlas[coords].geometry
+                        for coords in self._atlas]
+            self._geometry = build_multigeometry(geom_arr, "Polygon")
         return self._geometry
 
     def plot(self, ax=None, outpath=None, **kwargs):

@@ -11,19 +11,6 @@ from yuntu.core.atlas.utils import plot_geometry, geom_from_wkt
 class Annotation:
     """Basic class to manipulate attributes."""
 
-    id = None
-    recording = None
-    start_time = None
-    end_time = None
-    min_freq = None
-    max_freq = None
-    wkt = None
-    label = None
-    metadata = None
-    db_entry = None
-    _geometry = None
-    _bbox = None
-    _chart = None
     _mandatory_attr = ["start_time",
                        "end_time",
                        "min_freq",
@@ -34,6 +21,19 @@ class Annotation:
 
     def __init__(self, meta):
         """Build annotation."""
+        self.id = None
+        self.recording = None
+        self.start_time = None
+        self.end_time = None
+        self.min_freq = None
+        self.max_freq = None
+        self.wkt = None
+        self.label = None
+        self.metadata = None
+        self.db_entry = None
+        self._geometry = None
+        self._bbox = None
+        self._chart = None
         if not isinstance(meta, dict):
             raise ValueError("Input should be of type 'dict'. Use " +
                              "'from_instance' or 'new' to create an " +
