@@ -69,7 +69,7 @@ class Chart:
 
 
 class Atlas:
-    """A collection of compatible charts."""
+    """A collection of compatible charts within boundaries."""
 
     _atlas = {}
     shape = None
