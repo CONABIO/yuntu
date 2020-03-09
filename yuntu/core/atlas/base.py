@@ -113,13 +113,13 @@ class Atlas:
                 if self._atlas[coords].geometry.intersects(geometry)]
 
     def within(self, geometry):
-        """Return charts that lie within polygon."""
+        """Return charts that lie within geometry."""
         return [(self._atlas[coords], coords)
                 for coords in self._atlas
                 if self._atlas[coords].geometry.within(geometry)]
 
     def contains(self, geometry):
-        """Return charts that lie within polygon."""
+        """Return charts that contain geometry."""
         return [(self._atlas[coords], coords)
                 for coords in self._atlas
                 if self._atlas[coords].geometry.contains(geometry)]
