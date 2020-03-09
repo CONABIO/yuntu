@@ -74,21 +74,31 @@ class Atlas:
     _geometry = None
     _atlas = {}
     shape = None
+    xrange = None
+    yrange = None
 
     def __init__(self,
                  time_win,
                  time_hop,
                  freq_win,
                  freq_hop,
-                 bounds):
+                 bounds,
+                 center=None):
         if time_win > bounds[1] - bounds[0] or \
-          freq_win > bounds[3] - bounds[2]:
+           freq_win > bounds[3] - bounds[2]:
             raise ValueError("Window larger than bounds.")
+        if center is not None:
+            if center[0] < bounds[0] or \
+               center[1] < bounds[2] or \
+               center[0] > bounds[1] or \
+               center[1] > bounds[3]:
+                raise ValueError("Center outside bounds.")
         self.time_win = time_win
         self.time_hop = time_hop
         self.freq_win = freq_win
         self.freq_hop = freq_hop
         self.bounds = bounds
+        self.center = center
         self.build()
 
     def __iter__(self):
@@ -142,11 +152,13 @@ class Atlas:
 
     def build(self):
         """Build system of charts based on input parameters."""
-        ref_system, self.shape = reference_system(self.time_win,
-                                                  self.time_hop,
-                                                  self.freq_win,
-                                                  self.freq_hop,
-                                                  self.bounds)
+        ref_system, self.shape, \
+            self.xrange, self.yrange = reference_system(self.time_win,
+                                                        self.time_hop,
+                                                        self.freq_win,
+                                                        self.freq_hop,
+                                                        self.bounds,
+                                                        self.center)
         for coords in ref_system:
             self._atlas[coords] = Chart(*ref_system[coords])
 
