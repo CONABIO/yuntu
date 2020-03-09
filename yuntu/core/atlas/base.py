@@ -72,7 +72,7 @@ class Atlas:
     """A collection of compatible charts."""
 
     _atlas = {}
-    range = None
+    shape = None
 
     def __init__(self,
                  time_win,
@@ -94,7 +94,7 @@ class Atlas:
 
     def build(self):
         """Build system of charts based on input parameters."""
-        ref_system, self.range = reference_system(self.time_win, self.time_hop,
+        ref_system, self.shape = reference_system(self.time_win, self.time_hop,
                                                   self.freq_win, self.freq_hop,
                                                   self.bounds)
         for coords in ref_system:
