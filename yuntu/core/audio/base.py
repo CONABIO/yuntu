@@ -1,24 +1,20 @@
 """Base classes for audio manipulation."""
+from typing import Optional
+from typing import Dict
+from typing import Any
+from typing import Union
+from uuid import uuid4
+import os
 from abc import ABC, abstractmethod
-from yuntu.core.audio.utils import read_info,\
-                                   channel_mean,\
-                                   get_channel,\
-                                   read_media,\
-                                   write_media
-from yuntu.core.audio.spectral import spectrogram,\
-                                      spec_frequencies
+import numpy as np
+
+from yuntu.core.audio.utils import read_info
+from yuntu.core.audio.utils import read_media
+from yuntu.core.audio.utils import write_media
 
 
 class Media(ABC):
     """Abstract class for any media object."""
-
-    @abstractmethod
-    def build(self):
-        """Build object from configuration input.
-
-        Build self from configuration.
-        """
-
     @abstractmethod
     def read(self):
         """Read media from file."""
@@ -28,68 +24,174 @@ class Media(ABC):
         """Write media to path."""
 
 
+CHANNELS = 'nchannels'
+SAMPLE_WIDTH = 'sampwidth'
+SAMPLE_RATE = 'samplerate'
+LENGTH = 'length'
+FILE_SIZE = 'filesize'
+DURATION = 'duration'
+MEDIA_INFO_FIELDS = [
+    CHANNELS,
+    SAMPLE_WIDTH,
+    SAMPLE_RATE,
+    LENGTH,
+    FILE_SIZE,
+    DURATION,
+]
+
+MediaInfoType = Dict[str, Union[int, float]]
+
+
+def media_info_is_complete(media_info: MediaInfoType) -> bool:
+    for field in MEDIA_INFO_FIELDS:
+        if field not in media_info:
+            return False
+
+    return True
+
+
 class Audio(Media):
     """Base class for all audio."""
 
-    db_entry = None
-    path = None
-    timeexp = None
-    media_info = None
-    metadata = None
-    read_sr = None
-    mask = None
-    signal = None
-    samplerate = None
-    meta = {}
+    def __init__(
+            self,
+            path: Optional[str] = None,
+            data: Optional[np.array] = None,
+            timeexp: Optional[int] = 1,
+            media_info: Optional[MediaInfoType] = None,
+            metadata: Optional[Dict[str, Any]] = None,
+            id: Optional[str] = None,
+            lazy: Optional[bool] = False,
+            read_samplerate: Optional[int] = None,
+            db_entry=None):
 
-    def __init__(self, meta, mask=None):
-        self.mask = mask
-        self.meta = meta
-        self.build()
+        if path is None and data is None:
+            message = 'Either data or path must be supplied'
+            raise ValueError(message)
 
-    # @classmethod
-    # def from_recording_instance(cls, recording, mask=None):
-    #     data = {
-    #         'db_entry': recording,
-    #         'timeexp': recording.timeexp,
-    #         'path': recording.path,
-    #         'media_info': recording.media_info,
-    #         'metadata': recording.metadata,
-    #         'mask': mask
-    #     }
-    #     return cls(**data)
+        self.path = path
+        self.timeexp = timeexp
 
-    def build(self):
-        if not isinstance(self.meta, dict):
-            try:
-                self.db_entry = self.meta
-                self.timeexp = self.db_entry.timeexp
-                self.path = self.db_entry.path
-                self.media_info = self.db_entry.media_info
-                self.metadata = self.db_entry.metadata
-            except Exception as error:
-                print(str(error))
-                raise ValueError("Input object is not a " +
-                                 "recording instance: ", str(self.meta))
-        elif "path" not in self.meta or "timeexp" not in self.meta:
-            raise ValueError("Config dictionary must include both, path \
-                             and time expansion.")
-        if self.db_entry is None:
-            self.timeexp = self.meta["timeexp"]
-            self.path = self.meta["path"]
-            self.media_info = read_info(self.meta["path"],
-                                        self.meta["timeexp"])
-            if "metadata" in self.meta:
-                self.metadata = self.meta["metadata"]
-        self.read_sr = self.media_info["samplerate"]
+        if id is None:
+            id = os.path.basename(path)
+        self.id = id
 
-    def set_read_sr(self, read_sr=None):
-        """Set read sample rate for future loadings."""
-        if read_sr is None:
-            read_sr = self.media_info["samplerate"]
-        if self.signal is not None and self.read_sr != read_sr:
-            self.clear()
-        self.read_sr = read_sr
+        if metadata is None:
+            metadata = {}
+        self.metadata = metadata
+
+        if media_info is None:
+            media_info = read_info(self.path, self.timeexp)
+        if not media_info_is_complete(media_info):
+            message = (
+                f'Media info is not complete. Provided media info'
+                f'{media_info}. Required fields: {str(MEDIA_INFO_FIELDS)}')
+            raise ValueError(message)
+        self.media_info = media_info
+
+        if read_samplerate is None:
+            read_samplerate = self.media_info[SAMPLE_RATE]
+        self.read_samplerate = read_samplerate
+
+        if db_entry is not None:
+            self.db_entry = db_entry
+
+        self._data = data
+        if not lazy and data is None:
+            self._data = self._load()
+
+    @classmethod
+    def from_instance(
+            cls,
+            recording,
+            lazy: Optional[bool] = False,
+            read_samplerate: Optional[int] = None):
+        data = {
+            'db_entry': recording,
+            'timeexp': recording.timeexp,
+            'media_info': recording.media_info,
+            'metadata': recording.metadata,
+            'lazy': lazy,
+            'read_samplerate': read_samplerate,
+            'id': recording.id,
+        }
+        return cls(recording.path, **data)
+
+    @classmethod
+    def from_dict(
+            cls,
+            dictionary: Dict[Any, Any],
+            lazy: Optional[bool] = False,
+            read_samplerate: Optional[int] = None):
+        if 'path' not in dictionary:
+            message = 'No path was provided in the dictionary argument'
+            raise ValueError(message)
+
+        path = dictionary.pop('path')
+
+        if lazy:
+            dictionary['lazy'] = True
+
+        if read_samplerate is not None:
+            dictionary['read_samplerate'] = read_samplerate
+
+        return cls(path, **dictionary)
+
+    @classmethod
+    def from_array(
+            cls,
+            array: np.array,
+            samplerate: int):
+
+        shape = array.shape
+        if len(shape) == 1:
+            channels = 1
+            size = len(array)
+        elif len(shape) == 2:
+            channels = shape[0]
+            size = shape[1]
+        else:
+            message = (
+                f'The array has {len(shape)} dimensions. Could not be '
+                'interpreted as an audio array')
+            raise ValueError(message)
+
+        media_info = {
+            SAMPLE_RATE: samplerate,
+            SAMPLE_WIDTH: 16,
+            CHANNELS: channels,
+            LENGTH: size,
+            FILE_SIZE: size * 16 * channels,
+            DURATION: size / samplerate
+        }
+
+        return Audio(data=array, media_info=media_info, id=str(uuid4()))
+
+    @property
+    def data(self):
+        if not hasattr(self, '_data') or self._data is None:
+            self._data = self._load()
+        return self._data
+
+    @property
+    def times(self):
+        length = self.media_info[LENGTH]
+        duration = self.media_info[DURATION]
+        return np.linspace(0, duration, length)
+
+    def resample(
+            self,
+            samplerate: int,
+            lazy: Optional[bool] = False):
+        return Audio(
+            self.path,
+            timeexp=self.timeexp,
+            media_info=self.media_info.copy(),
+            metadata=self.metadata.copy(),
+            id=self.id,
+            lazy=lazy,
+            read_samplerate=samplerate,
+            db_entry=self.db_entry)
 
     def slice(self, limits=None):
         """Return a new Audio object with mask initialized at limits."""
@@ -120,66 +222,65 @@ class Audio(Media):
         """Unset read mask."""
         self.set_mask()
 
-    def get_signal(self, pre_proc=None, refresh=False):
-        """Read signal from file (mask sensitive, lazy loading)."""
-        if self.signal is not None and not refresh:
-            return self.signal
-        self.read()
-        if pre_proc:
-            return pre_proc(self.signal)
-        return self.signal
-
-    def get_spec(self,
-                 channel=0,
-                 n_fft=1024,
-                 hop_length=512,
-                 pre_proc=None,
-                 refresh=False):
-        """Compute spectrogram (mask sensitive)."""
-        if channel is None:
-            signal = channel_mean(self.get_signal(pre_proc,
-                                                  refresh))
-        elif channel > self.media_info["nchannels"]:
-            raise ValueError("Channel outside range.")
-        else:
-            signal = get_channel(self.get_signal(pre_proc,
-                                                 refresh),
-                                 channel,
-                                 self.media_info["nchannels"])
-        spec = spectrogram(signal,
-                           n_fft=n_fft,
-                           hop_length=hop_length)
-        freqs = spec_frequencies(self.samplerate, n_fft)
-        return spec, freqs
-
     def clear(self):
         """Clear cached data."""
-        self.signal = None
-        self.samplerate = None
+        del self._data
 
-    def read(self):
+    def get_index_from_time(self, time):
+        if time < 0:
+            raise ValueError('No negative times are allowed')
+
+        if time > self.media_info[DURATION]:
+            raise ValueError('Requested time is larger than audio duration')
+
+        index = int(time * self.media_info[SAMPLE_RATE])
+        return index
+
+    def read(self, start=None, end=None):
+        if start is None:
+            start = 0
+
+        if end is None:
+            end = self.media_info[LENGTH]
+
+        start_index = self.get_index_from_time(start)
+        end_index = self.get_index_from_time(end)
+        return self.data[start_index: end_index + 1]
+
+    def _load(self):
         """Read signal from file (mask sensitive, lazy loading)."""
-        if self.mask is not None:
-            offset, duration = self.mask
-            self.signal, self.samplerate = read_media(self.path,
-                                                      self.read_sr,
-                                                      offset,
-                                                      duration)
-        else:
-            self.signal, self.samplerate = read_media(self.path,
-                                                      self.read_sr)
+        signal, _ = read_media(self.path, self.read_samplerate)
+        return signal
 
     def write(self,
               path,
               media_format="wav",
               samplerate=None):
         """Write media to path."""
-        signal = self.get_signal()
-        out_sr = self.samplerate
+        signal = self.data
+
+        out_sr = self.media_info[SAMPLE_RATE]
         if samplerate is not None:
             out_sr = samplerate
+
         write_media(self.path,
                     signal,
                     out_sr,
-                    self.media_info["nchannels"],
+                    self.media_info[CHANNELS],
                     media_format)
+
+    def listen(self, speed_modifier: Optional[float] = 1):
+        # pylint: disable=import-outside-toplevel
+        from IPython.display import Audio as HTMLAudio
+        rate = self.media_info[SAMPLE_RATE] * speed_modifier
+        return HTMLAudio(data=self.data, rate=rate)
+
+    def plot(self, ax=None, **kwargs):
+        # pylint: disable=import-outside-toplevel
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.pop('figsize', None))
+
+        ax.plot(self.times, self.data, **kwargs)
+        return ax
