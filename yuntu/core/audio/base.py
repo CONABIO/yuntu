@@ -1,16 +1,22 @@
 """Base classes for audio manipulation."""
 from abc import ABC, abstractmethod
-import yuntu.core.audio.utils as audio_utils
+from yuntu.core.audio.utils import read_info,\
+                                   channel_mean,\
+                                   get_channel,\
+                                   read_media,\
+                                   write_media
+from yuntu.core.audio.spectral import spectrogram,\
+                                      spec_frequencies
 
 
 class Media(ABC):
     """Abstract class for any media object."""
 
     @abstractmethod
-    def build(self, meta, insert):
+    def build(self):
         """Build object from configuration input.
 
-        This method tries insert data if 'insert' is True.
+        Build self from configuration.
         """
 
     @abstractmethod
@@ -41,21 +47,6 @@ class Audio(Media):
         self.meta = meta
         self.build()
 
-    def is_recording(self, metadata):
-        if not hasattr(metadata, 'media_info'):
-            return False
-
-        if not hasattr(metadata, 'timeexp'):
-            return False
-
-        if not hasattr(metadata, 'path'):
-            return False
-
-        if not hasattr(metadata, 'metadata'):
-            return False
-
-        return True
-
     # @classmethod
     # def from_recording_instance(cls, recording, mask=None):
     #     data = {
@@ -77,15 +68,17 @@ class Audio(Media):
                 self.media_info = self.db_entry.media_info
                 self.metadata = self.db_entry.metadata
             except Exception as error:
-                raise error("Input object is not a recording instance.")
+                print(str(error))
+                raise ValueError("Input object is not a " +
+                                 "recording instance: ", str(self.meta))
         elif "path" not in self.meta or "timeexp" not in self.meta:
             raise ValueError("Config dictionary must include both, path \
                              and time expansion.")
         if self.db_entry is None:
             self.timeexp = self.meta["timeexp"]
             self.path = self.meta["path"]
-            self.media_info = audio_utils.read_info(self.meta["path"],
-                                                    self.meta["timeexp"])
+            self.media_info = read_info(self.meta["path"],
+                                        self.meta["timeexp"])
             if "metadata" in self.meta:
                 self.metadata = self.meta["metadata"]
         self.read_sr = self.media_info["samplerate"]
@@ -99,7 +92,7 @@ class Audio(Media):
         self.read_sr = read_sr
 
     def slice(self, limits=None):
-        """Should return a new Audio object with mask initialized at limits."""
+        """Return a new Audio object with mask initialized at limits."""
         if limits is not None:
             offset = limits[0]
             duration = limits[1] - limits[0]
@@ -144,19 +137,19 @@ class Audio(Media):
                  refresh=False):
         """Compute spectrogram (mask sensitive)."""
         if channel is None:
-            signal = audio_utils.channel_mean(self.get_signal(pre_proc,
-                                                              refresh))
+            signal = channel_mean(self.get_signal(pre_proc,
+                                                  refresh))
         elif channel > self.media_info["nchannels"]:
             raise ValueError("Channel outside range.")
         else:
-            signal = audio_utils.get_channel(self.get_signal(pre_proc,
-                                                             refresh),
-                                             channel,
-                                             self.media_info["nchannels"])
-        spec = audio_utils.spectrogram(signal,
-                                       n_fft=n_fft,
-                                       hop_length=hop_length)
-        freqs = audio_utils.spec_frequencies(self.samplerate, n_fft)
+            signal = get_channel(self.get_signal(pre_proc,
+                                                 refresh),
+                                 channel,
+                                 self.media_info["nchannels"])
+        spec = spectrogram(signal,
+                           n_fft=n_fft,
+                           hop_length=hop_length)
+        freqs = spec_frequencies(self.samplerate, n_fft)
         return spec, freqs
 
     def clear(self):
@@ -168,13 +161,13 @@ class Audio(Media):
         """Read signal from file (mask sensitive, lazy loading)."""
         if self.mask is not None:
             offset, duration = self.mask
-            self.signal, self.samplerate = audio_utils.read_media(self.path,
-                                                                  self.read_sr,
-                                                                  offset,
-                                                                  duration)
+            self.signal, self.samplerate = read_media(self.path,
+                                                      self.read_sr,
+                                                      offset,
+                                                      duration)
         else:
-            self.signal, self.samplerate = audio_utils.read_media(self.path,
-                                                                  self.read_sr)
+            self.signal, self.samplerate = read_media(self.path,
+                                                      self.read_sr)
 
     def write(self,
               path,
@@ -185,8 +178,8 @@ class Audio(Media):
         out_sr = self.samplerate
         if samplerate is not None:
             out_sr = samplerate
-        audio_utils.write_media(self.path,
-                                signal,
-                                out_sr,
-                                self.media_info["nchannels"],
-                                media_format)
+        write_media(self.path,
+                    signal,
+                    out_sr,
+                    self.media_info["nchannels"],
+                    media_format)

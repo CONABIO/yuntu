@@ -1,4 +1,4 @@
-"""Auxiliar utilities for audio classes and methods."""
+"""Auxiliar utilities for Audio classes and methods."""
 import os
 import hashlib
 import wave
@@ -8,20 +8,18 @@ import soundfile
 
 
 def binary_md5(path, blocksize=65536):
-    """Hash file by blocksize"""
-    if path is not None:
-        if os.path.isfile(path):
-            hasher = hashlib.md5()
-            with open(path, "rb") as media:
-                buf = media.read(blocksize)
-                while len(buf) > 0:
-                    hasher.update(buf)
-                    buf = media.read(blocksize)
-            return hasher.hexdigest()
-        else:
-            return None
-    else:
-        return None
+    """Hash file by blocksize."""
+    if path is None:
+        raise ValueError("Path is None.")
+    if not os.path.isfile(path):
+        raise ValueError("Path does not exist.")
+    hasher = hashlib.md5()
+    with open(path, "rb") as media:
+        buf = media.read(blocksize)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = media.read(blocksize)
+    return hasher.hexdigest()
 
 
 def media_size(path):
@@ -94,34 +92,3 @@ def channel_mean(signal, keepdims=False):
     return np.mean(signal,
                    axis=0,
                    keepdims=keepdims)
-
-
-def stft(signal,
-         n_fft,
-         hop_length,
-         win_length=None,
-         window='hann',
-         center=True):
-    """Shor Time Fourier Transform."""
-    return librosa.stft(signal,
-                        n_fft,
-                        hop_length,
-                        win_length,
-                        window,
-                        center)
-
-
-def spectrogram(signal,
-                n_fft,
-                hop_length):
-    """Return standard spectrogram."""
-    return np.abs(stft(signal,
-                       n_fft,
-                       hop_length))
-
-
-def spec_frequencies(samplerate,
-                     n_fft):
-    """Return frequency vector for stft parameters."""
-    return librosa.core.fft_frequencies(sr=samplerate,
-                                        n_fft=n_fft)
