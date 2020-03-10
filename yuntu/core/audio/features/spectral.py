@@ -21,7 +21,7 @@ def stft(signal,
 def spectrogram(signal,
                 n_fft,
                 hop_length):
-    """Standard spectrogram."""
+    """Create standard spectrogram."""
     return np.abs(stft(signal,
                        n_fft,
                        hop_length))

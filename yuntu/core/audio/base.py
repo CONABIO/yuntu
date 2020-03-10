@@ -4,25 +4,15 @@ from typing import Dict
 from typing import Any
 from typing import Union
 from uuid import uuid4
+from collections import namedtuple
 import os
-from abc import ABC, abstractmethod
 import numpy as np
 
+from yuntu.core.media import Media
 from yuntu.core.audio.utils import read_info
 from yuntu.core.audio.utils import read_media
 from yuntu.core.audio.utils import write_media
-
-
-class Media(ABC):
-    """Abstract class for any media object."""
-
-    @abstractmethod
-    def read(self):
-        """Read media from file."""
-
-    @abstractmethod
-    def write(self, path, out_format):
-        """Write media to path."""
+from yuntu.core.audio.audio_features import AudioFeatures
 
 
 CHANNELS = 'nchannels'
@@ -40,6 +30,7 @@ MEDIA_INFO_FIELDS = [
     DURATION,
 ]
 
+MediaInfo = namedtuple('MediaInfo', MEDIA_INFO_FIELDS)
 MediaInfoType = Dict[str, Union[int, float]]
 
 
@@ -54,6 +45,8 @@ def media_info_is_complete(media_info: MediaInfoType) -> bool:
 
 class Audio(Media):
     """Base class for all audio."""
+
+    features_class = AudioFeatures
 
     def __init__(
             self,
@@ -99,7 +92,6 @@ class Audio(Media):
             message = 'Either data or path must be supplied'
             raise ValueError(message)
 
-        self.path = path
         self.timeexp = timeexp
 
         if id is None:
@@ -111,21 +103,23 @@ class Audio(Media):
         self.metadata = metadata
 
         if media_info is None:
-            media_info = read_info(self.path, self.timeexp)
+            media_info = read_info(path, timeexp)
+
         if not media_info_is_complete(media_info):
             message = (
                 f'Media info is not complete. Provided media info'
                 f'{media_info}. Required fields: {str(MEDIA_INFO_FIELDS)}')
             raise ValueError(message)
-        self.media_info = media_info
+
+        self.media_info = MediaInfo(**media_info)
 
         if read_samplerate is None:
-            read_samplerate = self.media_info[SAMPLE_RATE]
+            read_samplerate = self.media_info.samplerate
         self.read_samplerate = read_samplerate
 
-        self._data = data
-        if not lazy and data is None:
-            self._data = self._load()
+        self.features = self.features_class(self)
+
+        super().__init__(path=path, lazy=lazy)
 
     @classmethod
     def from_instance(
@@ -135,7 +129,6 @@ class Audio(Media):
             read_samplerate: Optional[int] = None):
         """Create a new Audio object from a database recording instance."""
         data = {
-            'db_entry': recording,
             'timeexp': recording.timeexp,
             'media_info': recording.media_info,
             'metadata': recording.metadata,
@@ -197,21 +190,14 @@ class Audio(Media):
         return Audio(data=array, media_info=media_info, id=str(uuid4()))
 
     @property
-    def data(self):
-        """Return the wav data."""
-        if not hasattr(self, '_data') or self._data is None:
-            self._data = self._load()
-        return self._data
-
-    @property
     def times(self):
         """Get the time array.
 
         This is an array of the same length as the wav data array and holds
         the time (in seconds) corresponding to each piece of the wav array.
         """
-        length = self.media_info[LENGTH]
-        duration = self.media_info[DURATION]
+        length = self.media_info.length
+        duration = self.media_info.duration
         return np.linspace(0, duration, length)
 
     def resample(
@@ -222,22 +208,14 @@ class Audio(Media):
         return Audio(
             self.path,
             timeexp=self.timeexp,
-            media_info=self.media_info.copy(),
+            media_info=self.media_info,
             metadata=self.metadata.copy(),
             id=self.id,
             lazy=lazy,
-            read_samplerate=samplerate,
-            db_entry=self.db_entry)
+            read_samplerate=samplerate)
 
     def slice(self, limits=None):
         """Return a new Audio object with mask initialized at limits."""
-        if limits is not None:
-            offset = limits[0]
-            duration = limits[1] - limits[0]
-            mask = (offset, duration)
-        else:
-            mask = None
-        return Audio(self.meta, mask)
 
     def set_mask(self, limits=None):
         """Set read mask.
@@ -267,10 +245,10 @@ class Audio(Media):
         if time < 0:
             raise ValueError('No negative times are allowed')
 
-        if time > self.media_info[DURATION]:
+        if time > self.media_info.duration:
             raise ValueError('Requested time is larger than audio duration')
 
-        index = int(time * self.media_info[SAMPLE_RATE])
+        index = int(time * self.media_info.samplerate)
         return index
 
     def read(self, start=None, end=None):
@@ -302,7 +280,7 @@ class Audio(Media):
             start = 0
 
         if end is None:
-            end = self.media_info[LENGTH]
+            end = self.media_info.length
 
         if start > end:
             message = 'Read start should be less than read end.'
@@ -312,34 +290,36 @@ class Audio(Media):
         end_index = self.get_index_from_time(end)
         return self.data[start_index: end_index + 1]
 
-    def _load(self):
+    def load(self):
         """Read signal from file (mask sensitive, lazy loading)."""
         signal, _ = read_media(self.path, self.read_samplerate)
         return signal
 
+    # pylint: disable=arguments-differ
     def write(
             self,
             path: str,
             media_format: Optional[str] = "wav",
             samplerate: Optional[int] = None):
         """Write media to path."""
-        signal = self.data
+        self.path = path
 
-        out_sr = self.media_info[SAMPLE_RATE]
+        signal = self.data
+        out_sr = self.media_info.samplerate
         if samplerate is not None:
             out_sr = samplerate
 
         write_media(self.path,
                     signal,
                     out_sr,
-                    self.media_info[CHANNELS],
+                    self.media_info.nchannels,
                     media_format)
 
     def listen(self, speed_modifier: Optional[float] = 1):
         """Return HTML5 audio element player of current audio."""
         # pylint: disable=import-outside-toplevel
         from IPython.display import Audio as HTMLAudio
-        rate = self.media_info[SAMPLE_RATE] * speed_modifier
+        rate = self.media_info.samplerate * speed_modifier
         return HTMLAudio(data=self.data, rate=rate)
 
     def plot(self, ax=None, **kwargs):
