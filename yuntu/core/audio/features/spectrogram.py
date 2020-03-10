@@ -1,6 +1,9 @@
 """Spectrogram class module."""
+from typing import Optional
 from collections import namedtuple
 import numpy as np
+from librosa.core import amplitude_to_db
+from librosa.core import power_to_db
 
 from yuntu.core.audio.features.base import Feature
 from yuntu.core.audio.features.spectral import stft
@@ -42,6 +45,8 @@ Shape = namedtuple('Shape', ['rows', 'columns'])
 class Spectrogram(Feature):
     """Spectrogram class."""
 
+    units = 'amplitude'
+
     def __init__(
             self,
             n_fft=N_FFT,
@@ -53,6 +58,14 @@ class Spectrogram(Feature):
         self.hop_length = hop_length
         self.window_function = window_function
         super().__init__(**kwargs)
+
+    def calculate(self):
+        """Calculate spectrogram from audio data."""
+        return np.abs(stft(
+            self.audio.data,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            window=self.window_function))
 
     def load(self):
         """Load the spectrogram data."""
@@ -82,11 +95,7 @@ class Spectrogram(Feature):
                 f'(extension={extension})')
             raise ValueError(message)
 
-        return np.abs(stft(
-            self.audio.data,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length,
-            window=self.window_function))
+        return self.calculate()
 
     def write(self, path):  # pylint: disable=arguments-differ
         """Write the spectrogram matrix into the filesystem."""
@@ -199,6 +208,15 @@ class Spectrogram(Feature):
         if kwargs.pop('colorbar', False):
             plt.colorbar(mesh, ax=ax)
 
+        if kwargs.pop('set_xlabel', False):
+            ax.set_xlabel(kwargs.pop('xlabel', 'Time (s)'))
+
+        if kwargs.pop('set_ylabel', False):
+            ax.set_ylabel(kwargs.pop('ylabel', 'Frequency (Hz)'))
+
+        if kwargs.pop('set_title', False):
+            ax.set_title(kwargs.pop('title', f'Spectrogram ({self.units})'))
+
         return ax
 
     def __getitem__(self, key):
@@ -219,3 +237,130 @@ class Spectrogram(Feature):
         """Iterate over spectrogram columns."""
         for col in self.data.T:
             yield col
+
+    def power(self, lazy=False):
+        """Get power spectrogram from spec."""
+        kwargs = {
+            'n_fft': self.n_fft,
+            'hop_length': self.hop_length,
+            'window_function': self.window_function,
+            'duration': self.duration,
+            'samplerate': self.samplerate,
+            'lazy': lazy
+        }
+
+        if self.has_audio():
+            kwargs['audio'] = self.audio
+
+        if not self.is_empty() or not lazy:
+            kwargs['data'] = self.data ** 2
+
+        return PowerSpectrogram(**kwargs)
+
+    def db(
+            self,
+            lazy: Optional[bool] = False,
+            ref: Optional[float] = None,
+            amin: Optional[float] = None,
+            top_db: Optional[float] = None):
+        """Get decibel spectrogram from spec."""
+        kwargs = {
+            'n_fft': self.n_fft,
+            'hop_length': self.hop_length,
+            'window_function': self.window_function,
+            'duration': self.duration,
+            'samplerate': self.samplerate,
+            'lazy': lazy
+        }
+
+        if ref is not None:
+            kwargs['ref'] = ref
+
+        if amin is not None:
+            kwargs['amin'] = amin
+
+        if top_db is not None:
+            kwargs['top_db'] = top_db
+
+        if self.has_audio():
+            kwargs['audio'] = self.audio
+
+        if not self.is_empty() or not lazy:
+            kwargs['data'] = amplitude_to_db(self.data)
+
+        return DecibelSpectrogram(**kwargs)
+
+
+class PowerSpectrogram(Spectrogram):
+    """Power spectrogram class."""
+
+    units = 'power'
+
+    def calculate(self):
+        """Calculate spectrogram from audio data."""
+        spectrogram = super().calculate()
+        return spectrogram**2
+
+    def db(
+            self,
+            lazy: Optional[bool] = False,
+            ref: Optional[float] = None,
+            amin: Optional[float] = None,
+            top_db: Optional[float] = None):
+        """Get decibel spectrogram from power spec."""
+        kwargs = {
+            'n_fft': self.n_fft,
+            'hop_length': self.hop_length,
+            'window_function': self.window_function,
+            'duration': self.duration,
+            'samplerate': self.samplerate,
+            'lazy': lazy
+        }
+
+        if ref is not None:
+            kwargs['ref'] = ref
+
+        if amin is not None:
+            kwargs['amin'] = amin
+
+        if top_db is not None:
+            kwargs['top_db'] = top_db
+
+        if self.has_audio():
+            kwargs['audio'] = self.audio
+
+        if not self.is_empty() or not lazy:
+            kwargs['data'] = power_to_db(self.data)
+
+        return DecibelSpectrogram(**kwargs)
+
+
+class DecibelSpectrogram(Spectrogram):
+    """Decibel spectrogram class."""
+
+    units = 'db'
+    ref = 1.0
+    amin = 1e-05
+    top_db = 80.0
+
+    def __init__(self, ref=None, amin=None, top_db=None, **kwargs):
+        """Construct a decibel spectrogram."""
+        if ref is not None:
+            self.ref = ref
+
+        if amin is not None:
+            self.amin = amin
+
+        if top_db is not None:
+            self.top_db = top_db
+
+        super().__init__(**kwargs)
+
+    def calculate(self):
+        """Calculate spectrogram from audio data."""
+        spectrogram = super().calculate()
+        return amplitude_to_db(
+            spectrogram,
+            ref=self.ref,
+            amin=self.amin,
+            top_db=self.top_db)
