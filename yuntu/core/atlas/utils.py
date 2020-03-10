@@ -9,7 +9,19 @@ import matplotlib.pyplot as plt
 
 
 def plot_geometry(geom, ax=None, outpath=None, **kwargs):
-    """Plot geometry."""
+    """Plot geometry.
+
+    Parameters
+    ----------
+    geom: shapely.geometry
+        A geometry to plot.
+
+    ax: matplotlib.pyplot.axis
+        Plot axis.
+
+    outpath: str
+        Path to write plot.
+    """
     if isinstance(geom, Polygon):
         x, y = geom.exterior.xy
     else:
@@ -22,12 +34,34 @@ def plot_geometry(geom, ax=None, outpath=None, **kwargs):
 
 
 def geom_from_wkt(wkt):
-    """Parse and return geometry."""
+    """Parse and return geometry.
+
+    Parameters
+    ----------
+    wkt: str
+        String with geometry in wkt.
+
+    Returns
+    -------
+    geometry: shapely.geometry
+        Parsed geometry.
+    """
     return shapely.wkt.loads(wkt)
 
 
 def bbox_to_polygon(bbox):
-    """Return polygon object from bounding box."""
+    """Return polygon object from bounding box.
+
+    Parameters
+    ----------
+    bbox: tuple(float, float, float, float)
+        Bounding box as start_time, end_time, min_freq, max_freq.
+
+    Returns
+    -------
+    polygon: shapely.geometry.polygon.Polygon
+        Corresponding polygon.
+    """
     return Polygon([[bbox[0], bbox[2]],
                     [bbox[0], bbox[3]],
                     [bbox[1], bbox[3]],
@@ -38,7 +72,44 @@ def bbox_to_polygon(bbox):
 def reference_system(time_win, time_hop,
                      freq_win, freq_hop,
                      bounds, center=None):
-    """Produce abstract reference system."""
+    """Produce abstract reference system.
+
+    Using specified time and frequency windows and hops, build a regular grid
+    between boundaries.
+
+    Parameters
+    ----------
+    time_win: float
+        Size of time window.
+
+    time_hop: float
+        Size of time hop.
+
+    freq_win: float
+        Size of frequency window.
+
+    freq_hop: float
+        Size of frequency hop.
+
+    bounds: tuple(float, float, float, float)
+        The extent of the reference system as start_time, end_time,
+        min_freq, max_freq.
+
+    Returns
+    -------
+    ref_sys: dict
+        A dictionary with tuples of integer coordinates as keys and charts
+        as attributes.
+
+    shape: tuple(int, int)
+        The shape of the corresponding dictionary.
+
+    xrange: tuple(int, int)
+        Limit values for coordinate system at axis x.
+
+    yrange: tuple(int, int)
+        Limit values for coordinate system at axis y.
+    """
     ref_sys = {}
     boxes = []
     if center is None:
@@ -79,10 +150,28 @@ def reference_system(time_win, time_hop,
 
 
 def build_multigeometry(geom_arr, geom_type="Polygon"):
-    """Build multigeometry from geometry array."""
+    """Build multigeometry from geometry array.
+
+    Parameters
+    ----------
+    geom_arr: list
+        List of geometries to aggregate.
+
+    geom_type: str
+        Input geometry type.
+
+    Returns
+    -------
+    geometry: shapely.geometry
+        Multigeometry of aggregated input geometries.
+
+    Raises
+    ------
+    NotImplementedError
+        If geometry type is not supported.
+    """
     if geom_type not in ["Polygon", "LineString"]:
-        raise NotImplementedError("Cannot build multigeometry from " +
-                                  geom_type)
+        raise NotImplementedError("Geometry type not implemented.")
     if geom_type == "Polygon":
         return MultiPolygon(geom_arr)
     return MultiLineString(geom_arr)

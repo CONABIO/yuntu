@@ -31,15 +31,11 @@ class Chart:
         return self.wkt
 
     def to_dict(self):
-        """Chart to dict"""
+        """Chart to dict."""
         return {"start_time": self.start_time,
                 "end_time": self.end_time,
                 "min_freq": self.min_freq,
                 "max_freq": self.max_freq}
-
-    def to_tuple(self):
-        """Chart to tuple."""
-        return self.bbox
 
     @property
     def bbox(self):
@@ -163,25 +159,69 @@ class Atlas:
             self._atlas[coords] = Chart(*ref_system[coords])
 
     def chart(self, atlas_coords):
-        """Return chart at specified atlas coordinates."""
+        """Return chart at specified atlas coordinates.
+
+        Parameters
+        ----------
+        atlas_coords: tuple(int, int)
+            The corresponding coordintaes in the reference system.
+
+        Returns
+        -------
+            Chart at coordinates.
+        """
+
         if atlas_coords in self._atlas:
             return self._atlas[atlas_coords]
         raise ValueError("Atlas coordinates out of range.")
 
     def intersects(self, geometry):
-        """Return charts that intersect geometry."""
+        """Return charts that intersect geometry.
+
+        Parameters
+        ----------
+        geometry: shapely.geometry
+            Geometry to operate.
+
+        Returns
+        -------
+        charts: list
+            List of matching charts.
+        """
         return [(self._atlas[coords], coords)
                 for coords in self._atlas
                 if self._atlas[coords].geometry.intersects(geometry)]
 
     def within(self, geometry):
-        """Return charts that lie within geometry."""
+        """Return charts that lie within geometry.
+
+        Parameters
+        ----------
+        geometry: shapely.geometry
+            Geometry to operate.
+
+        Returns
+        -------
+        charts: list
+            List of matching charts.
+        """
         return [(self._atlas[coords], coords)
                 for coords in self._atlas
                 if self._atlas[coords].geometry.within(geometry)]
 
     def contains(self, geometry):
-        """Return charts that contain geometry."""
+        """Return charts that contain geometry.
+
+        Parameters
+        ----------
+        geometry: shapely.geometry
+            Geometry to operate.
+
+        Returns
+        -------
+        charts: list
+            List of matching charts.
+        """
         return [(self._atlas[coords], coords)
                 for coords in self._atlas
                 if self._atlas[coords].geometry.contains(geometry)]
