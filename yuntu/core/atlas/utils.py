@@ -5,6 +5,8 @@ import shapely.wkt
 from shapely.geometry.polygon import Polygon
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry.multilinestring import MultiLineString
+from shapely.geometry import LineString
+from skimage.draw import polygon, line_aa
 import matplotlib.pyplot as plt
 
 
@@ -175,3 +177,75 @@ def build_multigeometry(geom_arr, geom_type="Polygon"):
     if geom_type == "Polygon":
         return MultiPolygon(geom_arr)
     return MultiLineString(geom_arr)
+
+
+def freq_to_bins(freq,
+                 fbins,
+                 frange,
+                 fmin):
+    fbin0 = min(fbins - 1,
+                int(max(round(((freq - fmin) / frange) * fbins), 0)))
+    return fbin0
+
+
+def time_to_bins(time,
+                 tbins,
+                 trange):
+    tbin0 = min(tbins - 1,
+                int(max(round((time / trange) * tbins), 0)))
+    return tbin0
+
+
+def linestring_to_mask(geom,
+                       shape,
+                       trange,
+                       frange,
+                       fmin):
+    """Rasterize linestring to binary mask of shape 'shape'."""
+    tbins, fbins = shape
+    times, freqs = geom.xy
+    times_ = [time_to_bins(t, tbins, trange) for t in times]
+    freqs_ = [freq_to_bins(f, fbins, frange, fmin) for f in freqs]
+    mask = np.zeros(shape)
+    for i in range(0, len(times_)-1):
+        rr, cc, val = line_aa(times_[i], freqs_[i], times_[i+1], freqs_[i+1])
+        mask[rr, cc] = 1
+    return mask
+
+
+def polygon_to_mask(geom,
+                    shape,
+                    trange,
+                    frange,
+                    fmin):
+    """Rasterize polygon to binary mask of shape 'shape'."""
+    tbins, fbins = shape
+    times, freqs = geom.exterior.xy
+    times_ = [time_to_bins(t, tbins, trange) for t in times]
+    freqs_ = [freq_to_bins(f, fbins, frange, fmin) for f in freqs]
+    rr, cc = polygon(times_, freqs_)
+    mask = np.zeros(shape)
+    mask[rr, cc] = 1
+    return mask
+
+
+def geometry_to_mask(geom,
+                     shape,
+                     trange,
+                     frange,
+                     fmin):
+    """Rasterize geometry."""
+    if isinstance(geom, Polygon):
+        return polygon_to_mask(geom,
+                               shape,
+                               trange,
+                               frange,
+                               fmin)
+    if isinstance(geom, LineString):
+        return linestring_to_mask(geom,
+                                  shape,
+                                  trange,
+                                  frange,
+                                  fmin)
+    raise NotImplementedError("Method not implemented for this kind of" +
+                              "geometry")
