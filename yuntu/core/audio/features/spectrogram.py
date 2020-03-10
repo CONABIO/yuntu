@@ -60,7 +60,16 @@ class Spectrogram(Feature):
         super().__init__(**kwargs)
 
     def calculate(self):
-        """Calculate spectrogram from audio data."""
+        """Calculate spectrogram from audio data.
+
+        Uses the spectrogram instance configurations for stft
+        calculation.
+
+        Returns
+        -------
+        np.array
+            Calculated spectrogram.
+        """
         return np.abs(stft(
             self.audio.data,
             n_fft=self.n_fft,
@@ -68,8 +77,29 @@ class Spectrogram(Feature):
             window=self.window_function))
 
     def load(self):
-        """Load the spectrogram data."""
-        if not self.has_audio() and self.path_exists():
+        """Load the spectrogram data.
+
+        Will try to load from file if no audio object was provided at
+        creation.
+
+        Returns
+        -------
+        np.array
+            The calculated spectrogram
+
+        Raises
+        ------
+        ValueError
+            - If no audio was given and the path provided does no exists.
+            - If the file at path is not a numpy file.
+            - If the numpy file at path is corrupted.
+        """
+        if not self.has_audio():
+            if not self.path_exists():
+                message = (
+                    'The provided path to spectrogram file does not exist.')
+                raise ValueError(message)
+
             extension = self.path_ext
             if extension == 'npy':
                 try:
@@ -105,6 +135,11 @@ class Spectrogram(Feature):
             'duration': self.duration,
             'samplerate': self.samplerate
         }
+
+        if self.has_audio():
+            if self.audio.exists():
+                data['audio_path'] = self.audio.path
+
         np.savez(self.path, **data)
 
     def rows(self):
@@ -134,8 +169,24 @@ class Spectrogram(Feature):
         """Get spectrogram shape."""
         return Shape(rows=self.rows(), columns=self.columns())
 
-    def get_column_from_time(self, time):
-        """Get spectrogram column that corresponds to a given time."""
+    def get_column_from_time(self, time: float) -> int:
+        """Get spectrogram column that corresponds to a given time.
+
+        Parameters
+        ----------
+        time: float
+            Time in seconds
+
+        Returns
+        -------
+        int
+            The spectrogram column corresponding to the provided time.
+
+        Raises
+        ------
+        ValueError
+            If time is negative or larger than the audio duration.
+        """
         if time < 0:
             message = 'Time cannot be negative'
             raise ValueError(message)
@@ -146,8 +197,24 @@ class Spectrogram(Feature):
 
         return np.floor(self.columns() * time / self.duration)
 
-    def get_row_from_frequency(self, frequency):
-        """Get spectrogram row that corresponds to a given frequency."""
+    def get_row_from_frequency(self, frequency: float) -> int:
+        """Get spectrogram row that corresponds to a given frequency.
+
+        Parameters
+        ----------
+        frequency: float
+            Frequency in hertz
+
+        Returns
+        -------
+        int
+            The spectrogram row corresponding to the provided frequency.
+
+        Raises
+        ------
+        ValueError
+            If frequency is negative or larger than the nyquist frequency.
+        """
         max_frequency = self.samplerate / 2
         if frequency < 0:
             message = 'Frequency cannot be negative'
@@ -161,30 +228,53 @@ class Spectrogram(Feature):
 
         return np.floor(self.rows() * frequency / max_frequency)
 
-    def get_amplitude(self, time, freq):
-        """Get spectrogram amplitude value at a given time and frequency."""
+    def get_amplitude(self, time: float, freq: float) -> float:
+        """Get spectrogram amplitude value at a given time and frequency.
+
+        Parameters
+        ----------
+        time: float
+            Time in seconds.
+        freq: float
+            Frequency in hertz.
+
+        Returns
+        -------
+        float
+            The amplitude of the spectrogram at the desired time and frequency.
+        """
         time_index = self.get_column_from_time(time)
         freq_index = self.get_row_from_frequency(freq)
         return self.data[freq_index, time_index]
 
     @property
-    def times(self):
+    def times(self) -> np.array:
         """Return an array of times.
 
         The returned array length is the same as the number of columns
         of the spectrogram and indicates the time (in seconds) corresponding
         to each column.
+
+        Returns
+        -------
+        np.array
+            Array of times.
         """
         columns = self.columns()
         return np.linspace(0, self.duration, columns)
 
     @property
-    def frequencies(self):
+    def frequencies(self) -> np.array:
         """Return an array of frequencies.
 
         The returned array length is the same as the number of rows
         of the spectrogram and indicates the frequency (in hertz) corresponding
         to each row.
+
+        Returns
+        -------
+        np.array
+            Array of frequencies.
         """
         # If spectrogram is already calculated use the number of columns
         max_frequency = self.samplerate / 2
@@ -192,7 +282,41 @@ class Spectrogram(Feature):
         return np.linspace(0, max_frequency, rows)
 
     def plot(self, ax=None, **kwargs):
-        """Plot the spectrogram."""
+        """Plot the spectrogram.
+
+        Notes
+        -----
+        Will create a new figure if no axis (ax) was provided.
+
+        Arguments
+        ---------
+        figsize: tuple, optional
+            Figure size in inches
+        cmap: str, optional
+            Colormap to use for spectrogram plotting
+        colorbar: bool, optional
+            Flag indicating whether to draw a colorbar.
+        set_xlabel: bool, optional
+            Flag indicating wheter to set the x-axis label of
+            the provided axis.
+        xlabel: str, optional
+            The label to use for the x-axis. Defaults to "Time(s)".
+        set_ylabel: bool, optional
+            Flag indicating wheter to set the y-axis label of
+            the provided axis.
+        ylabel: str, optional
+            The label to use for the y-axis. Defaults to "Frequency(Hz)".
+        set_title: bool, optional
+            Flag indicating wheter to set the title of
+            the provided axis.
+        title: str, optional
+            The title to use. Defaults to "Spectrogram".
+
+        Returns
+        -------
+        matplotlib.Axes
+            The axis into which the spectrogram was plotted.
+        """
         # pylint: disable=import-outside-toplevel
         import matplotlib.pyplot as plt
         if ax is None:
