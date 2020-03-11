@@ -1,10 +1,14 @@
 """Spectrogram class module."""
 from typing import Optional
+import os
 from collections import namedtuple
+from collections import OrderedDict
+
 import numpy as np
 from librosa.core import amplitude_to_db
 from librosa.core import power_to_db
 
+from yuntu.logging import logger
 from yuntu.core.audio.features.base import Feature
 from yuntu.core.audio.features.spectral import stft
 
@@ -59,6 +63,35 @@ class Spectrogram(Feature):
         self.window_function = window_function
         super().__init__(**kwargs)
 
+    def __repr__(self):
+        data = OrderedDict()
+
+        if self.n_fft != N_FFT:
+            data['n_fft'] = self.n_fft
+
+        if self.hop_length != HOP_LENGTH:
+            data['hop_length'] = self.hop_length
+
+        if self.window_function != WINDOW_FUNCTION:
+            data['window_function'] = self.window_function
+
+        has_path = self.path_exists()
+        if has_path:
+            data['path'] = repr(self.path)
+
+        has_audio = self.has_audio()
+        if not has_path and has_audio:
+            data['audio'] = repr(self.audio)
+
+        if not has_audio and not has_path:
+            data['array'] = repr(self.array)
+
+        class_name = type(self).__name__
+        args = [f'{key}={value}' for key, value in data.items()]
+        args_string = ', '.join(args)
+
+        return f'{class_name}({args_string})'
+
     def calculate(self):
         """Calculate spectrogram from audio data.
 
@@ -71,13 +104,13 @@ class Spectrogram(Feature):
             Calculated spectrogram.
         """
         return np.abs(stft(
-            self.audio.data,
+            self.audio.array,
             n_fft=self.n_fft,
             hop_length=self.hop_length,
             window=self.window_function))
 
     def load(self):
-        """Load the spectrogram data.
+        """Load the spectrogram array.
 
         Will try to load from file if no audio object was provided at
         creation.
@@ -131,7 +164,7 @@ class Spectrogram(Feature):
         """Write the spectrogram matrix into the filesystem."""
         self.path = path
         data = {
-            'spectrogram': self.data,
+            'spectrogram': self.array,
             'duration': self.duration,
             'samplerate': self.samplerate
         }
@@ -150,14 +183,14 @@ class Spectrogram(Feature):
         """Get the number of spectrogram columns."""
         # If spectrogram is already calculated use the number of columns
         if not self.is_empty():
-            return self.data.shape[1]
+            return self.array.shape[1]
 
         # Else, estimate it from the wav length
         wav_length = None
         # Use the length of the wav array if loaded
         if self.has_audio():
             if not self.audio.is_empty():
-                wav_length = len(self.audio.data)
+                wav_length = len(self.audio.array)
 
         # Otherwise, calculate wav length from duration and samplerate
         if wav_length is None:
@@ -165,6 +198,7 @@ class Spectrogram(Feature):
 
         return np.ceil(wav_length / self.hop_length)
 
+    @property
     def shape(self) -> Shape:
         """Get spectrogram shape."""
         return Shape(rows=self.rows(), columns=self.columns())
@@ -245,7 +279,7 @@ class Spectrogram(Feature):
         """
         time_index = self.get_column_from_time(time)
         freq_index = self.get_row_from_frequency(freq)
-        return self.data[freq_index, time_index]
+        return self.array[freq_index, time_index]
 
     @property
     def times(self) -> np.array:
@@ -322,7 +356,7 @@ class Spectrogram(Feature):
         if ax is None:
             _, ax = plt.subplots(figsize=kwargs.pop('figsize', None))
 
-        spectrogram = self.data
+        spectrogram = self.array
         mesh = ax.pcolormesh(
             self.times,
             self.frequencies,
@@ -343,23 +377,14 @@ class Spectrogram(Feature):
 
         return ax
 
-    def __getitem__(self, key):
-        """Get spectrogram value."""
-        return self.data[key]
-
-    def __iter__(self):
-        """Iterate over spectrogram columns."""
-        for column in self.data.T:
-            yield column
-
     def iter_rows(self):
         """Iterate over spectrogram rows."""
-        for row in self.data:
+        for row in self.array:
             yield row
 
     def iter_cols(self):
         """Iterate over spectrogram columns."""
-        for col in self.data.T:
+        for col in self.array.T:
             yield col
 
     def power(self, lazy=False):
@@ -377,10 +402,11 @@ class Spectrogram(Feature):
             kwargs['audio'] = self.audio
 
         if not self.is_empty() or not lazy:
-            kwargs['data'] = self.data ** 2
+            kwargs['array'] = self.array ** 2
 
         return PowerSpectrogram(**kwargs)
 
+    # pylint: disable=invalid-name
     def db(
             self,
             lazy: Optional[bool] = False,
@@ -410,9 +436,37 @@ class Spectrogram(Feature):
             kwargs['audio'] = self.audio
 
         if not self.is_empty() or not lazy:
-            kwargs['data'] = amplitude_to_db(self.data)
+            kwargs['array'] = amplitude_to_db(self.array)
 
         return DecibelSpectrogram(**kwargs)
+
+    # pylint: disable=arguments-differ
+    def to_dict(self, absolute_path=True):
+        """Return spectrogram metadata."""
+        data = {
+            'units': self.units,
+            'n_fft': self.n_fft,
+            'hop_length': self.hop_length,
+            'window_function': self.window_function
+        }
+
+        if self.path_exists():
+            if absolute_path:
+                data['path'] = os.path.abspath(self.path)
+            else:
+                data['path'] = self.path
+
+            return data
+
+        if self.has_audio():
+            data['audio'] = self.audio.to_dict(absolute_path=absolute_path)
+            return data
+
+        logger.warning(
+            'Spectrogram instance does not have a path or an associated '
+            'audio instance and reconstruction from dictionary values '
+            'will not be possible.')
+        return data
 
 
 class PowerSpectrogram(Spectrogram):
@@ -454,7 +508,7 @@ class PowerSpectrogram(Spectrogram):
             kwargs['audio'] = self.audio
 
         if not self.is_empty() or not lazy:
-            kwargs['data'] = power_to_db(self.data)
+            kwargs['array'] = power_to_db(self.array)
 
         return DecibelSpectrogram(**kwargs)
 

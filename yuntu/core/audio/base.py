@@ -5,9 +5,12 @@ from typing import Any
 from typing import Union
 from uuid import uuid4
 from collections import namedtuple
+from collections import OrderedDict
 import os
+
 import numpy as np
 
+from yuntu.logging import logger
 from yuntu.core.media import Media
 from yuntu.core.audio.utils import read_info
 from yuntu.core.audio.utils import read_media
@@ -48,10 +51,11 @@ class Audio(Media):
 
     features_class = AudioFeatures
 
+    # pylint: disable=redefined-builtin, invalid-name
     def __init__(
             self,
             path: Optional[str] = None,
-            data: Optional[np.array] = None,
+            array: Optional[np.array] = None,
             timeexp: Optional[int] = 1,
             media_info: Optional[MediaInfoType] = None,
             metadata: Optional[Dict[str, Any]] = None,
@@ -64,7 +68,7 @@ class Audio(Media):
         ----------
         path: str, optional
             Path to audio file.
-        data: np.array, optional
+        array: np.array, optional
             Numpy array with audio data
         timeexp: int, optional
             Time expansion factor of audio file. Will default
@@ -88,8 +92,8 @@ class Audio(Media):
             from the native sample rate, the audio will be resampled
             at read.
         """
-        if path is None and data is None:
-            message = 'Either data or path must be supplied'
+        if path is None and array is None:
+            message = 'Either array or path must be supplied'
             raise ValueError(message)
 
         self.timeexp = timeexp
@@ -119,7 +123,7 @@ class Audio(Media):
 
         self.features = self.features_class(self)
 
-        super().__init__(path=path, lazy=lazy)
+        super().__init__(array=array, path=path, lazy=lazy)
 
     @classmethod
     def from_instance(
@@ -163,7 +167,8 @@ class Audio(Media):
     def from_array(
             cls,
             array: np.array,
-            samplerate: int):
+            samplerate: int,
+            metadata: Optional[dict] = None):
         """Create a new Audio object from a numpy array."""
         shape = array.shape
         if len(shape) == 1:
@@ -187,7 +192,11 @@ class Audio(Media):
             DURATION: size / samplerate
         }
 
-        return Audio(data=array, media_info=media_info, id=str(uuid4()))
+        return cls(
+            array=array,
+            media_info=media_info,
+            id=str(uuid4()),
+            metadata=metadata)
 
     @property
     def times(self):
@@ -216,29 +225,6 @@ class Audio(Media):
 
     def slice(self, limits=None):
         """Return a new Audio object with mask initialized at limits."""
-
-    def set_mask(self, limits=None):
-        """Set read mask.
-
-        A read mask is a time interval that determines the part of
-        the recording that is going to be read and affects any output that
-        uses loaded data.
-        """
-        if limits is not None:
-            offset = limits[0]
-            duration = limits[1] - limits[0]
-            self.mask = (offset, duration)
-        else:
-            self.mask = None
-        self.clear()
-
-    def unset_mask(self):
-        """Unset read mask."""
-        self.set_mask()
-
-    def clear(self):
-        """Clear cached data."""
-        del self._data
 
     def get_index_from_time(self, time):
         """Get the index of the wav array corresponding to the given time."""
@@ -288,7 +274,7 @@ class Audio(Media):
 
         start_index = self.get_index_from_time(start)
         end_index = self.get_index_from_time(end)
-        return self.data[start_index: end_index + 1]
+        return self.array[start_index: end_index + 1]
 
     def load(self):
         """Read signal from file (mask sensitive, lazy loading)."""
@@ -304,7 +290,7 @@ class Audio(Media):
         """Write media to path."""
         self.path = path
 
-        signal = self.data
+        signal = self.array
         out_sr = self.media_info.samplerate
         if samplerate is not None:
             out_sr = samplerate
@@ -320,7 +306,7 @@ class Audio(Media):
         # pylint: disable=import-outside-toplevel
         from IPython.display import Audio as HTMLAudio
         rate = self.media_info.samplerate * speed_modifier
-        return HTMLAudio(data=self.data, rate=rate)
+        return HTMLAudio(data=self.array, rate=rate)
 
     def plot(self, ax=None, **kwargs):
         """Plot soundwave in the given axis."""
@@ -330,5 +316,45 @@ class Audio(Media):
         if ax is None:
             _, ax = plt.subplots(figsize=kwargs.pop('figsize', None))
 
-        ax.plot(self.times, self.data, **kwargs)
+        ax.plot(self.times, self.array, **kwargs)
         return ax
+
+    def to_dict(self, absolute_path=True):
+        """Return a dictionary holding all audio metadata."""
+        data = {
+            'timeexp': self.timeexp,
+            'media_info': self.media_info._asdict(),
+            'metadata': self.metadata.copy(),
+            'id': self.id
+        }
+
+        if self.path_exists():
+            if absolute_path:
+                data['path'] = os.path.abspath(self.path)
+            else:
+                data['path'] = self.path
+        else:
+            message = (
+                'Audio instance does not have a path and its reconstruction '
+                'will not be possible from the dictionary information.')
+            logger.warning(message)
+
+        return data
+
+    def __repr__(self):
+        data = OrderedDict()
+        if self.path_exists():
+            data['path'] = repr(self.path)
+        else:
+            data['array'] = repr(self.array)
+            data['media_info'] = repr(self.media_info)
+
+        if self.timeexp != 1:
+            data['timeexp'] = 1
+
+        if self.metadata:
+            data['metadata'] = repr(self.metadata)
+
+        args = [f'{key}={value}' for key, value in data.items()]
+        args_string = ', '.join(args)
+        return f'Audio({args_string})'
