@@ -13,27 +13,6 @@ import numpy as np
 from yuntu.core.windows import Window
 
 
-class MediaArray(np.ndarray):
-    """Media array class.
-
-    This is a simple extension of a numpy array that holds a reference
-    to the parent media instance.
-    """
-
-    def __new__(cls, array, media=None):
-        """Create a new Media Array."""
-        obj = np.asarray(array).view(cls)
-        obj.media = media
-        return obj
-
-    def __array_finalize__(self, obj):
-        """End numpy array construction."""
-        if obj is None:
-            return
-        # pylint: disable=attribute-defined-outside-init
-        self.media = getattr(obj, 'media', None)
-
-
 # pylint: disable=too-many-public-methods
 class Media(ABC, np.ndarray):
     """Media class.
@@ -80,9 +59,9 @@ class Media(ABC, np.ndarray):
         self.window = self.window_class()
 
         if array is not None:
-            self._array = MediaArray(array, self)
+            self._array = array
         elif not lazy:
-            self._array = MediaArray(self.load(), self)
+            self._array = self.load()
 
     def clean(self):
         """Clear media contents and free memory."""
@@ -125,7 +104,7 @@ class Media(ABC, np.ndarray):
     def array(self):
         """Get media contents."""
         if self.is_empty():
-            self._array = MediaArray(self.load(), self)
+            self._array = self.load()
         return self._array
 
     @property
