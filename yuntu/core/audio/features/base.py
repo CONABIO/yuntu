@@ -18,7 +18,8 @@ class Feature(Media, ABC):
             path: str = None,
             lazy: bool = False,
             samplerate: int = None,
-            duration: float = None):
+            duration: float = None,
+            **kwargs):
         """Construct a feature."""
         self.audio = audio
 
@@ -46,7 +47,7 @@ class Feature(Media, ABC):
                 'feature from an Audio object.')
             raise ValueError(message)
 
-        super().__init__(path=path, lazy=lazy, array=array)
+        super().__init__(path=path, lazy=lazy, array=array, **kwargs)
 
     def has_audio(self):
         """Return if this feature is linked to an Audio instance."""

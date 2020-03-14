@@ -9,6 +9,7 @@ from librosa.core import amplitude_to_db
 from librosa.core import power_to_db
 
 from yuntu.logging import logger
+from yuntu.core.windows import TimeFrequencyWindow
 from yuntu.core.audio.features.base import Feature
 from yuntu.core.audio.features.spectral import stft
 
@@ -50,6 +51,7 @@ class Spectrogram(Feature):
     """Spectrogram class."""
 
     units = 'amplitude'
+    window_class = TimeFrequencyWindow
 
     def __init__(
             self,
@@ -86,11 +88,54 @@ class Spectrogram(Feature):
         if not has_audio and not has_path:
             data['array'] = repr(self.array)
 
+        if not self.window.is_trivial():
+            data['window'] = repr(self.window)
+
         class_name = type(self).__name__
         args = [f'{key}={value}' for key, value in data.items()]
         args_string = ', '.join(args)
 
         return f'{class_name}({args_string})'
+
+    def _get_start_time(self):
+        default = 0
+        if not hasattr(self.window, 'start'):
+            return default
+
+        if self.window.start is None:
+            return default
+
+        return self.window.start
+
+    def _get_end_time(self):
+        default = self.duration
+        if not hasattr(self.window, 'end'):
+            return default
+
+        if self.window.end is None:
+            return default
+
+        return self.window.end
+
+    def _get_max_freq(self):
+        default = self.samplerate / 2
+        if not hasattr(self.window, 'max'):
+            return default
+
+        if self.window.max is None:
+            return default
+
+        return self.window.max
+
+    def _get_min_freq(self):
+        default = 0
+        if not hasattr(self.window, 'min'):
+            return default
+
+        if self.window.min is None:
+            return default
+
+        return self.window.min
 
     def calculate(self):
         """Calculate spectrogram from audio data.
@@ -103,11 +148,29 @@ class Spectrogram(Feature):
         np.array
             Calculated spectrogram.
         """
-        return np.abs(stft(
-            self.audio.array,
+        if not self.window.is_trivial():
+            start = self._get_start_time()
+            end = self._get_end_time()
+            array = self.audio.cut(start=start, end=end).array
+        else:
+            array = self.audio.array
+
+        result = np.abs(stft(
+            array,
             n_fft=self.n_fft,
             hop_length=self.hop_length,
             window=self.window_function))
+
+        if self.window.is_trivial():
+            return result
+
+        max_freq = self._get_max_freq()
+        min_freq = self._get_min_freq()
+        nyquist = self.samplerate / 2
+        rows = 1 + self.n_fft // 2
+        max_index = int(rows * (max_freq / nyquist))
+        min_index = int(rows * (min_freq / nyquist))
+        return result[slice(min_index, max_index)]
 
     def load(self):
         """Load the spectrogram array.
@@ -154,7 +217,7 @@ class Spectrogram(Feature):
                     raise ValueError(message)
 
             message = (
-                'The provided path does not a numpy file extension. '
+                'The provided path does not have a numpy file extension. '
                 f'(extension={extension})')
             raise ValueError(message)
 
@@ -166,18 +229,33 @@ class Spectrogram(Feature):
         data = {
             'spectrogram': self.array,
             'duration': self.duration,
-            'samplerate': self.samplerate
+            'samplerate': self.samplerate,
         }
 
         if self.has_audio():
             if self.audio.exists():
                 data['audio_path'] = self.audio.path
 
+        if not self.window.is_trivial():
+            window_data = {
+                f'window_{key}': value
+                for key, value in self.window.to_dict()
+                if value is not None
+            }
+            data.update(window_data)
+
         np.savez(self.path, **data)
 
     def rows(self):
         """Get the number of spectrogram rows."""
-        return 1 + self.n_fft // 2
+        if not self.is_empty():
+            return self.array.shape[0]
+
+        max_rows = 1 + self.n_fft // 2
+        nyquist = self.samplerate / 2
+        min_freq = self._get_min_freq()
+        max_freq = self._get_max_freq()
+        return int(max_rows * ((max_freq - min_freq) / nyquist))
 
     def columns(self):
         """Get the number of spectrogram columns."""
@@ -185,18 +263,11 @@ class Spectrogram(Feature):
         if not self.is_empty():
             return self.array.shape[1]
 
-        # Else, estimate it from the wav length
-        wav_length = None
-        # Use the length of the wav array if loaded
-        if self.has_audio():
-            if not self.audio.is_empty():
-                wav_length = len(self.audio.array)
-
-        # Otherwise, calculate wav length from duration and samplerate
-        if wav_length is None:
-            wav_length = self.duration * self.samplerate
-
-        return np.ceil(wav_length / self.hop_length)
+        start = self._get_start_time()
+        end = self._get_end_time()
+        duration = end - start
+        wav_length = duration * self.samplerate
+        return int(np.ceil(wav_length / self.hop_length))
 
     @property
     def shape(self) -> Shape:
@@ -221,15 +292,20 @@ class Spectrogram(Feature):
         ValueError
             If time is negative or larger than the audio duration.
         """
-        if time < 0:
-            message = 'Time cannot be negative'
+        start_time = self._get_start_time()
+        if time < start_time:
+            message = 'Time cannot be less than start time'
             raise ValueError(message)
 
-        if time > self.duration:
-            message = 'Time cannot be greater than the duration of the audio'
+        end_time = self._get_end_time()
+        if time > end_time:
+            message = (
+                'Time cannot be greater than the duration of the audio, '
+                'or larger that the ending time set by the window.')
             raise ValueError(message)
 
-        return np.floor(self.columns() * time / self.duration)
+        duration = end_time - start_time
+        return int(np.floor(self.columns() * ((time - start_time) / duration)))
 
     def get_row_from_frequency(self, frequency: float) -> int:
         """Get spectrogram row that corresponds to a given frequency.
@@ -249,18 +325,19 @@ class Spectrogram(Feature):
         ValueError
             If frequency is negative or larger than the nyquist frequency.
         """
-        max_frequency = self.samplerate / 2
-        if frequency < 0:
+        min_freq = self._get_min_freq()
+        if frequency < min_freq:
             message = 'Frequency cannot be negative'
             raise ValueError(message)
 
-        if frequency > max_frequency:
+        max_freq = self._get_max_freq()
+        if frequency > max_freq:
             message = (
                 'Frequency cannot be greater than the nyquist '
-                f'frequency: {max_frequency}Hz')
+                'frequency, or the maximum frequency set by the window.')
             raise ValueError(message)
 
-        return np.floor(self.rows() * frequency / max_frequency)
+        return int(np.floor(self.rows() * ((frequency - min_freq) / max_freq)))
 
     def get_amplitude(self, time: float, freq: float) -> float:
         """Get spectrogram amplitude value at a given time and frequency.
@@ -295,7 +372,9 @@ class Spectrogram(Feature):
             Array of times.
         """
         columns = self.columns()
-        return np.linspace(0, self.duration, columns)
+        start = self._get_start_time()
+        end = self._get_end_time()
+        return np.linspace(start, end, columns)
 
     @property
     def frequencies(self) -> np.array:
@@ -311,9 +390,10 @@ class Spectrogram(Feature):
             Array of frequencies.
         """
         # If spectrogram is already calculated use the number of columns
-        max_frequency = self.samplerate / 2
-        rows = 1 + self.n_fft // 2
-        return np.linspace(0, max_frequency, rows)
+        rows = self.rows()
+        min_freq = self._get_min_freq()
+        max_freq = self._get_max_freq()
+        return np.linspace(min_freq, max_freq, rows)
 
     def plot(self, ax=None, **kwargs):
         """Plot the spectrogram.
@@ -330,17 +410,17 @@ class Spectrogram(Feature):
             Colormap to use for spectrogram plotting
         colorbar: bool, optional
             Flag indicating whether to draw a colorbar.
-        set_xlabel: bool, optional
+        w_xlabel: bool, optional
             Flag indicating wheter to set the x-axis label of
             the provided axis.
         xlabel: str, optional
             The label to use for the x-axis. Defaults to "Time(s)".
-        set_ylabel: bool, optional
+        w_ylabel: bool, optional
             Flag indicating wheter to set the y-axis label of
             the provided axis.
         ylabel: str, optional
             The label to use for the y-axis. Defaults to "Frequency(Hz)".
-        set_title: bool, optional
+        w_title: bool, optional
             Flag indicating wheter to set the title of
             the provided axis.
         title: str, optional
@@ -361,19 +441,38 @@ class Spectrogram(Feature):
             self.times,
             self.frequencies,
             spectrogram,
-            cmap=kwargs.pop('cmap', 'gray'))
+            cmap=kwargs.pop('cmap', 'gray'),
+            alpha=kwargs.pop('alpha', 1.0))
 
         if kwargs.pop('colorbar', False):
             plt.colorbar(mesh, ax=ax)
 
-        if kwargs.pop('set_xlabel', False):
+        if kwargs.pop('w_xlabel', False):
             ax.set_xlabel(kwargs.pop('xlabel', 'Time (s)'))
 
-        if kwargs.pop('set_ylabel', False):
+        if kwargs.pop('w_ylabel', False):
             ax.set_ylabel(kwargs.pop('ylabel', 'Frequency (Hz)'))
 
-        if kwargs.pop('set_title', False):
+        if kwargs.pop('w_title', False):
             ax.set_title(kwargs.pop('title', f'Spectrogram ({self.units})'))
+
+        if kwargs.pop('w_window', False):
+            min_freq = self._get_min_freq()
+            max_freq = self._get_max_freq()
+            start_time = self._get_start_time()
+            end_time = self._get_end_time()
+            line_x, line_y = zip(*[
+                [start_time, min_freq],
+                [end_time, min_freq],
+                [end_time, max_freq],
+                [start_time, max_freq],
+                [start_time, min_freq],
+            ])
+            ax.plot(
+                line_x,
+                line_y,
+                color=kwargs.pop('window_color', 'red'),
+                linewidth=kwargs.pop('window_linewidth', 3))
 
         return ax
 
@@ -389,14 +488,8 @@ class Spectrogram(Feature):
 
     def power(self, lazy=False):
         """Get power spectrogram from spec."""
-        kwargs = {
-            'n_fft': self.n_fft,
-            'hop_length': self.hop_length,
-            'window_function': self.window_function,
-            'duration': self.duration,
-            'samplerate': self.samplerate,
-            'lazy': lazy
-        }
+        kwargs = self.to_dict()
+        kwargs['window'] = self.window
 
         if self.has_audio():
             kwargs['audio'] = self.audio
@@ -414,14 +507,8 @@ class Spectrogram(Feature):
             amin: Optional[float] = None,
             top_db: Optional[float] = None):
         """Get decibel spectrogram from spec."""
-        kwargs = {
-            'n_fft': self.n_fft,
-            'hop_length': self.hop_length,
-            'window_function': self.window_function,
-            'duration': self.duration,
-            'samplerate': self.samplerate,
-            'lazy': lazy
-        }
+        kwargs = self.to_dict()
+        kwargs['window'] = self.window
 
         if ref is not None:
             kwargs['ref'] = ref
@@ -440,6 +527,89 @@ class Spectrogram(Feature):
 
         return DecibelSpectrogram(**kwargs)
 
+    def cut(
+            self,
+            window: Optional[TimeFrequencyWindow] = None,
+            start_time: Optional[float] = None,
+            end_time: Optional[float] = None,
+            max_freq: Optional[float] = None,
+            min_freq: Optional[float] = None,
+            lazy: Optional[bool] = False,
+            **kwargs):
+        current_start = self._get_start_time()
+        current_end = self._get_end_time()
+        current_min = self._get_min_freq()
+        current_max = self._get_max_freq()
+
+        if start_time is None:
+            try:
+                start_time = max(min(window.start, current_end), current_start)
+            except (AttributeError, TypeError):
+                pass
+
+        if end_time is None:
+            try:
+                end_time = max(min(window.end, current_end), current_start)
+            except (AttributeError, TypeError):
+                pass
+
+        if min_freq is None:
+            try:
+                min_freq = max(min(window.min, current_max), current_min)
+            except (AttributeError, TypeError):
+                pass
+
+        if max_freq is None:
+            try:
+                max_freq = max(min(window.max, current_max), current_min)
+            except (AttributeError, TypeError):
+                pass
+
+        try:
+            if start_time > end_time or min_freq > max_freq:
+                raise ValueError('Cut is empty')
+        except TypeError:
+            pass
+
+        kwargs = self.to_dict()
+        kwargs['window'] = TimeFrequencyWindow(
+            start=start_time,
+            end=end_time,
+            min=min_freq,
+            max=max_freq)
+        kwargs['lazy'] = lazy
+
+        if self.has_audio():
+            kwargs['audio'] = self.audio
+
+        if not self.is_empty():
+            if start_time is None:
+                start_index = None
+            else:
+                start_index = self.get_column_from_time(start_time)
+
+            if end_time is None:
+                end_index = None
+            else:
+                end_index = self.get_column_from_time(end_time)
+
+            if min_freq is None:
+                min_index = None
+            else:
+                min_index = self.get_row_from_frequency(min_freq)
+
+            if max_freq is None:
+                max_index = None
+            else:
+                max_index = self.get_row_from_frequency(max_freq)
+
+            row_slice = slice(min_index, max_index)
+            col_slice = slice(start_index, end_index)
+            data = self.array[row_slice, col_slice]
+            kwargs['array'] = data.copy()
+
+        return type(self)(**kwargs)
+
     # pylint: disable=arguments-differ
     def to_dict(self, absolute_path=True):
         """Return spectrogram metadata."""
@@ -447,7 +617,10 @@ class Spectrogram(Feature):
             'units': self.units,
             'n_fft': self.n_fft,
             'hop_length': self.hop_length,
-            'window_function': self.window_function
+            'window_function': self.window_function,
+            'window': self.window.to_dict(),
+            'duration': self.duration,
+            'samplerate': self.samplerate,
         }
 
         if self.path_exists():
@@ -486,14 +659,7 @@ class PowerSpectrogram(Spectrogram):
             amin: Optional[float] = None,
             top_db: Optional[float] = None):
         """Get decibel spectrogram from power spec."""
-        kwargs = {
-            'n_fft': self.n_fft,
-            'hop_length': self.hop_length,
-            'window_function': self.window_function,
-            'duration': self.duration,
-            'samplerate': self.samplerate,
-            'lazy': lazy
-        }
+        kwargs = self.to_dict()
 
         if ref is not None:
             kwargs['ref'] = ref
@@ -503,6 +669,9 @@ class PowerSpectrogram(Spectrogram):
 
         if top_db is not None:
             kwargs['top_db'] = top_db
+
+        if not self.window.is_trivial():
+            kwargs['window'] = self.window
 
         if self.has_audio():
             kwargs['audio'] = self.audio

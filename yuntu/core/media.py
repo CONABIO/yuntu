@@ -51,12 +51,14 @@ class Media(ABC, np.ndarray):
         return getattr(ufunc, method)(*modified_inputs, **modified_kwargs)
 
     # pylint: disable=super-init-not-called
-    def __init__(self, path=None, lazy=False, array=None):
+    def __init__(self, path=None, lazy=False, array=None, window=None, **kwargs):
         """Construct a media object."""
         self.path = path
         self.lazy = lazy
 
-        self.window = self.window_class()
+        if window is None:
+            window = self.window_class()
+        self.window = window
 
         if array is not None:
             self._array = array
@@ -209,19 +211,3 @@ class Media(ABC, np.ndarray):
             kwargs['array'] = self.array
 
         return cls(**kwargs)
-
-
-class Fragment:
-    """Fragment class.
-
-    A fragment is a selection of a media object. The selected
-    data is defined by a window object.
-    """
-
-    def __init__(
-            self,
-            parent: Media,
-            window: Window):
-        """Construct a fragment."""
-        self.parent = parent
-        self.window = window

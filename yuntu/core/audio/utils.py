@@ -1,4 +1,5 @@
 """Auxiliar utilities for Audio classes and methods."""
+from typing import Optional
 import os
 import hashlib
 import wave
@@ -85,6 +86,25 @@ def get_channel(signal, channel, nchannels):
     if nchannels > 1:
         return np.squeeze(signal[[channel], :])
     return signal
+
+
+def resample(
+        array: np.array,
+        original_sr: int,
+        target_sr: int,
+        res_type: Optional[str] = 'kaiser_best',
+        fix: Optional[bool] = True,
+        scale: Optional[bool] = False,
+        **kwargs):
+    """Resample audio."""
+    return librosa.core.resample(
+        array,
+        original_sr,
+        target_sr,
+        res_type=res_type,
+        fix=fix,
+        scale=scale,
+        **kwargs)
 
 
 def channel_mean(signal, keepdims=False):
