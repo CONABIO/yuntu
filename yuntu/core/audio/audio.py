@@ -326,7 +326,7 @@ class Audio(AnnotatedObject, Media):
         return self.array[start_index: end_index + 1]
 
     def load(self):
-        """Read signal from file (mask sensitive, lazy loading)."""
+        """Read signal from file."""
         start = self._get_start()
         end = self._get_end()
         duration = end - start

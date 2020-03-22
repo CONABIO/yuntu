@@ -18,7 +18,6 @@ from yuntu.core.atlas.geometry import point_neighbourhood
 from yuntu.core.atlas.geometry import point_geometry
 from yuntu.core.atlas.geometry import geometry_neighbourhood
 from yuntu.core.atlas.geometry import buffer_geometry
-from yuntu.core.atlas.geometry import point_buffer
 
 
 BOXCAR = 'boxcar'
