@@ -1,15 +1,19 @@
 from uuid import uuid4
 from abc import ABC
 from abc import abstractmethod
-import shapely
-import shapely.geometry as shapely_geometry
-import shapely.affinity as shapely_affinity
 
 from yuntu.core.windows import TimeWindow
 from yuntu.core.windows import TimeFrequencyWindow
 from yuntu.core.windows import FrequencyWindow
 from yuntu.core.annotation.labels import Labels
+from yuntu.core.atlas.geometry import linestring_geometry, \
+                                      polygon_geometry, \
+                                      validate_geometry, \
+                                      bbox_to_polygon, \
+                                      buffer_geometry
 
+
+INFINITY = 10e+9
 
 class Annotation(ABC):
     window_class = TimeWindow
@@ -95,7 +99,7 @@ class Annotation(ABC):
 
         geometry = data.get('geometry', None)
         if geometry is not None:
-            geometry = shapely.wkt.loads(geometry)
+            geometry = geom_from_wkt(geometry)
 
         metadata = data.get('metadata', None)
         labels = Labels.from_dict(data['labels'])
@@ -124,6 +128,8 @@ class IntervalAnnotation(Annotation):
         super().__init__(**kwargs)
         self.start_time = start_time
         self.end_time = end_time
+        self.geometry = bbox_to_polygon([self.start_time, self.end_time,
+                                         0, INFINITY])
 
     def buffer(self, time):
         start_time = self.start_time - time
@@ -184,6 +190,8 @@ class FrequencyIntervalAnnotation(Annotation):
         super().__init__(**kwargs)
         self.min_freq = min_freq
         self.max_freq = max_freq
+        self.geometry = bbox_to_polygon([0, INFINITY,
+                                         self.min_freq, self.max_freq])
 
     def buffer(self, freq):
         min_freq = self.min_freq - freq
@@ -266,10 +274,10 @@ class BBoxAnnotation(Annotation):
                 message = 'Bounding box min freq must be set.'
                 raise ValueError(message)
 
-            self.geometry = shapely_geometry.box(
-                start_time, min_freq, end_time, max_freq)
+            self.geometry = bbox_to_polygon((start_time, end_time,
+                                             min_freq, max_freq))
 
-        if not isinstance(self.geometry, shapely_geometry.Polygon):
+        if not validate_geometry(self.geometry, 'Polygon'):
             message = (
                 'The Bounding Box Annotation geometry is not a '
                 'polygon.')
@@ -365,9 +373,9 @@ class LineStringAnnotation(Annotation):
             vertices = []
 
         if self.geometry is None:
-            self.geometry = shapely_geometry.LineString(vertices)
+            self.geometry = linestring_geometry(vertices)
 
-        if not isinstance(self.geometry, shapely_geometry.LineString):
+        if validate_geometry(self.geometry, 'LineString'):
             message = (
                 'The Line String Annotation geometry is not a '
                 'linestring.')
@@ -416,15 +424,7 @@ class LineStringAnnotation(Annotation):
         if time is None or freq is None:
             message = 'Both time and freq must be set in buffer method.'
             raise ValueError(message)
-
-        ratio = freq / time
-        geometry = shapely_affinity.scale(self.geometry, xfact=ratio)
-        geometry = geometry.buffer(
-            freq,
-            cap_style=1,
-            join_style=1)
-        geometry = shapely_affinity.scale(geometry, xfact=1/ratio)
-
+        geometry = buffer_geometry(self.geometry, buffer=(time, freq))
         return PolygonAnnotation(
             target=self.target,
             labels=self.labels,
@@ -450,9 +450,9 @@ class PolygonAnnotation(Annotation):
             holes = []
 
         if self.geometry is None:
-            self.geometry = shapely_geometry.Polygon(shell, holes)
+            self.geometry = polygon_geometry(shell, holes)
 
-        if not isinstance(self.geometry, shapely_geometry.Polygon):
+        if validate_geometry(self.geometry, 'Polygon'):
             message = (
                 'The Polygon Annotation geometry is not a '
                 'polygon.')
@@ -550,15 +550,7 @@ class PolygonAnnotation(Annotation):
         if time is None or freq is None:
             message = 'Both time and freq must be set in buffer method.'
             raise ValueError(message)
-
-        ratio = freq / time
-        geometry = shapely_affinity.scale(self.geometry, xfact=ratio)
-        geometry = geometry.buffer(
-            freq,
-            cap_style=1,
-            join_style=1)
-        geometry = shapely_affinity.scale(geometry, xfact=1/ratio)
-
+        geometry = buffer_geometry(self.geometry, buffer=(time, freq))
         return PolygonAnnotation(
             target=self.target,
             labels=self.labels,

@@ -13,6 +13,9 @@ from yuntu.core.annotation.annotated_object import AnnotatedObject
 from yuntu.core.windows import TimeFrequencyWindow
 from yuntu.core.audio.features.base import Feature
 from yuntu.core.audio.features.spectral import stft
+from yuntu.core.atlas.geometry import geometry_to_mask, \
+                                      point_neighbourhood, \
+                                      geometry_neighbourhood
 
 BOXCAR = 'boxcar'
 TRIANG = 'triang'
@@ -287,23 +290,14 @@ class Spectrogram(AnnotatedObject, Feature):
         -------
         int
             The spectrogram column corresponding to the provided time.
-
-        Raises
-        ------
-        ValueError
-            If time is negative or larger than the audio duration.
         """
         start_time = self._get_start_time()
         if time < start_time:
-            message = 'Time cannot be less than start time'
-            raise ValueError(message)
+            time = start_time
 
         end_time = self._get_end_time()
         if time > end_time:
-            message = (
-                'Time cannot be greater than the duration of the audio, '
-                'or larger that the ending time set by the window.')
-            raise ValueError(message)
+            time = end_time
 
         duration = end_time - start_time
         return int(np.floor(self.columns() * ((time - start_time) / duration)))
@@ -320,23 +314,14 @@ class Spectrogram(AnnotatedObject, Feature):
         -------
         int
             The spectrogram row corresponding to the provided frequency.
-
-        Raises
-        ------
-        ValueError
-            If frequency is negative or larger than the nyquist frequency.
         """
         min_freq = self._get_min_freq()
         if frequency < min_freq:
-            message = 'Frequency cannot be negative'
-            raise ValueError(message)
+            frequency = min_freq
 
         max_freq = self._get_max_freq()
         if frequency > max_freq:
-            message = (
-                'Frequency cannot be greater than the nyquist '
-                'frequency, or the maximum frequency set by the window.')
-            raise ValueError(message)
+            frequency = max_freq
 
         return int(np.floor(self.rows() * ((frequency - min_freq) / max_freq)))
 
@@ -364,25 +349,30 @@ class Spectrogram(AnnotatedObject, Feature):
             self,
             time=None,
             freq=None,
-            point=None,
             buffer=0,
-            bins=0,
             window=None,
             geometry=None,
             aggr_func=np.mean):
         if time is not None and freq is not None:
             point = [time, freq]
-
+        values = None
         if point is not None:
-            if not isinstance(point, (tuple, list)):
-                message = 'Point argument must be a tuple or a list'
-                raise ValueError(message)
-
-            if not len(point) == 2:
-                message = 'Point argument should be two dimensional'
-                raise ValueError(message)
-
-            # TODO: 
+            values = point_neighbourhood(self.array,
+                                         point,
+                                         buffer,
+                                         self.get_column_from_time,
+                                         self.get_row_from_frequency)
+        elif window is not None:
+            values = self.cut(window=window).array
+        elif geometry is not None:
+            values = geometry_neighbourhood(self.array,
+                                            geometry,
+                                            buffer,
+                                            self.get_column_from_time,
+                                            self.get_row_from_frequency)
+        if values is None:
+            values = self.array
+        return aggr_func(values)
 
     @property
     def times(self) -> np.array:
@@ -639,7 +629,7 @@ class Spectrogram(AnnotatedObject, Feature):
     def to_mask(self, geometry):
         if geometry is None:
             return np.ones_like(self.array)
-        # TODO: terminar
+        return geometry_to_mask(geometry, self.array.shape)
 
     # pylint: disable=arguments-differ
     def to_dict(self, absolute_path=True):

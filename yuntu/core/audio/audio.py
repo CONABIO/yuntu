@@ -391,6 +391,21 @@ class Audio(AnnotatedObject, Media):
 
         return ax
 
+    def to_mask(self, geometry):
+        """Return masked 1d array."""
+        start_idx = max(0,
+                        np.floor(geometry.bounds[0] * self.media_info.length
+                                 / self.media_info.duration))
+        stop_idx = min(self.media_info.length,
+                       np.ceil(geometry.bounds[2] * self.media_info.length
+                               / self.media_info.duration))
+        mask = np.zeros(self.media_info.length)
+        if stop_idx > start_idx:
+            mask[start_idx:stop_idx] = 1
+        else:
+            mask[start_idx] = 1
+        return mask
+
     def to_dict(self, absolute_path=True):
         """Return a dictionary holding all audio metadata."""
         data = {

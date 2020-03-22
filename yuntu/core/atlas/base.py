@@ -3,10 +3,10 @@
 An atlas is a collection of charts with a reference system over time and
 frequency.
 """
-from yuntu.core.atlas.utils import bbox_to_polygon, \
-                                   plot_geometry, \
-                                   reference_system, \
-                                   build_multigeometry
+from yuntu.core.atlas.geometry import bbox_to_polygon, \
+                                      plot_geometry, \
+                                      reference_system, \
+                                      build_multigeometry
 
 
 class Chart:

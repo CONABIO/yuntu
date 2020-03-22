@@ -69,8 +69,8 @@ class Annotation:
 
         Parameters
         ----------
-        config: dict
-            Dictionary with all parameters.
+            config: dict
+                Dictionary with all parameters.
 
         Raises
         ------
@@ -95,8 +95,8 @@ class Annotation:
 
         Parameters
         ----------
-        instance: pony.orm.core.Entity
-            Database annotation instance.
+            instance: pony.orm.core.Entity
+                Database annotation instance.
 
         Returns
         -------
@@ -127,8 +127,8 @@ class Annotation:
 
         Parameters
         ----------
-        meta: dict
-            Dictionary with all parameters.
+            meta: dict
+                Dictionary with all parameters.
 
         Returns
         -------
@@ -145,8 +145,8 @@ class Annotation:
 
         Parameters
         ----------
-        meta: dict | pony.orm.core.Entity
-            Dictionary with all parameters or database instance.
+            meta: dict | pony.orm.core.Entity
+                Dictionary with all parameters or database instance.
 
         Returns
         -------
@@ -194,7 +194,8 @@ class Annotation:
 
         Returns
         -------
-        chart: Chart
+            chart: Chart
+                Annotation's chart.
         """
         if self._chart is None:
             self._chart = Chart(self.start_time, self.end_time,
