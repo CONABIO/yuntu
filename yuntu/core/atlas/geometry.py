@@ -56,6 +56,38 @@ def linestring_geometry(vertices):
     return LineString(vertices)
 
 
+def linestring_set_zcoords(geom, zcoords):
+    """Set third coordinate of linestring.
+
+    Parameters
+    ----------
+    geom: shapely.geometry.linestring.Linestring
+        The target geometry.
+    zcoords: np.array | list
+        Values for third coordinate.
+
+    Returns
+    -------
+    geometry: shapely.geometry.linestring.LineString
+        Geometry with new values on third dimension.
+
+    Raises
+    ------
+    ValueError
+        If input geometry is not of type LineString or input values for third
+        dimension have wrong length.
+    """
+    if not isinstance(geom, LineString):
+        message = 'Input geometry must be of type LineString'
+        raise ValueError(message)
+    x, y = geom.xy
+    if len(x) != len(zcoords):
+        message = 'Argument "zcoords" should correspond to LineString length'
+        raise ValueError(message)
+    vertices = [(x[i], y[i], zcoords[i]) for i in range(len(x))]
+    return linestring_geometry(vertices)
+
+
 def polygon_geometry(shell, holes=None):
     """Return polygon geometry.
 
