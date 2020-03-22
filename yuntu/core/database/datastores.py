@@ -11,7 +11,7 @@ def build_base_datastore_model(db):
     class Datastore(db.Entity):
         """Basic datastore entity for yuntu."""
         id = PrimaryKey(int, auto=True)
-        parser = Required(str)
+        pickle = Required(str)
         recordings = Set('Recording')
         metadata = Required(Json)
 

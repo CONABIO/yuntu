@@ -1,10 +1,9 @@
 """Base classes for collection."""
-from abc import ABC
 from yuntu.core.database.base import DatabaseManager
 from yuntu.core.audio.audio import Audio
 
 
-class Collection(ABC):
+class Collection:
     """Base class for all collections."""
 
     db_config = {
@@ -96,9 +95,6 @@ class Collection(ABC):
 
     def pull(self, datastore):
         """Pull data from datastore and insert into collection."""
-
-    def transform(self, query, parser, mode):
-        """Transform matches by parser."""
 
     def dump(self, dir_path):
         """Dump collection to 'dir_path'."""
