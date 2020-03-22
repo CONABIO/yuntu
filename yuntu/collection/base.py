@@ -1,7 +1,7 @@
 """Base classes for collection."""
 from abc import ABC
 from yuntu.core.database.base import DatabaseManager
-from yuntu.core.audio.base import Audio
+from yuntu.core.audio.audio import Audio
 
 
 class Collection(ABC):

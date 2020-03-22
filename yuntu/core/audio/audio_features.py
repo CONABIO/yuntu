@@ -21,6 +21,11 @@ class AudioFeatures:
         """Construct the Audio Feature object."""
         self.audio = audio
 
+    def get_base_kwargs(self):
+        return {
+            'annotations': self.audio.annotations.annotations
+        }
+
     def spectrogram(
             self,
             n_fft: Optional[int] = None,
@@ -28,7 +33,8 @@ class AudioFeatures:
             window_function: Optional[str] = None,
             lazy: Optional[bool] = False):
         """Get amplitude spectrogram."""
-        kwargs = {'lazy': lazy}
+        kwargs = self.get_base_kwargs()
+        kwargs['lazy'] = lazy
         if n_fft is not None:
             kwargs['n_fft'] = n_fft
 
@@ -47,7 +53,8 @@ class AudioFeatures:
             window_function: Optional[str] = None,
             lazy: Optional[bool] = False):
         """Get power spectrogram."""
-        kwargs = {'lazy': lazy}
+        kwargs = self.get_base_kwargs()
+        kwargs['lazy'] = lazy
         if n_fft is not None:
             kwargs['n_fft'] = n_fft
 
@@ -69,7 +76,8 @@ class AudioFeatures:
             amin: Optional[float] = None,
             top_db: Optional[float] = None):
         """Get decibel spectrogram."""
-        kwargs = {'lazy': lazy}
+        kwargs = self.get_base_kwargs()
+        kwargs['lazy'] = lazy
 
         if n_fft is not None:
             kwargs['n_fft'] = n_fft

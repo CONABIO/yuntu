@@ -9,6 +9,7 @@ from librosa.core import amplitude_to_db
 from librosa.core import power_to_db
 
 from yuntu.logging import logger
+from yuntu.core.annotation.annotated_object import AnnotatedObject
 from yuntu.core.windows import TimeFrequencyWindow
 from yuntu.core.audio.features.base import Feature
 from yuntu.core.audio.features.spectral import stft
@@ -47,7 +48,7 @@ WINDOW_FUNCTION = HANN
 Shape = namedtuple('Shape', ['rows', 'columns'])
 
 
-class Spectrogram(Feature):
+class Spectrogram(AnnotatedObject, Feature):
     """Spectrogram class."""
 
     units = 'amplitude'
@@ -339,8 +340,8 @@ class Spectrogram(Feature):
 
         return int(np.floor(self.rows() * ((frequency - min_freq) / max_freq)))
 
-    def get_amplitude(self, time: float, freq: float) -> float:
-        """Get spectrogram amplitude value at a given time and frequency.
+    def get_value(self, time: float, freq: float) -> float:
+        """Get spectrogram value at a given time and frequency.
 
         Parameters
         ----------
@@ -352,11 +353,36 @@ class Spectrogram(Feature):
         Returns
         -------
         float
-            The amplitude of the spectrogram at the desired time and frequency.
+            The value of the spectrogram at the desired time and frequency.
         """
         time_index = self.get_column_from_time(time)
         freq_index = self.get_row_from_frequency(freq)
+
         return self.array[freq_index, time_index]
+
+    def get_aggr_value(
+            self,
+            time=None,
+            freq=None,
+            point=None,
+            buffer=0,
+            bins=0,
+            window=None,
+            geometry=None,
+            aggr_func=np.mean):
+        if time is not None and freq is not None:
+            point = [time, freq]
+
+        if point is not None:
+            if not isinstance(point, (tuple, list)):
+                message = 'Point argument must be a tuple or a list'
+                raise ValueError(message)
+
+            if not len(point) == 2:
+                message = 'Point argument should be two dimensional'
+                raise ValueError(message)
+
+            # TODO: 
 
     @property
     def times(self) -> np.array:
@@ -609,6 +635,11 @@ class Spectrogram(Feature):
             kwargs['array'] = data.copy()
 
         return type(self)(**kwargs)
+
+    def to_mask(self, geometry):
+        if geometry is None:
+            return np.ones_like(self.array)
+        # TODO: terminar
 
     # pylint: disable=arguments-differ
     def to_dict(self, absolute_path=True):

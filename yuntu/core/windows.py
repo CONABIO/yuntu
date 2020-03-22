@@ -6,7 +6,6 @@ from abc import abstractmethod
 
 class Window(ABC):
     """A window is an object used to select portions of data."""
-
     def cut(self, other):
         """Use window to cut out object."""
         return other.cut(window=self)

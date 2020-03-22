@@ -13,6 +13,7 @@ import numpy as np
 from yuntu.core.windows import TimeWindow
 from yuntu.logging import logger
 from yuntu.core.media import Media
+from yuntu.core.annotation.annotated_object import AnnotatedObject
 from yuntu.core.audio.utils import read_info
 from yuntu.core.audio.utils import read_media
 from yuntu.core.audio.utils import write_media
@@ -48,7 +49,7 @@ def media_info_is_complete(media_info: MediaInfoType) -> bool:
     return True
 
 
-class Audio(Media):
+class Audio(AnnotatedObject, Media):
     """Base class for all audio."""
 
     window_class = TimeWindow

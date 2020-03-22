@@ -51,12 +51,19 @@ class Media(ABC, np.ndarray):
         return getattr(ufunc, method)(*modified_inputs, **modified_kwargs)
 
     # pylint: disable=super-init-not-called
-    def __init__(self, path=None, lazy=False, array=None, window=None, **kwargs):
+    def __init__(
+            self,
+            path=None,
+            lazy=False,
+            array=None,
+            window=None,
+            **kwargs):
         """Construct a media object."""
         self.path = path
         self.lazy = lazy
 
         if window is None:
+            # pylint: disable=abstract-class-instantiated
             window = self.window_class()
         self.window = window
 

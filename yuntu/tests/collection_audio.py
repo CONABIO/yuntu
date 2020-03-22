@@ -1,6 +1,6 @@
 """Simple test for audio object and collection"""
 from yuntu.collection.base import Collection
-from yuntu.core.audio.base import Audio
+from yuntu.core.audio.audio import Audio
 
 test_col = Collection()
 meta = {"path": "./test_data/selvaAltaPerennifolia_estacionLos" +

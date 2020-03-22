@@ -1,5 +1,5 @@
 """Audio with a type of local reference."""
-from yuntu.core.audio.base import Audio
+from yuntu.core.audio.audio import Audio
 
 
 class AnnotatedAudio(Audio):
@@ -145,7 +145,7 @@ class GriddedAudio(Audio):
 #                 \
 #                  .---- SpectrogramFragment (Spectrogram + Fragment)
 #
-# 
+#
 #              .---- TimeGrid
 #             /
 # -- Grid --<
