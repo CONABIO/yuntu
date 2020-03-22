@@ -6,6 +6,7 @@ from yuntu.core.windows import TimeWindow
 from yuntu.core.windows import TimeFrequencyWindow
 from yuntu.core.windows import FrequencyWindow
 from yuntu.core.annotation.labels import Labels
+from yuntu.core.atlas.geometry import Geometries
 from yuntu.core.atlas.geometry import linestring_geometry, \
                                       polygon_geometry, \
                                       validate_geometry, \
@@ -14,6 +15,7 @@ from yuntu.core.atlas.geometry import linestring_geometry, \
 
 
 INFINITY = 10e+9
+
 
 class Annotation(ABC):
     window_class = TimeWindow
@@ -277,7 +279,7 @@ class BBoxAnnotation(Annotation):
             self.geometry = bbox_to_polygon((start_time, end_time,
                                              min_freq, max_freq))
 
-        if not validate_geometry(self.geometry, 'Polygon'):
+        if not validate_geometry(self.geometry, Geometries.POLYGON):
             message = (
                 'The Bounding Box Annotation geometry is not a '
                 'polygon.')
@@ -375,7 +377,7 @@ class LineStringAnnotation(Annotation):
         if self.geometry is None:
             self.geometry = linestring_geometry(vertices)
 
-        if validate_geometry(self.geometry, 'LineString'):
+        if not validate_geometry(self.geometry, Geometries.LINESTRING):
             message = (
                 'The Line String Annotation geometry is not a '
                 'linestring.')
@@ -452,7 +454,7 @@ class PolygonAnnotation(Annotation):
         if self.geometry is None:
             self.geometry = polygon_geometry(shell, holes)
 
-        if validate_geometry(self.geometry, 'Polygon'):
+        if not validate_geometry(self.geometry, Geometries.POLYGON):
             message = (
                 'The Polygon Annotation geometry is not a '
                 'polygon.')

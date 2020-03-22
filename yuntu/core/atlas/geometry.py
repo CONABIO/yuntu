@@ -1,16 +1,43 @@
 """Utilities for geometry manipulation."""
 import math
+from enum import Enum
+
 import numpy as np
+from scipy.signal import convolve2d
+import matplotlib.pyplot as plt
 import shapely.wkt
+from shapely.geometry.point import Point
 from shapely.geometry.polygon import Polygon
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry.multilinestring import MultiLineString
-from shapely.geometry import LineString
+from shapely.geometry.linestring import LineString
 import shapely.affinity as shapely_affinity
 import shapely.ops as shapely_ops
-from skimage.draw import polygon, line_aa, circle
-from scipy.signal import convolve2d
-import matplotlib.pyplot as plt
+from skimage.draw import polygon, line, circle
+
+
+class Geometries(Enum):
+    LINESTRING = 'LineString'
+    POINT = 'Point'
+    POLYGON = 'Polygon'
+    MULTIPOLYGON = 'MultiPolygon'
+    MULTILINESTRING = 'MultiLineString'
+
+
+def point_geometry(x, y):
+    """Return point geometry.
+
+    Parameters
+    ----------
+    x: number
+    y: number
+
+    Returns
+    -------
+    geometry: shapely.geometry.Point
+        Parsed geometry.
+    """
+    return Point(x, y)
 
 
 def linestring_geometry(vertices):
@@ -70,7 +97,7 @@ def buffer_geometry(geom, buffer):
     return shapely_affinity.scale(geometry, xfact=1/ratio)
 
 
-def validate_geometry(geom, geom_type='LineString'):
+def validate_geometry(geom, geom_type=Geometries.LINESTRING):
     """Validate geometry by type.
 
     Parameters
@@ -90,14 +117,18 @@ def validate_geometry(geom, geom_type='LineString'):
     NotImplementedError
         If target geometry type is not supported.
     """
-    if geom_type == 'LineString':
+    if geom_type == Geometries.LINESTRING:
         return isinstance(geom, LineString)
-    if geom_type == 'Polygon':
+
+    if geom_type == Geometries.POLYGON:
         return isinstance(geom, Polygon)
-    if geom_type == 'MultiLineString':
+
+    if geom_type == Geometries.MULTILINESTRING:
         return isinstance(geom, MultiLineString)
-    if geom_type == 'MultiPolygon':
+
+    if geom_type == Geometries.MULTIPOLYGON:
         return isinstance(geom, MultiPolygon)
+
     message = 'Unsopported geometry type'
     raise NotImplementedError(message)
 
@@ -285,14 +316,18 @@ def linestring_to_mask(geom,
         Resulting mask.
     """
     x, y = geom.xy
+
     if transformX is not None:
-        x = np.array(transformX(x))
+        x = np.array([transformX(z) for z in x])
+
     if transformY is not None:
-        y = np.array(transformY(y))
-    mask = np.zeros(shape)
+        y = np.array([transformY(z) for z in y])
+
+    mask = np.zeros(shape, dtype=bool)
     for i in range(0, len(x)-1):
-        rr, cc, _ = line_aa(x[i], y[i], x[i+1], y[i+1])
-        mask[rr, cc] = 1
+        rr, cc = line(y[i], x[i], y[i+1], x[i+1])
+        mask[rr, cc] = True
+
     return mask
 
 
@@ -320,12 +355,23 @@ def polygon_to_mask(geom,
     """
     x, y = geom.exterior.xy
     if transformX is not None:
-        x = np.array(transformX(x))
+        x = np.array([transformX(z) for z in x])
     if transformY is not None:
-        y = np.array(transformY(y))
-    rr, cc = polygon(x, y, shape=shape)
-    mask = np.zeros(shape)
-    mask[rr, cc] = 1
+        y = np.array([transformY(z) for z in y])
+
+    rr, cc = polygon(y, x, shape=shape)
+    mask = np.zeros(shape, dtype=bool)
+    mask[rr, cc] = True
+
+    for interior in geom.interiors:
+        x, y = interior.xy
+        if transformX is not None:
+            x = np.array([transformX(z) for z in x])
+        if transformY is not None:
+            y = np.array([transformY(z) for z in y])
+        rr, cc = polygon(y, x, shape=shape)
+        mask[rr, cc] = False
+
     return mask
 
 
@@ -367,10 +413,10 @@ def geometry_to_mask(geom,
 
 def point_neighbourhood(array,
                         point,
-                        buffer=1,
+                        bins=1,
                         transformX=None,
                         transformY=None):
-    """Get neighbourhood values at point with buffer.
+    """Get neighbourhood values at point with bin buffer.
 
     Parameters
     ----------
@@ -378,8 +424,8 @@ def point_neighbourhood(array,
         Array of values to query.
     point: tuple
         Point coordinates.
-    buffer: int
-        Discrete buffer to apply.
+    bins: int
+        Discrete bin buffer to apply.
     transformX: function
         Transformation to apply on 'x' coordinates.
     transformY: function
@@ -396,11 +442,11 @@ def point_neighbourhood(array,
     if not len(point) == 2:
         message = 'Point argument should be two dimensional'
         raise ValueError(message)
-    if not isinstance(buffer, int):
-        message = 'Buffer argument should be of type integer'
+    if not isinstance(bins, int):
+        message = 'Bins argument should be of type integer'
         raise ValueError(message)
-    if buffer <= 0:
-        message = 'Buffer argument must be greater than 0'
+    if bins <= 0:
+        message = 'Bins argument must be greater than 0'
         raise ValueError(message)
 
     if transformX is not None and transformY is not None:
@@ -410,13 +456,14 @@ def point_neighbourhood(array,
     elif transformY is not None:
         point = (point[0], transformY(point[1]))
 
-    rr, cc = circle(*point, buffer, array.shape)
+    X, Y = point
+    rr, cc = circle(Y, X, bins, array.shape)
     return array[rr, cc]
 
 
 def geometry_neighbourhood(array,
                            geom,
-                           buffer=0,
+                           bins=0,
                            transformX=None,
                            transformY=None):
     """Get neighbourhood values from geometry.
@@ -427,8 +474,8 @@ def geometry_neighbourhood(array,
         Array of values to query.
     geom: shapely.geometry
         Geometry to use as base neighbourhood.
-    buffer: int
-        Discrete buffer to apply.
+    bins: int
+        Discrete bin buffer to apply.
     transformX: function
         Transformation to apply on 'x' coordinates.
     transformY: function
@@ -439,18 +486,22 @@ def geometry_neighbourhood(array,
     values: np.array
         Values of all entries within the neighbourhood.
     """
+    if bins is None:
+        bins = 0
+
     mask = geometry_to_mask(geom,
                             array.shape,
                             transformX,
                             transformY)
-    if buffer is not None:
-        if not isinstance(buffer, int):
-            message = 'Buffer argument should be of type integer'
+
+    if bins != 0:
+        if not isinstance(bins, int):
+            message = 'Bins argument should be of type integer'
             raise ValueError(message)
-        if buffer < 0:
-            message = 'Buffer argument must be non negative'
+        if bins < 0:
+            message = 'Bins argument must be non negative'
             raise ValueError(message)
-        kernel = np.ones(buffer, buffer)
+        kernel = np.ones([bins, bins])
         mask = convolve2d(mask, kernel, mode='same') > 0
     return array[mask]
 
@@ -533,3 +584,16 @@ def reference_system(time_win, time_hop,
     min_cells = np.amin(cells, axis=0)
     return ref_sys, cells.shape, (min_cells[0], max_cells[0]), \
                                  (min_cells[1], max_cells[1])
+
+
+def point_buffer(time, freq, buffer):
+    """Get a buffer around a time-frequency point."""
+    if isinstance(buffer, (int, float)):
+        buffer = [buffer, buffer]
+
+    if not isinstance(buffer, (tuple, list)):
+        message = 'The buffer argument must be a number, a tuple or a list'
+        raise ValueError(message)
+
+    point = Point(time, freq)
+    return buffer_geometry(point, buffer)

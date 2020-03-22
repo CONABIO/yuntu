@@ -14,6 +14,14 @@ class Window(ABC):
     def to_dict(self):
         """Return a dictionary representation of the window."""
 
+    @abstractmethod
+    def buffer(self, buffer):
+        """Get a buffer window."""
+
+    @abstractmethod
+    def plot(self, ax=None, **kwargs):
+        """Get a buffer window."""
+
     @classmethod
     def from_dict(cls, data):
         """Rebuild the window from dictionary data."""
@@ -59,6 +67,43 @@ class TimeWindow(Window):
         self.start = start
         self.end = end
         super().__init__(**kwargs)
+
+    def plot(self, ax=None, **kwargs):
+        """Plot time window."""
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', (15, 5)))
+
+        ax.axvline(
+            self.start,
+            linewidth=kwargs.get('linewidth', 1),
+            linestyle=kwargs.get('linestyle', '--'),
+            color=kwargs.get('color', 'blue'))
+
+        ax.axvline(
+            self.end,
+            linewidth=kwargs.get('linewidth', 1),
+            linestyle=kwargs.get('linestyle', '--'),
+            color=kwargs.get('color', 'blue'))
+
+        if kwargs.get('fill', True):
+            ax.axvspan(
+                self.start,
+                self.end,
+                alpha=kwargs.get('alpha', 0.2),
+                color=kwargs.get('color', 'blue'))
+
+        return ax
+
+    def buffer(self, buffer):
+        """Get a buffer window."""
+        if isinstance(buffer, (tuple, list)):
+            buffer = buffer[0]
+
+        start = self.start - buffer
+        end = self.end + buffer
+        return TimeWindow(start=start, end=end)
 
     def to_dict(self):
         """Get dictionary representation of window."""
@@ -107,6 +152,43 @@ class FrequencyWindow(Window):
         self.min = min
         self.max = max
         super().__init__(**kwargs)
+
+    def buffer(self, buffer):
+        """Get a buffer window."""
+        if isinstance(buffer, (tuple, list)):
+            buffer = buffer[1]
+
+        min = self.min - buffer
+        max = self.max + buffer
+        return FrequencyWindow(min=min, max=max)
+
+    def plot(self, ax=None, **kwargs):
+        """Plot frequency window."""
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', (15, 5)))
+
+        ax.axhline(
+            self.min,
+            linewidth=kwargs.get('linewidth', 1),
+            linestyle=kwargs.get('linestyle', '--'),
+            color=kwargs.get('color', 'blue'))
+
+        ax.axhline(
+            self.max,
+            linewidth=kwargs.get('linewidth', 1),
+            linestyle=kwargs.get('linestyle', '--'),
+            color=kwargs.get('color', 'blue'))
+
+        if kwargs.get('fill', True):
+            ax.axhspan(
+                self.min,
+                self.max,
+                alpha=kwargs.get('alpha', 0.2),
+                color=kwargs.get('color', 'blue'))
+
+        return ax
 
     def to_dict(self):
         """Get dictionary representation of window."""
@@ -170,6 +252,17 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
             'max': self.max
         }
 
+    def buffer(self, buffer):
+        """Get a buffer window."""
+        if isinstance(buffer, (int, float)):
+            buffer = [buffer, buffer]
+
+        min = self.min - buffer[1]
+        max = self.max + buffer[1]
+        start = self.start - buffer[0]
+        end = self.end + buffer[0]
+        return TimeFrequencyWindow(min=min, max=max, start=start, end=end)
+
     def is_trivial(self):
         """Return if window is trivial."""
         if self.start is not None:
@@ -185,6 +278,33 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
             return False
 
         return True
+
+    def plot(self, ax=None, **kwargs):
+        """Plot frequency window."""
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', (15, 5)))
+
+        xcoords = [self.start, self.end, self.end, self.start, self.start]
+        ycoords = [self.min, self.min, self.max, self.max, self.min]
+
+        ax.plot(
+            xcoords,
+            ycoords,
+            linewidth=kwargs.get('linewidth', 1),
+            linestyle=kwargs.get('linestyle', '--'),
+            color=kwargs.get('color', 'blue'))
+
+        if kwargs.get('fill', True):
+            ax.fill(
+                xcoords,
+                ycoords,
+                linewidth=0,
+                alpha=kwargs.get('alpha', 0.2),
+                color=kwargs.get('color', 'blue'))
+
+        return ax
 
     def __repr__(self):
         """Get string representation of window."""

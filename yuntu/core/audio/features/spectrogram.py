@@ -13,9 +13,13 @@ from yuntu.core.annotation.annotated_object import AnnotatedObject
 from yuntu.core.windows import TimeFrequencyWindow
 from yuntu.core.audio.features.base import Feature
 from yuntu.core.audio.features.spectral import stft
-from yuntu.core.atlas.geometry import geometry_to_mask, \
-                                      point_neighbourhood, \
-                                      geometry_neighbourhood
+from yuntu.core.atlas.geometry import geometry_to_mask
+from yuntu.core.atlas.geometry import point_neighbourhood
+from yuntu.core.atlas.geometry import point_geometry
+from yuntu.core.atlas.geometry import geometry_neighbourhood
+from yuntu.core.atlas.geometry import buffer_geometry
+from yuntu.core.atlas.geometry import point_buffer
+
 
 BOXCAR = 'boxcar'
 TRIANG = 'triang'
@@ -349,29 +353,50 @@ class Spectrogram(AnnotatedObject, Feature):
             self,
             time=None,
             freq=None,
-            buffer=0,
+            buffer=None,
+            bins=0,
             window=None,
             geometry=None,
             aggr_func=np.mean):
+        if bins is None:
+            bins = 0
+
+        if bins != 0 and buffer is not None:
+            message = 'Bins and buffer arguments are mutually exclusive.'
+            raise ValueError(message)
+
         if time is not None and freq is not None:
-            point = [time, freq]
-        values = None
-        if point is not None:
-            values = point_neighbourhood(self.array,
-                                         point,
-                                         buffer,
-                                         self.get_column_from_time,
-                                         self.get_row_from_frequency)
-        elif window is not None:
+            if buffer is None:
+                values = point_neighbourhood(self.array,
+                                             [time, freq],
+                                             bins,
+                                             self.get_column_from_time,
+                                             self.get_row_from_frequency)
+                return aggr_func(values)
+
+            geometry = point_geometry(time, freq)
+
+        if window is not None:
+            if buffer is not None:
+                window = window.buffer(buffer)
+
             values = self.cut(window=window).array
-        elif geometry is not None:
-            values = geometry_neighbourhood(self.array,
-                                            geometry,
-                                            buffer,
-                                            self.get_column_from_time,
-                                            self.get_row_from_frequency)
-        if values is None:
-            values = self.array
+            return aggr_func(values)
+
+        if geometry is None:
+            message = (
+                'Either time and frequency, a window, or a geometry '
+                'should be supplied.')
+            raise ValueError(message)
+
+        if buffer is not None:
+            geometry = buffer_geometry(geometry, buffer)
+
+        values = geometry_neighbourhood(self.array,
+                                        geometry,
+                                        bins,
+                                        self.get_column_from_time,
+                                        self.get_row_from_frequency)
         return aggr_func(values)
 
     @property
@@ -629,7 +654,11 @@ class Spectrogram(AnnotatedObject, Feature):
     def to_mask(self, geometry):
         if geometry is None:
             return np.ones_like(self.array)
-        return geometry_to_mask(geometry, self.array.shape)
+        return geometry_to_mask(
+            geometry,
+            self.array.shape,
+            transformX=self.get_column_from_time,
+            transformY=self.get_row_from_frequency)
 
     # pylint: disable=arguments-differ
     def to_dict(self, absolute_path=True):
