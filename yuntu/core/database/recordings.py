@@ -15,7 +15,7 @@ def build_base_recording_model(db):
     """Create base recording model."""
     class Recording(db.Entity):
         """Basic recording entity for yuntu."""
-        id = PrimaryKey(int, auto=True)
+        id = PrimaryKey(str, auto=True)
         datastore = Optional('Datastore')
         path = Required(str)
         hash = Required(str)
@@ -32,12 +32,14 @@ def build_base_recording_model(db):
                     f", {ULTRASONIC_SPECTRUM}.")
                 raise ValueError(message)
 
+            samplerate = self.media_info["samplerate"] * self.timeexp
             if self.spectrum == AUDIBLE_SPECTRUM:
-                if self.media_info["samplerate"] > 50000:
+                if samplerate > 50000:
                     raise ValueError("Not an audible recording.")
 
             if self.spectrum == ULTRASONIC_SPECTRUM:
-                if self.media_info["samplerate"] <= 50000:
+                if samplerate <= 50000:
+                    print(samplerate)
                     raise ValueError("Not an ultrasonic recording.")
 
     return Recording

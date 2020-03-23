@@ -5,3 +5,6 @@ build/
 dist/
 *.egg-info/
 *.ipynb
+*.sqlite
+
+labelling_structure.json

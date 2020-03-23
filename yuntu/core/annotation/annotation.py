@@ -7,11 +7,12 @@ from yuntu.core.windows import TimeFrequencyWindow
 from yuntu.core.windows import FrequencyWindow
 from yuntu.core.annotation.labels import Labels
 from yuntu.core.atlas.geometry import Geometries
-from yuntu.core.atlas.geometry import linestring_geometry, \
-                                      polygon_geometry, \
-                                      validate_geometry, \
-                                      bbox_to_polygon, \
-                                      buffer_geometry
+from yuntu.core.atlas.geometry import linestring_geometry
+from yuntu.core.atlas.geometry import polygon_geometry
+from yuntu.core.atlas.geometry import validate_geometry
+from yuntu.core.atlas.geometry import bbox_to_polygon
+from yuntu.core.atlas.geometry import buffer_geometry
+from yuntu.core.atlas.geometry import geom_from_wkt
 
 
 INFINITY = 10e+9

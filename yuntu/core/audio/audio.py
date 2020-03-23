@@ -433,7 +433,7 @@ class Audio(AnnotatedObject, Media):
     def __repr__(self):
         """Return a representation of the audio object."""
         data = OrderedDict()
-        if self.path_exists():
+        if self.path is not None:
             data['path'] = repr(self.path)
         else:
             data['array'] = repr(self.array)

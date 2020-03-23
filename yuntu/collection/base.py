@@ -28,6 +28,8 @@ class Collection:
 
     def insert(self, meta_arr):
         """Directly insert new media entries without a datastore."""
+        if not isinstance(meta_arr, (list, tuple)):
+            meta_arr = [meta_arr]
         return self.db_manager.insert(meta_arr)
 
     def annotate(self, meta_arr):
@@ -70,7 +72,13 @@ class Collection:
 
     def build_audio(self, recording):
         audio_class = self.get_audio_class()
-        return audio_class(recording)
+        return audio_class(
+            path=recording.path,
+            id=recording.id,
+            media_info=recording.media_info,
+            timeexp=recording.timeexp,
+            metadata=recording.metadata,
+            lazy=True)
 
     def recordings(self, query=None, iterate=True):
         """Retrieve audio objects."""
@@ -95,6 +103,7 @@ class Collection:
 
     def pull(self, datastore):
         """Pull data from datastore and insert into collection."""
+        datastore.insert_into(self)
 
     def dump(self, dir_path):
         """Dump collection to 'dir_path'."""
