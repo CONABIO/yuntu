@@ -1,6 +1,7 @@
 """Distinct types of datastores."""
 from datetime import datetime
 from pony.orm import Required
+from pony.orm import Optional
 from pony.orm import PrimaryKey
 from pony.orm import Set
 from pony.orm import Json
@@ -11,7 +12,7 @@ def build_base_datastore_model(db):
     class Datastore(db.Entity):
         """Basic datastore entity for yuntu."""
         id = PrimaryKey(int, auto=True)
-        pickle = Required(str)
+        file = Optional(str)
         recordings = Set('Recording')
         metadata = Required(Json)
 
@@ -21,7 +22,6 @@ def build_base_datastore_model(db):
 def build_foreign_db_datastore_model(Datastore):
     class ForeignDb(Datastore):
         """Datastore that builds data from a foreign database."""
-
         host = Required(str)
         database = Required(str)
         query = Required(str)

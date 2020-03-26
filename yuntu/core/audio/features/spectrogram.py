@@ -10,7 +10,9 @@ from librosa.core import power_to_db
 
 from yuntu.logging import logger
 from yuntu.core.annotation.annotated_object import AnnotatedObject
+from yuntu.core.windows import Window
 from yuntu.core.windows import TimeFrequencyWindow
+import yuntu.core.audio.audio as audio
 from yuntu.core.audio.features.base import Feature
 from yuntu.core.audio.features.spectral import stft
 from yuntu.core.atlas.geometry import geometry_to_mask
@@ -689,6 +691,27 @@ class Spectrogram(AnnotatedObject, Feature):
             'audio instance and reconstruction from dictionary values '
             'will not be possible.')
         return data
+
+    @classmethod
+    def from_dict(cls, data):
+        units = data.pop('units', None)
+
+        if 'audio' in data:
+            data['audio'] = audio.Audio.from_dict(data['audio'])
+
+        if 'window' in data:
+            data['window'] = Window.from_dict(data['window'])
+
+        if units == 'amplitude':
+            return Spectrogram(**data)
+
+        if units == 'power':
+            return PowerSpectrogram(**data)
+
+        if units == 'db':
+            return DecibelSpectrogram(**data)
+
+        raise ValueError('Unknown or missing units')
 
 
 class PowerSpectrogram(Spectrogram):

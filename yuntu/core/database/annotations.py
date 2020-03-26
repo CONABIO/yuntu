@@ -5,16 +5,21 @@ from pony.orm import PrimaryKey
 from pony.orm import Json
 
 
-WEAK_ANNOTATION = 'weak'
-INTERVAL_ANNOTATION = 'interval'
-BBOX_ANNOTATION = 'bbox'
-LINESTRING_ANNOTATION = 'linestring'
+WEAK_ANNOTATION = 'WeakAnnotation'
+INTERVAL_ANNOTATION = 'IntervalAnnotation'
+FREQUENCY_INTERVAL_ANNOTATION = 'FrequencyIntervalAnnotation'
+BBOX_ANNOTATION = 'BBoxAnnotation'
+LINESTRING_ANNOTATION = 'LineStringAnnotation'
+POLYGON_ANNOTATION = 'PolygonAnnotation'
+
 
 ANNOTATION_TYPES = [
     WEAK_ANNOTATION,
     INTERVAL_ANNOTATION,
+    FREQUENCY_INTERVAL_ANNOTATION,
     BBOX_ANNOTATION,
     LINESTRING_ANNOTATION,
+    POLYGON_ANNOTATION,
 ]
 
 
@@ -26,46 +31,46 @@ def build_base_annotation_model(db):
         id = PrimaryKey(int, auto=True)
         recording = Required('Recording')
 
-        notetype = Required(str)
-        label = Required(Json)
+        type = Required(str)
+        labels = Required(Json)
         metadata = Required(Json)
 
-        start_time = Required(float)
-        end_time = Required(float)
-        max_freq = Required(float)
-        min_freq = Required(float)
+        start_time = Optional(float)
+        end_time = Optional(float)
+        max_freq = Optional(float)
+        min_freq = Optional(float)
 
-        wkt = Required(str)
+        geometry = Required(str)
 
         def before_insert(self):
-            if self.notetype not in ANNOTATION_TYPES:
-                message = f'Notetype {self.notetype} not implemented'
+            if self.type not in ANNOTATION_TYPES:
+                message = f'Notetype {self.type} not implemented'
                 raise NotImplementedError(message)
 
-            if self.notetype == WEAK_ANNOTATION:
+            if self.type == WEAK_ANNOTATION:
                 return
 
-            if self.start_time is None or self.end_time is None:
+            if self.type is None or self.end_time is None:
                 message = (
-                    f'Annotation type {self.notetype} requires setting '
+                    f'Annotation type {self.type} requires setting '
                     'a starting and ending time (start_time and end_time)')
                 raise ValueError(message)
 
-            if self.notetype == INTERVAL_ANNOTATION:
+            if self.type == INTERVAL_ANNOTATION:
                 return
 
             if self.max_freq is None or self.min_freq is None:
                 message = (
-                    f'Annotation type {self.notetype} requires setting '
+                    f'Annotation type {self.type} requires setting '
                     'a maximum and minimum frequency (max_freq and min_freq)')
                 raise ValueError(message)
 
-            if self.notetype == BBOX_ANNOTATION:
+            if self.type == BBOX_ANNOTATION:
                 return
 
-            if self.wkt is None:
+            if self.geometry is None:
                 message = (
-                    f'Annotation type {self.notetype} requires setting '
-                    'a wkt string.')
+                    f'Annotation type {self.type} requires setting '
+                    'a geometry string (in wkt format).')
                 raise ValueError(message)
     return Annotation

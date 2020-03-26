@@ -4,12 +4,16 @@ from typing import Dict
 from typing import Any
 from typing import Union
 from uuid import uuid4
+from urllib.parse import urlparse
 from collections import namedtuple
 from collections import OrderedDict
 import os
 
 import numpy as np
 
+from yuntu.utils import download_file
+from yuntu.utils import scp_file
+from yuntu.utils import tmp_file
 from yuntu.core.windows import TimeWindow
 from yuntu.logging import logger
 from yuntu.core.media import Media
@@ -100,6 +104,7 @@ class Audio(AnnotatedObject, Media):
             message = 'Either array or path must be supplied'
             raise ValueError(message)
 
+        self.path = path
         self.timeexp = timeexp
 
         if id is None:
@@ -111,7 +116,7 @@ class Audio(AnnotatedObject, Media):
         self.metadata = metadata
 
         if media_info is None:
-            media_info = read_info(path, timeexp)
+            media_info = self.read_info()
 
         if not media_info_is_complete(media_info):
             message = (
@@ -127,7 +132,7 @@ class Audio(AnnotatedObject, Media):
 
         self.features = self.features_class(self)
 
-        super().__init__(array=array, path=path, **kwargs)
+        super().__init__(array=array, path=self.path, **kwargs)
 
     @classmethod
     def from_instance(
@@ -235,7 +240,9 @@ class Audio(AnnotatedObject, Media):
             **kwargs):
         """Get a new Audio object with the resampled audio."""
         audio_info = self.to_dict()
+        audio_info['window'] = self.window
         audio_info['read_samplerate'] = samplerate
+        audio_info['media_info']['samplerate'] = samplerate
         audio_info['lazy'] = lazy
 
         if not self.path_exists():
@@ -244,12 +251,9 @@ class Audio(AnnotatedObject, Media):
                 self.read_samplerate,
                 samplerate,
                 **kwargs)
-            audio_info['data'] = data
+            audio_info['array'] = data
 
         return Audio(**audio_info)
-
-    def slice(self, limits=None):
-        """Return a new Audio object with mask initialized at limits."""
 
     def get_index_from_time(self, time):
         """Get the index of the wav array corresponding to the given time."""
@@ -325,8 +329,50 @@ class Audio(AnnotatedObject, Media):
         end_index = self.get_index_from_time(end)
         return self.array[start_index: end_index + 1]
 
+    def is_remote(self):
+        if os.path.exists(self.path):
+            return False
+
+        parsed = urlparse(self.path)
+
+        if not parsed.scheme:
+            return False
+
+        if parsed.scheme == 'file':
+            return False
+
+        return True
+
+    def remote_load(self):
+        parsed = urlparse(self.path)
+
+        if parsed.scheme in ['http', 'https']:
+            filename = os.path.basename(parsed.path)
+            with tmp_file(filename) as (name, tmpfile):
+                download_file(self.path, tmpfile)
+
+            return name
+
+        if parsed.scheme == 'scp':
+            filename = os.path.basename(parsed.path)
+            return scp_file(src=self.path, dest=filename)
+
+        message = (
+            'Remote loading is not implemented for '
+            f'scheme {parsed.scheme}')
+        raise NotImplementedError(message)
+
+    def read_info(self):
+        if self.is_remote():
+            self.path = self.remote_load()
+
+        return read_info(self.path, self.timeexp)
+
     def load(self):
         """Read signal from file."""
+        if self.is_remote():
+            self.path = self.remote_load()
+
         start = self._get_start()
         end = self._get_end()
         duration = end - start
@@ -371,46 +417,54 @@ class Audio(AnnotatedObject, Media):
         import matplotlib.pyplot as plt
 
         if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.pop('figsize', None))
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
 
-        ax.plot(self.times, self.array)
+        lineplot, = ax.plot(self.times, self.array, c=kwargs.get('color', None))
+        color = lineplot.get_color()
 
-        if kwargs.pop('w_xlabel', False):
-            ax.set_xlabel(kwargs.pop('xlabel', 'Time (s)'))
+        xlabel = kwargs.get('xlabel', False)
+        if xlabel:
+            if not isinstance(xlabel, str):
+                xlabel = 'Time (s)'
+            ax.set_xlabel(xlabel)
 
-        if kwargs.pop('w_ylabel', False):
-            ax.set_ylabel(kwargs.pop('ylabel', 'Amplitude'))
+        ylabel = kwargs.get('ylabel', False)
+        if ylabel:
+            if not isinstance(ylabel, str):
+                ylabel = 'Amplitude'
+            ax.set_ylabel(ylabel)
 
-        if kwargs.pop('w_title', False):
-            ax.set_title(kwargs.pop('title', f'Waveform'))
+        title = kwargs.get('title', False)
+        if title:
+            if not isinstance(title, str):
+                title = 'Waveform'
+            ax.set_title(title)
 
-        if kwargs.pop('w_window', False):
-            window_color = kwargs.pop('window_color', 'red')
-            ax.axvline(self._get_start(), color=window_color)
-            ax.axvline(self._get_end(), color=window_color)
+        if kwargs.get('window', False):
+            linestyle = kwargs.get('window_linestyle', '--')
+            ax.axvline(self._get_start(), color=color, linestyle=linestyle)
+            ax.axvline(self._get_end(), color=color, linestyle=linestyle)
 
         return ax
 
     def to_mask(self, geometry):
         """Return masked 1d array."""
-        start_idx = max(0,
-                        np.floor(geometry.bounds[0] * self.media_info.length
-                                 / self.media_info.duration))
-        stop_idx = min(self.media_info.length,
-                       np.ceil(geometry.bounds[2] * self.media_info.length
-                               / self.media_info.duration))
+        start, _, end, _ = geometry.bounds
+        start_index = self.get_index_from_time(start)
+        end_index = self.get_index_from_time(end)
+
         mask = np.zeros(self.media_info.length)
-        if stop_idx > start_idx:
-            mask[start_idx:stop_idx] = 1
+        if end_index > start_index:
+            mask[start_index: end_index] = 1
         else:
-            mask[start_idx] = 1
+            mask[start_index] = 1
         return mask
 
     def to_dict(self, absolute_path=True):
         """Return a dictionary holding all audio metadata."""
         data = {
             'timeexp': self.timeexp,
-            'media_info': self.media_info._asdict(),
+            'media_info': dict(self.media_info._asdict()),
             'metadata': self.metadata.copy(),
             'id': self.id,
             'window': self.window.to_dict(),
@@ -454,8 +508,8 @@ class Audio(AnnotatedObject, Media):
 
     def cut(
             self,
-            start: float = None,
-            end: float = None,
+            start_time: float = None,
+            end_time: float = None,
             window: TimeWindow = None,
             lazy=True):
         """Get a window to the audio data.
@@ -482,31 +536,31 @@ class Audio(AnnotatedObject, Media):
         current_start = self._get_start()
         current_end = self._get_end()
 
-        if start is None:
-            start = window.start if window.start is not None else current_start
+        if start_time is None:
+            start_time = window.start if window.start is not None else current_start
 
-        if end is None:
-            end = window.end if window.end is not None else current_end
+        if end_time is None:
+            end_time = window.end if window.end is not None else current_end
 
-        start = max(min(start, current_end), current_start)
-        end = max(min(end, current_end), current_start)
+        start_time = max(min(start_time, current_end), current_start)
+        end_time = max(min(end_time, current_end), current_start)
 
-        if end < start:
+        if end_time < start_time:
             message = 'Window is empty'
             raise ValueError(message)
 
         kwargs_dict = self.to_dict()
-        kwargs_dict['window'] = TimeWindow(start=start, end=end)
+        kwargs_dict['window'] = TimeWindow(start=start_time, end=end_time)
         kwargs_dict['lazy'] = lazy
 
         if not self.is_empty():
-            if start is not None:
-                start = self.get_index_from_time(start)
+            if start_time is not None:
+                start_time = self.get_index_from_time(start_time)
 
-            if end is not None:
-                end = self.get_index_from_time(end)
+            if end_time is not None:
+                end_time = self.get_index_from_time(end_time)
 
-            data = self.array[slice(start, end)]
+            data = self.array[slice(start_time, end_time)]
             kwargs_dict['data'] = data.copy()
 
         return Audio(**kwargs_dict)

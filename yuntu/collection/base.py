@@ -1,6 +1,9 @@
 """Base classes for collection."""
+import pandas as pd
+
 from yuntu.core.database.base import DatabaseManager
 from yuntu.core.audio.audio import Audio
+from yuntu.core.annotation.annotation import Annotation
 
 
 class Collection:
@@ -14,6 +17,7 @@ class Collection:
         }
     }
     audio_class = Audio
+    annotation_class = Annotation
     db_manager_class = DatabaseManager
 
     def __init__(self, db_config=None):
@@ -22,6 +26,47 @@ class Collection:
             self.db_config = db_config
 
         self.db_manager = self.get_db_manager()
+
+    def __getitem__(self, key):
+        queryset = self.recordings()
+        if isinstance(key, int):
+            return self.build_audio(queryset[key:key + 1][0])
+
+        return [self.build_audio(recording) for recording in queryset[key]]
+
+    def __iter__(self):
+        for recording in self.recordings():
+            yield self.build_audio(recording)
+
+    def __len__(self):
+        return len(self.recordings())
+
+    def get(self, key):
+        record = self.recordings(lambda rec: rec.id == key).get()
+        return self.build_audio(record)
+
+    def get_recording_dataframe(self):
+        records = []
+        for recording in self.recordings():
+            data = recording.to_dict()
+            media_info = data.pop('media_info')
+            data.update(media_info)
+            records.append(data)
+
+        return pd.DataFrame(records)
+
+    def get_annotation_dataframe(self):
+        records = []
+        for annotations in self.annotations():
+            data = annotations.to_dict()
+            labels = data.pop('labels')
+
+            for label in labels:
+                data[label['key']] = label['value']
+
+            records.append(data)
+
+        return pd.DataFrame(records)
 
     def get_db_manager(self):
         return self.db_manager_class(**self.db_config)
@@ -67,19 +112,6 @@ class Collection:
             return matches
         return list(matches)
 
-    def get_audio_class(self):
-        return self.audio_class
-
-    def build_audio(self, recording):
-        audio_class = self.get_audio_class()
-        return audio_class(
-            path=recording.path,
-            id=recording.id,
-            media_info=recording.media_info,
-            timeexp=recording.timeexp,
-            metadata=recording.metadata,
-            lazy=True)
-
     def recordings(self, query=None, iterate=True):
         """Retrieve audio objects."""
         matches = self.db_manager.select(query, model="recording")
@@ -87,19 +119,21 @@ class Collection:
             return matches
         return list(matches)
 
-    def __iter__(self):
-        for recording in self.recordings():
-            yield self.build_audio(recording)
+    def build_audio(self, recording):
+        annotations = []
+        for annotation in recording.annotations:
+            data = annotation.to_dict()
+            annotation = self.annotation_class.from_dict(data)
+            annotations.append(annotation)
 
-    def media(self, query=None, iterate=True):
-        """Retrieve audio objects."""
-        matches = self.db_manager.select(query, model="recording")
-        if iterate:
-            def iterator():
-                for meta in matches:
-                    yield self.build_audio(meta)
-            return iterator
-        return [self.build_audio(meta) for meta in matches]
+        return self.audio_class(
+            path=recording.path,
+            id=recording.id,
+            media_info=recording.media_info,
+            timeexp=recording.timeexp,
+            metadata=recording.metadata,
+            annotations=annotations,
+            lazy=True)
 
     def pull(self, datastore):
         """Pull data from datastore and insert into collection."""

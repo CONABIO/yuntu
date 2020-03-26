@@ -18,6 +18,7 @@ class AnnotationList:
 
     def add_annotation(self, annotation):
         """Append annotation to AnnotationList."""
+        annotation.target = annotation
         self.annotations.append(annotation)
 
     def to_dataframe(self):
@@ -31,21 +32,54 @@ class AnnotationList:
                    'min_freq': annotation.geometry.bounds[1],
                    'max_freq': annotation.geometry.bounds[3]
                    }
-            for label in annotation.iter_labels:
+            for label in annotation.iter_labels():
                 row[label.key] = label.value
             row['geometry'] = annotation.geometry
             data.append(row)
         return pd.DataFrame(data)
 
-    def filter(self, filter_func):
-        """Return new AnnotationList with filtered annotations."""
-        result = filter(filter_func, self.annotations)
-        return AnnotationList(self.media, result)
-
-    def plot(self, *args, **kwargs):
+    def plot(self, ax=None, **kwargs):
         """Plot all annotations."""
-        # TODO: Should use yuntu.core.atlas.geometry.plot_geometry to
-        # plot annotation geometry with all labels (?)
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', (15, 5)))
+
+        key = kwargs.get('key', None)
+        for annotation in self.annotations:
+            if not annotation.has_label(key, mode=kwargs.get('filter', 'all')):
+                continue
+            annotation.plot(ax=ax, **kwargs)
+
+        if kwargs.get('legend', False):
+            ax.legend()
+
+        return ax
+
+    def buffer(self, buffer):
+        annotations = [
+            annotation.buffer(buffer) for annotation
+            in self.annotations]
+        return AnnotationList(self.media, annotations)
+
+    def apply(self, func):
+        annotations = [
+            func(annotation) for annotation
+            in self.annotations]
+        return AnnotationList(self.media, annotations)
+
+    def filter(self, func):
+        """Return new AnnotationList with filtered annotations."""
+        annotations = [
+            annotation for annotation in self.annotations
+            if func(annotation)]
+        return AnnotationList(self.media, annotations)
+
+    def __getitem__(self, key):
+        return self.annotations[key]
+
+    def __len__(self):
+        return len(self.annotations)
 
     def __iter__(self):
         for annotation in self.annotations:
