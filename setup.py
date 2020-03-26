@@ -35,7 +35,8 @@ setup(
                       'pony',
                       'matplotlib',
                       'librosa',
-		      'shapely',
+                      'shapely',
+                      'dask[complete]',
                       'pymongo'],
     classifiers=[
         'Programming Language :: Python :: 3.6',
