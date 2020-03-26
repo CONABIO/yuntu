@@ -476,29 +476,38 @@ class Spectrogram(AnnotatedObject, Feature):
         # pylint: disable=import-outside-toplevel
         import matplotlib.pyplot as plt
         if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.pop('figsize', None))
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
 
         spectrogram = self.array
         mesh = ax.pcolormesh(
             self.times,
             self.frequencies,
             spectrogram,
-            cmap=kwargs.pop('cmap', 'gray'),
-            alpha=kwargs.pop('alpha', 1.0))
+            cmap=kwargs.get('cmap', 'gray'),
+            alpha=kwargs.get('alpha', 1.0))
 
-        if kwargs.pop('colorbar', False):
+        if kwargs.get('colorbar', False):
             plt.colorbar(mesh, ax=ax)
 
-        if kwargs.pop('w_xlabel', False):
-            ax.set_xlabel(kwargs.pop('xlabel', 'Time (s)'))
+        xlabel = kwargs.get('xlabel', False)
+        if xlabel:
+            if not isinstance(xlabel, str):
+                xlabel = 'Time (s)'
+            ax.set_xlabel(xlabel)
 
-        if kwargs.pop('w_ylabel', False):
-            ax.set_ylabel(kwargs.pop('ylabel', 'Frequency (Hz)'))
+        ylabel = kwargs.get('ylabel', False)
+        if ylabel:
+            if not isinstance(ylabel, str):
+                ylabel = 'Frequency (Hz)'
+            ax.set_ylabel(ylabel)
 
-        if kwargs.pop('w_title', False):
-            ax.set_title(kwargs.pop('title', f'Spectrogram ({self.units})'))
+        title = kwargs.get('title', False)
+        if title:
+            if not isinstance(title, str):
+                title = f'Spectrogram ({self.units})'
+            ax.set_title(title)
 
-        if kwargs.pop('w_window', False):
+        if kwargs.get('window', False):
             min_freq = self._get_min_freq()
             max_freq = self._get_max_freq()
             start_time = self._get_start_time()
@@ -513,8 +522,9 @@ class Spectrogram(AnnotatedObject, Feature):
             ax.plot(
                 line_x,
                 line_y,
-                color=kwargs.pop('window_color', 'red'),
-                linewidth=kwargs.pop('window_linewidth', 3))
+                color=kwargs.get('window_color', None),
+                linewidth=kwargs.get('window_linewidth', 3),
+                linestyle=kwargs.get('window_linestyle', '--'))
 
         return ax
 

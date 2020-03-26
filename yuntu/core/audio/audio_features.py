@@ -1,9 +1,7 @@
 """Audio Feature module."""
 from typing import Optional
 
-from yuntu.core.audio.features.spectrogram import Spectrogram
-from yuntu.core.audio.features.spectrogram import PowerSpectrogram
-from yuntu.core.audio.features.spectrogram import DecibelSpectrogram
+import yuntu.core.audio.features.spectrogram as spectrogram
 
 
 class AudioFeatures:
@@ -13,9 +11,9 @@ class AudioFeatures:
     that can be derived from an Audio object.
     """
 
-    spectrogram_class = Spectrogram
-    power_spectrogram_class = PowerSpectrogram
-    db_spectrogram_class = DecibelSpectrogram
+    spectrogram_class = spectrogram.Spectrogram
+    power_spectrogram_class = spectrogram.PowerSpectrogram
+    db_spectrogram_class = spectrogram.DecibelSpectrogram
 
     def __init__(self, audio):
         """Construct the Audio Feature object."""

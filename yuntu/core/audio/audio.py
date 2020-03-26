@@ -22,7 +22,7 @@ from yuntu.core.audio.utils import read_info
 from yuntu.core.audio.utils import read_media
 from yuntu.core.audio.utils import write_media
 from yuntu.core.audio.utils import resample
-from yuntu.core.audio.audio_features import AudioFeatures
+import yuntu.core.audio.audio_features as features
 
 
 CHANNELS = 'nchannels'
@@ -57,7 +57,7 @@ class Audio(AnnotatedObject, Media):
     """Base class for all audio."""
 
     window_class = TimeWindow
-    features_class = AudioFeatures
+    features_class = features.AudioFeatures
 
     # pylint: disable=redefined-builtin, invalid-name
     def __init__(
