@@ -6,6 +6,7 @@ collection.
 """
 from abc import ABC
 from abc import abstractmethod
+import os
 import pickle
 from pony.orm import db_session
 # import dill
@@ -13,6 +14,10 @@ from pony.orm import db_session
 
 class Datastore(ABC):
     metadata = {}
+    base_dir = '.'
+
+    def get_abspath(self, path):
+        return os.path.join(self.base_dir, path)
 
     @abstractmethod
     def iter(self):
@@ -41,10 +46,7 @@ class Datastore(ABC):
     def create_datastore_record(self, collection):
         """Register this datastore into the collection."""
         metadata = self.get_metadata()
-        pickle = self.pickle()
-        return collection.db_manager.models.datastore(
-            pickle=pickle,
-            metadata=metadata)
+        return collection.db_manager.models.datastore(metadata=metadata)
 
     @db_session
     def insert_into(self, collection):
@@ -52,6 +54,7 @@ class Datastore(ABC):
 
         for datum in self.iter():
             meta = self.prepare_datum(datum)
+            meta['path'] = self.get_abspath(meta['path'])
             meta['datastore'] = datastore_record
             recording = collection.insert(meta)[0]
 

@@ -55,17 +55,14 @@ class Labels:
             self.labels_dict[label.key] = label
 
     def to_dict(self):
-        return {
-            'labels': [
-                label.to_dict()
-                for label in self.labels_dict.values()
-            ]
-        }
+        return [
+            label.to_dict()
+            for label in self.labels_dict.values()
+        ]
 
     @classmethod
     def from_dict(cls, data):
-        labels = data.get('labels', [])
-        return cls(labels=labels)
+        return cls(labels=data)
 
     def add(self, key=None, value=None, type=None, data=None, label=None):
         if label is None:
@@ -102,8 +99,23 @@ class Labels:
             if label.is_type(type)
         ]
 
+    def __contains__(self, key):
+        return key in self.labels_dict
+
     def remove(self, key):
         del self.labels_dict[key]
+
+    def get_text_repr(self, key):
+        if key is None:
+            return str(self)
+
+        if isinstance(key, (tuple, list)):
+            return '\n'.join([
+                str(self.get(subkey)) for subkey in key
+                if subkey in self.labels_dict
+            ])
+
+        return self.get_value(key)
 
     def __iter__(self):
         for label in self.labels_dict.values():

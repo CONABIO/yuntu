@@ -15,7 +15,7 @@ def build_base_recording_model(db):
     """Create base recording model."""
     class Recording(db.Entity):
         """Basic recording entity for yuntu."""
-        id = PrimaryKey(str, auto=True)
+        id = PrimaryKey(int, auto=True)
         datastore = Optional('Datastore')
         path = Required(str)
         hash = Required(str)

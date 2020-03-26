@@ -21,6 +21,14 @@ class AudioFeatures:
         """Construct the Audio Feature object."""
         self.audio = audio
 
+    @staticmethod
+    def list():
+        return [
+            'spectrogram',
+            'power_spectrogram',
+            'db_spectrogram',
+        ]
+
     def get_base_kwargs(self):
         return {
             'annotations': self.audio.annotations.annotations
