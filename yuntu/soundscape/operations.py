@@ -1,7 +1,7 @@
 """Operations for soundscape Pipeline."""
 import dask.dataframe as dd
 from yuntu.core.audio.audio import Audio, MEDIA_INFO_FIELDS
-from yuntu.core.pipeline.nodes import DaskDataFrameOperation
+from yuntu.core.pipeline.nodes import dd_op
 from yuntu.soundscape.utils import slice_windows
 from yuntu.soundscape.dataframe import SoundscapeAccessor
 
@@ -51,7 +51,7 @@ def feature_indices(row, indices):
     return row
 
 
-@DaskDataFrameOperation(name='slice_features', is_output=False, persist=True)
+@dd_op(name='slice_features', is_output=False, persist=True)
 def slice_features(recordings, config, meta):
     """Produce feature slices dataframe."""
     result = recordings.apply(feature_slices,
@@ -67,7 +67,7 @@ def slice_features(recordings, config, meta):
     return exploded_slices
 
 
-@DaskDataFrameOperation(name='apply_indices', is_output=True, persist=True)
+@dd_op(name='apply_indices', is_output=True, persist=True)
 def apply_indices(slices, indices, meta):
     """Apply acoustic indices to slices."""
     index_names = [index.name for index in indices]
@@ -82,7 +82,7 @@ def apply_indices(slices, indices, meta):
     return results.drop(['feature_cut'], axis=1)
 
 
-@DaskDataFrameOperation(name='as_dd')
+@dd_op(name='as_dd')
 def as_dd(pd_dataframe, dask_config):
     """Transform audio dataframe to a dask dataframe for computations."""
     return dd.from_pandas(pd_dataframe,
