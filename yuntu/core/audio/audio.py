@@ -419,7 +419,22 @@ class Audio(AnnotatedObject, Media):
         if ax is None:
             _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
 
-        lineplot, = ax.plot(self.times, self.array, c=kwargs.get('color', None))
+        array = self.array.copy()
+        if 'vmax' in kwargs:
+            maximum = np.abs(array).max()
+            vmax = kwargs['vmax']
+            array *= vmax / maximum
+
+        if 'offset' in kwargs:
+            array += kwargs['offset']
+
+        lineplot, = ax.plot(
+            self.times,
+            array,
+            c=kwargs.get('color', None),
+            linewidth=kwargs.get('linewidth', 1),
+            linestyle=kwargs.get('linestyle', None),
+            alpha=kwargs.get('alpha', 1))
         color = lineplot.get_color()
 
         xlabel = kwargs.get('xlabel', False)

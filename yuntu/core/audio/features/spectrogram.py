@@ -15,11 +15,7 @@ from yuntu.core.windows import TimeFrequencyWindow
 import yuntu.core.audio.audio as audio
 from yuntu.core.audio.features.base import Feature
 from yuntu.core.audio.features.spectral import stft
-from yuntu.core.atlas.geometry import geometry_to_mask
-from yuntu.core.atlas.geometry import point_neighbourhood
-from yuntu.core.atlas.geometry import point_geometry
-from yuntu.core.atlas.geometry import geometry_neighbourhood
-from yuntu.core.atlas.geometry import buffer_geometry
+import yuntu.core.geometry.utils as geom_utils
 
 
 BOXCAR = 'boxcar'
@@ -368,14 +364,15 @@ class Spectrogram(AnnotatedObject, Feature):
 
         if time is not None and freq is not None:
             if buffer is None:
-                values = point_neighbourhood(self.array,
-                                             [time, freq],
-                                             bins,
-                                             self.get_column_from_time,
-                                             self.get_row_from_frequency)
+                values = geom_utils.point_neighbourhood(
+                    self.array,
+                    [time, freq],
+                    bins,
+                    self.get_column_from_time,
+                    self.get_row_from_frequency)
                 return aggr_func(values)
 
-            geometry = point_geometry(time, freq)
+            geometry = geom_utils.point_geometry(time, freq)
 
         if window is not None:
             if buffer is not None:
@@ -391,13 +388,14 @@ class Spectrogram(AnnotatedObject, Feature):
             raise ValueError(message)
 
         if buffer is not None:
-            geometry = buffer_geometry(geometry, buffer)
+            geometry = geom_utils.buffer_geometry(geometry, buffer)
 
-        values = geometry_neighbourhood(self.array,
-                                        geometry,
-                                        bins,
-                                        self.get_column_from_time,
-                                        self.get_row_from_frequency)
+        values = geom_utils.geometry_neighbourhood(
+            self.array,
+            geometry,
+            bins,
+            self.get_column_from_time,
+            self.get_row_from_frequency)
         return aggr_func(values)
 
     @property
@@ -437,6 +435,12 @@ class Spectrogram(AnnotatedObject, Feature):
         max_freq = self._get_max_freq()
         return np.linspace(min_freq, max_freq, rows)
 
+    def normalized(self):
+        array = self.array
+        minimum = array.min()
+        maximum = array.max()
+        return (array - minimum) / (maximum - minimum)
+
     def plot(self, ax=None, **kwargs):
         """Plot the spectrogram.
 
@@ -475,14 +479,31 @@ class Spectrogram(AnnotatedObject, Feature):
         """
         # pylint: disable=import-outside-toplevel
         import matplotlib.pyplot as plt
+
         if ax is None:
             _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
 
         spectrogram = self.array
+        minimum = spectrogram.min()
+        maximum = spectrogram.max()
+
+        vmin = kwargs.get('vmin', None)
+        vmax = kwargs.get('vmax', None)
+
+        if 'pvmin' in kwargs:
+            pvmin = kwargs['pvmin']
+            vmin = minimum + (maximum - minimum) * pvmin
+
+        if 'pvmax' in kwargs:
+            pvmax = kwargs['pvmax']
+            vmax = minimum + (maximum - minimum) * pvmax
+
         mesh = ax.pcolormesh(
             self.times,
             self.frequencies,
             spectrogram,
+            vmin=vmin,
+            vmax=vmax,
             cmap=kwargs.get('cmap', 'gray'),
             alpha=kwargs.get('alpha', 1.0))
 
@@ -665,7 +686,7 @@ class Spectrogram(AnnotatedObject, Feature):
     def to_mask(self, geometry):
         if geometry is None:
             return np.ones_like(self.array)
-        return geometry_to_mask(
+        return geom_utils.geometry_to_mask(
             geometry,
             self.array.shape,
             transformX=self.get_column_from_time,
