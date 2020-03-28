@@ -10,9 +10,10 @@ from abc import ABC
 from abc import abstractmethod
 
 from yuntu.core.windows import Window
+from yuntu.core.annotation.annotated_object import AnnotatedObject
 
 
-class Media(ABC):
+class Media(ABC, AnnotatedObject):
     """Media class.
 
     This is the base class for all media objects in yuntu.
@@ -59,6 +60,8 @@ class Media(ABC):
             self._array = array
         elif not lazy:
             self._array = self.load()
+
+        super().__init__(**kwargs)
 
     def clean(self):
         """Clear media contents and free memory."""

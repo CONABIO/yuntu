@@ -150,7 +150,7 @@ class Collection:
         annotations = []
         for annotation in recording.annotations:
             data = annotation.to_dict()
-            annotation = self.annotation_class.from_dict(data)
+            annotation = self.annotation_class.from_record(data)
             annotations.append(annotation)
 
         return self.audio_class(

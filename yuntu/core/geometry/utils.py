@@ -6,6 +6,7 @@ import numpy as np
 from scipy.signal import convolve2d
 import matplotlib.pyplot as plt
 import shapely.wkt
+from shapely.geometry import box
 from shapely.geometry.point import Point
 from shapely.geometry.polygon import Polygon
 from shapely.geometry.multipolygon import MultiPolygon
@@ -179,6 +180,25 @@ def geom_from_wkt(wkt):
         Parsed geometry.
     """
     return shapely.wkt.loads(wkt)
+
+
+def bbox_geometry(minx, miny, maxx, maxy, ccw=True):
+    """Return polygon object from box.
+
+    Makes a rectangular polygon from the provided
+    bounding box values, with counter-clockwise order by default.
+
+    Parameters
+    ----------
+    minx: float
+    miny: float
+    maxx: float
+    maxy: float
+
+    Returns
+    shapely.geometry.polygon.Polygon
+    """
+    return box(minx, miny, maxx, maxy, ccw=True)
 
 
 def bbox_to_polygon(bbox):

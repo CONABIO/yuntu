@@ -1,33 +1,20 @@
 from uuid import uuid4
 from abc import ABC
-from abc import abstractmethod
 from enum import Enum
 
-import numpy as np
-
-from yuntu.core.windows import TimeWindow
-from yuntu.core.windows import TimeFrequencyWindow
-from yuntu.core.windows import FrequencyWindow
 from yuntu.core.annotation.labels import Labels
-from yuntu.core.atlas.geometry import Geometries
-from yuntu.core.atlas.geometry import linestring_geometry
-from yuntu.core.atlas.geometry import polygon_geometry
-from yuntu.core.atlas.geometry import validate_geometry
-from yuntu.core.atlas.geometry import bbox_to_polygon
-from yuntu.core.atlas.geometry import buffer_geometry
-from yuntu.core.atlas.geometry import geom_from_wkt
-
-
-INFINITY = 10e+9
+import yuntu.core.geometry.base as geom
 
 
 class Annotation(ABC):
-    window_class = TimeWindow
     name = None
+    geometry_class = None
 
     class Types(Enum):
         WEAK = 'WeakAnnotation'
-        INTERVAL = 'IntervalAnnotation'
+        TIME_LINE = 'TimeLineAnnotation'
+        TIME_INTERVAL = 'TimeIntervalAnnotation'
+        FREQUENCY_LINE = 'FrequencyLine'
         FREQUENCY_INTERVAL = 'FrequencyIntervalAnnotation'
         BBOX = 'BBoxAnnotation'
         LINESTRING = 'LineStringAnnotation'
@@ -41,6 +28,13 @@ class Annotation(ABC):
             metadata=None,
             geometry=None,
             **kwargs):
+
+        if not isinstance(geometry, self.geometry_class):
+            message = (
+                'The given geometry is not of the correct type. '
+                f'Should be {self.geometry_class} but was given '
+                f'{type(geometry)}.s')
+            raise ValueError(message)
 
         if id is None:
             id = str(uuid4())
@@ -56,6 +50,22 @@ class Annotation(ABC):
         self.labels = labels
         self.metadata = metadata
         self.geometry = geometry
+
+    def __repr__(self):
+        args = {
+            'labels': repr(self.labels),
+            'geometry': repr(self.geometry)
+        }
+
+        if self.target is not None:
+            args['target'] = self.target
+
+        args_string = ', '.join([
+            '{}={}'.format(key, value)
+            for key, value in args.items()
+        ])
+        name = type(self).__name__
+        return f'{name}({args_string})'
 
     def has_label(self, key, mode='all'):
         if key is None:
@@ -93,16 +103,58 @@ class Annotation(ABC):
         return self.labels.get_value(key)
 
     def get_window(self):
-        kwargs = self.get_window_kwargs()
-        return self.window_class(**kwargs)
+        return self.geometry.window
 
-    @abstractmethod
-    def buffer(self, buffer):
-        pass
+    def _copy_dict(self):
+        data = self.to_dict()
+        data['labels'] = self.labels
+        data['geometry'] = self.geometry
 
-    @abstractmethod
-    def get_window_kwargs(self):
-        pass
+        if self.target is not None:
+            data['target'] = self.target
+        return data
+
+    def _get_buffer_class(self):
+        if isinstance(self, (
+                WeakAnnotation,
+                TimeIntervalAnnotation,
+                BBoxAnnotation,
+                FrequencyIntervalAnnotation)):
+            return type(self)
+
+        if isinstance(self, TimeLineAnnotation):
+            return TimeIntervalAnnotation
+
+        if isinstance(self, FrequencyLineAnnotation):
+            return FrequencyIntervalAnnotation
+
+        return PolygonAnnotation
+
+    def buffer(self, buffer=None, **kwargs):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.buffer(buffer=buffer, **kwargs)
+        return self._get_buffer_class()(**data)
+
+    def shift(self, shift=None, **kwargs):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.shift(shift=shift, **kwargs)
+        return self._get_buffer_class()(**data)
+
+    def scale(self, scale=None, **kwargs):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.scale(scale=scale, **kwargs)
+        return self._get_buffer_class()(**data)
+
+    def transform(self, transform):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.transform(transform)
+        return self._get_buffer_class()(**data)
+
+    def intersects(self, other):
+        if isinstance(other, Annotation):
+            return self.geometry.intersects(other.geometry)
+
+        return self.geometry.intersects(other)
 
     def add_label(
             self,
@@ -123,121 +175,158 @@ class Annotation(ABC):
             'id': self.id,
             'labels': self.labels.to_dict(),
             'type': self.type.value,
+            'geometry': self.geometry.to_dict()
         }
 
         if self.target is not None:
             data['target'] = repr(self.target)
-
-        if self.geometry is not None:
-            data['geometry'] = self.geometry.wkt
 
         if self.metadata is not None:
             data['metadata'] = self.metadata
 
         return data
 
-    @classmethod
-    def from_dict(cls, data, target=None):
-        data = data.copy()
-        annotation_type = data.pop('type')
-        data['labels'] = Labels.from_dict(data['labels'])
-
-        if 'geometry' in data:
-            data['geometry'] = geom_from_wkt(data['geometry'])
-
-        if target is not None:
-            data['target'] = target
-
+    @staticmethod
+    def _type_to_class(annotation_type):
         if annotation_type == Annotation.Types.WEAK.value:
-            return WeakAnnotation(**data)
+            return WeakAnnotation
 
-        if annotation_type == Annotation.Types.INTERVAL.value:
-            return IntervalAnnotation(**data)
+        if annotation_type == Annotation.Types.TIME_LINE.value:
+            return TimeLineAnnotation
+
+        if annotation_type == Annotation.Types.TIME_INTERVAL.value:
+            return TimeIntervalAnnotation
+
+        if annotation_type == Annotation.Types.FREQUENCY_LINE.value:
+            return FrequencyLineAnnotation
 
         if annotation_type == Annotation.Types.FREQUENCY_INTERVAL.value:
-            return FrequencyIntervalAnnotation(**data)
+            return FrequencyIntervalAnnotation
 
         if annotation_type == Annotation.Types.BBOX.value:
-            return BBoxAnnotation(**data)
+            return BBoxAnnotation
 
         if annotation_type == Annotation.Types.LINESTRING.value:
-            return LineStringAnnotation(**data)
+            return LineStringAnnotation
 
         if annotation_type == Annotation.Types.POLYGON.value:
-            return PolygonAnnotation(**data)
+            return PolygonAnnotation
 
         message = 'Annotation is of unknown type.'
         raise ValueError(message)
 
-    def cut(self, other):
-        return other.cut(self.get_window())
+    @staticmethod
+    def from_dict(data, target=None):
+        data = data.copy()
+        annotation_type = data.pop('type')
+        data['labels'] = Labels.from_dict(data['labels'])
+        data['geometry'] = geom.Geometry.from_dict(data['geometry'])
 
+        if target is not None:
+            data['target'] = target
 
-class WeakAnnotation(Annotation):
-    name = Annotation.Types.WEAK
+        return Annotation._type_to_class(annotation_type)(**data)
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.geometry = bbox_to_polygon([
-            0, INFINITY,
-            0, INFINITY])
+    @staticmethod
+    def from_record(record, target=None):
+        data = record.copy()
 
-    def get_window_kwargs(self):
-        return {}
+        annotation_type = data['type']
+        cls = Annotation._type_to_class(annotation_type)
 
-    def buffer(self, buffer):
-        data = self.to_dict()
-        if self.target is not None:
-            data['target'] = self.target
-        return WeakAnnotation(**data)
+        if 'geometry' in data:
+            data['geometry'] = {
+                'type': cls.geometry_class.name.value,
+                'wkt': data['geometry']
+            }
+
+        return Annotation.from_dict(data, target=target)
 
     def plot(self, ax=None, **kwargs):
-        pass
+        import matplotlib.pyplot as plt
 
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
 
-class IntervalAnnotation(Annotation):
-    name = Annotation.Types.INTERVAL
+        ax = self.geometry.plot(ax=ax, **kwargs)
 
-    def __init__(self, start_time=None, end_time=None, **kwargs):
-        super().__init__(**kwargs)
-        self.start_time = start_time
-        self.end_time = end_time
-        self.geometry = bbox_to_polygon([self.start_time, self.end_time,
-                                         0, INFINITY])
+        if kwargs.get('label', False):
+            self.plot_labels(ax, **kwargs)
 
-    def buffer(self, buffer):
-        if isinstance(buffer, (float, int)):
-            time = buffer
+        return ax
 
-        elif isinstance(buffer, (list, float)):
-            time = buffer[0]
+    def plot_labels(self, ax, **kwargs):
+        from matplotlib import transforms
 
+        label = self.labels.get_text_repr(kwargs.get('key', None))
+        left, bottom, right, top = self.geometry.bounds
+
+        xcoord_position = kwargs.get('label_xposition', 'center')
+        if left is None or right is None:
+            xtransform = ax.transAxes
+
+            if not isinstance(xcoord_position, (int, float)):
+                xcoord = 0.5
         else:
-            message = 'The buffer argument should be a number of a tuple/list'
-            raise ValueError(message)
+            xtransform = ax.transData
 
-        start_time = self.start_time - time
-        end_time = self.end_time + time
+            if isinstance(xcoord_position, str):
+                if xcoord_position == 'left':
+                    xcoord = left
 
-        return IntervalAnnotation(
-            target=self.target,
-            start_time=start_time,
-            end_time=end_time,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
+                elif xcoord_position == 'right':
+                    xcoord = right
 
-    def get_window_kwargs(self):
-        return {
-            'start': self.start_time,
-            'end': self.end_time
-        }
+                elif xcoord_position == 'center':
+                    xcoord = (left + right) / 2
 
-    def to_dict(self):
-        data = super().to_dict()
-        data['start_time'] = self.start_time
-        data['end_time'] = self.end_time
-        return data
+                else:
+                    message = (
+                        'label_xposition can only be a float, '
+                        'or "left"/"right"/"center"')
+                    raise ValueError(message)
+
+            if isinstance(xcoord_position, float):
+                xcoord = left + (right - left) * xcoord_position
+
+        ycoord_position = kwargs.get('label_yposition', 'center')
+        if bottom is None or top is None:
+            ytransform = ax.transAxes
+
+            if not isinstance(ycoord_position, (int, float)):
+                ycoord = 0.5
+        else:
+            ytransform = ax.transData
+
+            if isinstance(ycoord_position, str):
+                if ycoord_position == 'top':
+                    ycoord = top
+
+                elif ycoord_position == 'bottom':
+                    ycoord = bottom
+
+                elif ycoord_position == 'center':
+                    ycoord = (top + bottom) / 2
+
+                else:
+                    message = (
+                        'ycoord_position can only be a float, '
+                        'or "top"/"bottom"/"center"')
+                    raise ValueError(message)
+
+            if isinstance(ycoord_position, float):
+                ycoord = bottom + (top - bottom) * ycoord_position
+
+        trans = transforms.blended_transform_factory(xtransform, ytransform)
+        ax.text(
+            xcoord,
+            ycoord,
+            label,
+            transform=trans,
+            ha=kwargs.get('label_ha', 'center'))
+
+    def cut(self, other):
+        return other.cut(self.get_window())
 
     def to_weak(self):
         return WeakAnnotation(
@@ -246,85 +335,109 @@ class IntervalAnnotation(Annotation):
             id=self.id,
             metadata=self.metadata)
 
-    def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-        import matplotlib.transforms as transforms
 
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
+class WeakAnnotation(Annotation):
+    name = Annotation.Types.WEAK
+    geometry_class = geom.Weak
 
-        color = kwargs.get('color', None)
-        if color is None:
-            color = next(ax._get_lines.prop_cycler)['color']
+    def __init__(self, **kwargs):
+        if 'geometry' not in kwargs:
+            kwargs['geometry'] = geom.Weak()
 
-        ax.axvline(
-            self.start_time,
-            linewidth=kwargs.get('linewidth', 1),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=color)
+        super().__init__(**kwargs)
 
-        ax.axvline(
-            self.end_time,
-            linewidth=kwargs.get('linewidth', 1),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=color,
-            label=str(self.labels))
 
-        if kwargs.get('fill', True):
-            ax.axvspan(
-                self.start_time,
-                self.end_time,
-                alpha=kwargs.get('alpha', 0.5),
-                color=color)
+class TimeLineAnnotation(Annotation):
+    name = Annotation.Types.TIME_LINE
+    geometry_class = geom.TimeLine
 
-        if kwargs.get('label', True):
-            label = self.labels.get_text_repr(kwargs.get('key', None))
+    def __init__(self, time=None, **kwargs):
+        if 'geometry' not in kwargs:
+            kwargs['geometry'] = geom.TimeLine(time=time)
 
-            start = self.start_time
-            end = self.end_time
-            position = kwargs.get('label_xposition', 'center')
-            yposition = kwargs.get('label_yposition', 0.5)
+        super().__init__(**kwargs)
 
-            trans = transforms.blended_transform_factory(
-                ax.transData, ax.transAxes)
 
-            if position == 'center':
-                xcoord = (start + end) / 2
-            elif position == 'left':
-                xcoord = start
-            else:
-                xcoord = end
+class TimeIntervalAnnotation(Annotation):
+    name = Annotation.Types.TIME_INTERVAL
+    geometry_class = geom.TimeInterval
 
-            ax.text(xcoord, yposition, label, transform=trans)
-        return ax
+    def __init__(self, start_time=None, end_time=None, **kwargs):
+        if 'geometry' not in kwargs:
+            kwargs['geometry'] = geom.TimeInterval(
+                start_time=start_time,
+                end_time=end_time)
+
+        super().__init__(**kwargs)
+
+    def to_start_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.start_line
+        return TimeLineAnnotation(**data)
+
+    def to_end_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.end_line
+        return TimeLineAnnotation(**data)
+
+    def to_center_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.center_line
+        return TimeLineAnnotation(**data)
+
+
+class FrequencyLineAnnotation(Annotation):
+    name = Annotation.Types.FREQUENCY_LINE
+    geometry_class = geom.FrequencyLine
+
+    def __init__(self, freq=None, **kwargs):
+        if 'geometry' not in kwargs:
+            kwargs['geometry'] = geom.FrequencyLine(freq=freq)
+
+        super().__init__(**kwargs)
 
 
 class FrequencyIntervalAnnotation(Annotation):
-    window_class = FrequencyWindow
     name = Annotation.Types.FREQUENCY_INTERVAL
+    geometry_class = geom.FrequencyInterval
 
     def __init__(self, min_freq=None, max_freq=None, **kwargs):
+        if 'geometry' not in kwargs:
+            kwargs['geometry'] = geom.FrequencyInterval(
+                min_freq=min_freq,
+                max_freq=max_freq)
+
         super().__init__(**kwargs)
-        self.min_freq = min_freq
-        self.max_freq = max_freq
-        self.geometry = bbox_to_polygon([
-            0, INFINITY,
-            self.min_freq, self.max_freq])
 
-    def buffer(self, buffer):
-        if isinstance(buffer, (float, int)):
-            freq = buffer
+    def to_min_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.min_line
+        return FrequencyLineAnnotation(**data)
 
-        elif isinstance(buffer, (list, float)):
-            freq = buffer[1]
+    def to_max_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.max_line
+        return FrequencyLineAnnotation(**data)
 
-        else:
-            message = 'The buffer argument should be a number of a tuple/list'
-            raise ValueError(message)
+    def to_center_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.center_line
+        return FrequencyLineAnnotation(**data)
 
-        min_freq = self.min_freq - freq
-        max_freq = self.max_freq + freq
 
+class IntervalsMixin:
+    def to_time_interval(self):
+        start_time, _, end_time, _ = self.geometry.bounds
+        return TimeIntervalAnnotation(
+            target=self.target,
+            start_time=start_time,
+            end_time=end_time,
+            labels=self.labels,
+            id=self.id,
+            metadata=self.metadata)
+
+    def to_frequency_interval(self):
+        _, min_freq, _, max_freq = self.geometry.bounds
         return FrequencyIntervalAnnotation(
             target=self.target,
             min_freq=min_freq,
@@ -333,81 +446,10 @@ class FrequencyIntervalAnnotation(Annotation):
             id=self.id,
             metadata=self.metadata)
 
-    def get_window_kwargs(self):
-        return {
-            'min': self.min_freq,
-            'max': self.max_freq
-        }
 
-    def to_dict(self):
-        data = super().to_dict()
-        data['min_freq'] = self.min_freq
-        data['max_freq'] = self.max_freq
-        return data
-
-    def to_weak(self):
-        return WeakAnnotation(
-            target=self.target,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-        import matplotlib.transforms as transforms
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
-
-        color = kwargs.get('color', None)
-        if color is None:
-            color = next(ax._get_lines.prop_cycler)['color']
-
-        line = ax.axhline(
-            self.min_freq,
-            linewidth=kwargs.get('linewidth', 1),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=color)
-
-        ax.axhline(
-            self.max_freq,
-            linewidth=kwargs.get('linewidth', 1),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=color)
-
-        if kwargs.get('fill', True):
-            ax.axhspan(
-                self.min_freq,
-                self.max_freq,
-                alpha=kwargs.get('alpha', 0.5),
-                color=color)
-
-        if kwargs.get('label', True):
-            label = self.labels.get_text_repr(kwargs.get('key', None))
-
-            min_freq = self.min_freq
-            max_freq = self.max_freq
-            position = kwargs.get('label_yposition', 'center')
-            xposition = kwargs.get('label_xposition', 0.5)
-
-            trans = transforms.blended_transform_factory(
-                ax.transAxes, ax.transData)
-
-            if position == 'center':
-                ycoord = (min_freq + max_freq) / 2
-            elif position == 'left':
-                ycoord = min_freq
-            else:
-                ycoord = max_freq
-
-            ax.text(xposition, ycoord, label, transform=trans)
-
-        return ax
-
-
-class BBoxAnnotation(Annotation):
-    window_class = TimeFrequencyWindow
+class BBoxAnnotation(Annotation, IntervalsMixin):
     name = Annotation.Types.BBOX
+    geometry_class = geom.BBox
 
     def __init__(
             self,
@@ -416,158 +458,19 @@ class BBoxAnnotation(Annotation):
             min_freq=None,
             max_freq=None,
             **kwargs):
+        if 'geometry' not in kwargs:
+            kwargs['geometry'] = geom.BBox(
+                start_time=start_time,
+                end_time=end_time,
+                min_freq=min_freq,
+                max_freq=max_freq)
+
         super().__init__(**kwargs)
 
-        if self.geometry is None:
-            if start_time is None:
-                message = 'Bounding box start time must be set.'
-                raise ValueError(message)
 
-            if end_time is None:
-                message = 'Bounding box end time must be set.'
-                raise ValueError(message)
-
-            if min_freq is None:
-                message = 'Bounding box max freq must be set.'
-                raise ValueError(message)
-
-            if max_freq is None:
-                message = 'Bounding box min freq must be set.'
-                raise ValueError(message)
-
-            self.geometry = bbox_to_polygon((start_time, end_time,
-                                             min_freq, max_freq))
-
-        if not validate_geometry(self.geometry, Geometries.POLYGON):
-            message = (
-                'The Bounding Box Annotation geometry is not a '
-                'polygon.')
-            raise ValueError(message)
-
+class BBoxMixin:
+    def to_bbox(self):
         start_time, min_freq, end_time, max_freq = self.geometry.bounds
-        self.start_time = start_time
-        self.end_time = end_time
-        self.min_freq = min_freq
-        self.max_freq = max_freq
-
-    def __repr__(self):
-        args = [
-            f'start_time={self.start_time}',
-            f'end_time={self.end_time}',
-            f'max_freq={self.max_freq}',
-            f'min_freq={self.min_freq}',
-            f'labels={repr(self.labels)}',
-        ]
-        args_string = ', '.join(args)
-        return f'BBoxAnnotation({args_string})'
-
-    def get_window_kwargs(self):
-        return {
-            'start': self.start_time,
-            'end': self.end_time,
-            'max': self.max_freq,
-            'min': self.min_freq
-        }
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['start_time'] = self.start_time
-        data['end_time'] = self.end_time
-        data['min_freq'] = self.min_freq
-        data['max_freq'] = self.max_freq
-        return data
-
-    def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
-
-        xcoords, ycoords = self.geometry.exterior.xy
-        lineplot, = ax.plot(
-            xcoords,
-            ycoords,
-            linewidth=kwargs.get('linewidth', 1),
-            color=kwargs.get('color', None),
-            linestyle=kwargs.get('linestyle', '--'),
-        )
-
-        color = lineplot.get_color()
-
-        if kwargs.get('fill', True):
-            ax.fill(
-                xcoords,
-                ycoords,
-                color=color,
-                alpha=kwargs.get('alpha', 0.5),
-                linewidth=0)
-
-        if kwargs.get('label', True):
-            label = self.labels.get_text_repr(kwargs.get('key', None))
-
-            min_x, min_y, max_x, max_y = self.geometry.bounds
-            position = kwargs.get('label_position', 'center')
-            if position == 'center':
-                xcoord = (min_x + max_x) / 2
-                ycoord = (min_y + max_y) / 2
-            elif position == 'top':
-                xcoord = (min_x + max_x) / 2
-                ycoord = max_y
-            else:
-                xcoord = max_x
-                ycoord = (min_y + max_y) / 2
-
-            ax.text(xcoord, ycoord, label)
-
-        return ax
-
-    def to_weak(self):
-        return WeakAnnotation(
-            target=self.target,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def to_frequency_interval(self):
-        _, min_freq, _, max_freq = self.geometry.bounds
-        return FrequencyIntervalAnnotation(
-            target=self.target,
-            min_freq=min_freq,
-            max_freq=max_freq,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def to_time_interval(self):
-        start_time, _, end_time, _ = self.geometry.bounds
-        return IntervalAnnotation(
-            target=self.target,
-            start_time=start_time,
-            end_time=end_time,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def buffer(self, buffer):
-        if isinstance(buffer, (int, float)):
-            buffer = [buffer, buffer]
-
-        if len(buffer) == 1:
-            buffer.append(0)
-
-        time, freq = buffer
-
-        if time is None:
-            time = 0
-
-        if freq is None:
-            freq = 0
-
-        start_time = self.start_time - time
-        end_time = self.end_time + time
-        min_freq = self.min_freq - freq
-        max_freq = self.max_freq + freq
-
         return BBoxAnnotation(
             target=self.target,
             start_time=start_time,
@@ -579,330 +482,37 @@ class BBoxAnnotation(Annotation):
             metadata=self.metadata)
 
 
-class LineStringAnnotation(Annotation):
-    window_class = TimeFrequencyWindow
+class LineStringAnnotation(Annotation, IntervalsMixin, BBoxMixin):
     name = Annotation.Types.LINESTRING
+    geometry_class = geom.LineString
 
     def __init__(
             self,
             vertices=None,
+            wkt=None,
             **kwargs):
+        if 'geometry' not in kwargs:
+            kwargs['geometry'] = geom.LineString(
+                wkt=wkt,
+                vertices=vertices)
+
         super().__init__(**kwargs)
 
-        if vertices is None:
-            vertices = []
 
-        if self.geometry is None:
-            self.geometry = linestring_geometry(vertices)
-
-        if not validate_geometry(self.geometry, Geometries.LINESTRING):
-            message = (
-                'The Line String Annotation geometry is not a '
-                'linestring.')
-            raise ValueError(message)
-
-        self.vertices = list(self.geometry.coords)
-
-    def __repr__(self):
-        args = [
-            f'vertices={self.vertices}',
-            f'labels={repr(self.labels)}',
-        ]
-        args_string = ', '.join(args)
-        return f'LineStringAnnotation({args_string})'
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['vertices'] = self.vertices
-        return data
-
-    def interpolate(self, s, normalized=True):
-        return self.geometry.interpolate(s, normalized=normalized).coords[0]
-
-    def resample(self, num_samples):
-        vertices = [
-            self.interpolate(param)
-            for param in np.linspace(0, 1, num_samples, endpoint=True)
-        ]
-        return LineStringAnnotation(
-            target=self.target,
-            labels=self.labels,
-            metadata=self.metadata,
-            id=self.id,
-            vertices=vertices)
-
-    def get_window_kwargs(self):
-        start, min_freq, end, max_freq = self.geometry.bounds
-        return {
-            'start': start,
-            'end': end,
-            'max': max_freq,
-            'min': min_freq
-        }
-
-    def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
-
-        xcoords, ycoords = self.geometry.xy
-        lineplot, = ax.plot(
-            xcoords,
-            ycoords,
-            linewidth=kwargs.get('linewidth', 1),
-            color=kwargs.get('color', None),
-            linestyle=kwargs.get('linestyle', '--'),
-        )
-
-        color = lineplot.get_color()
-
-        if kwargs.get('label', True):
-            label = self.labels.get_text_repr(kwargs.get('key', None))
-
-            position = kwargs.get('label_position', 'center')
-            if position == 'center':
-                middle = len(xcoords) // 2
-                xcoord = xcoords[middle]
-                ycoord = ycoords[middle]
-            elif position == 'start':
-                xcoord = xcoords[0]
-                ycoord = ycoords[0]
-            else:
-                xcoord = xcoords[-1]
-                ycoord = ycoords[-1]
-
-            ax.text(xcoord, ycoord, label)
-
-        if kwargs.get('scatter', False):
-            ax.scatter(
-                xcoords,
-                ycoords,
-                color=color,
-                s=kwargs.get('size', 5))
-
-        return ax
-
-    def to_weak(self):
-        return WeakAnnotation(
-            target=self.target,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def to_frequency_interval(self):
-        _, min_freq, _, max_freq = self.geometry.bounds
-        return FrequencyIntervalAnnotation(
-            target=self.target,
-            min_freq=min_freq,
-            max_freq=max_freq,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def to_time_interval(self):
-        start_time, _, end_time, _ = self.geometry.bounds
-        return IntervalAnnotation(
-            target=self.target,
-            start_time=start_time,
-            end_time=end_time,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def to_bbox(self):
-        start_time, min_freq, end_time, max_freq = self.geometry.bounds
-        return BBoxAnnotation(
-            target=self.target,
-            start_time=start_time,
-            end_time=end_time,
-            min_freq=min_freq,
-            max_freq=max_freq,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def buffer(self, buffer):
-        if isinstance(buffer, (int, float)):
-            buffer = [buffer, buffer]
-
-        geometry = buffer_geometry(self.geometry, buffer=buffer)
-        return PolygonAnnotation(
-            target=self.target,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata,
-            geometry=geometry)
-
-
-class PolygonAnnotation(Annotation):
-    window_class = TimeFrequencyWindow
+class PolygonAnnotation(Annotation, IntervalsMixin, BBoxMixin):
     name = Annotation.Types.POLYGON
+    geometry_class = geom.Polygon
 
     def __init__(
             self,
+            wkt=None,
             shell=None,
             holes=None,
             **kwargs):
+        if 'geometry' not in kwargs:
+            kwargs['geometry'] = geom.Polygon(
+                wkt=wkt,
+                shell=shell,
+                holes=holes)
+
         super().__init__(**kwargs)
-
-        if shell is None:
-            shell = []
-
-        if holes is None:
-            holes = []
-
-        if self.geometry is None:
-            self.geometry = polygon_geometry(shell, holes)
-
-        if not validate_geometry(self.geometry, Geometries.POLYGON):
-            message = (
-                'The Polygon Annotation geometry is not a '
-                'polygon.')
-            raise ValueError(message)
-
-        self.shell = list(self.geometry.exterior.coords)
-        self.holes = [
-            list(interior.coords)
-            for interior in self.geometry.interiors]
-
-    def __repr__(self):
-        args = [
-            f'shell={self.shell}',
-            f'labels={repr(self.labels)}',
-        ]
-
-        if self.holes:
-            args.append(f'holes={self.holes}')
-
-        args_string = ', '.join(args)
-        return f'PolygonAnnotation({args_string})'
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['shell'] = self.shell
-
-        if self.holes:
-            data['holes'] = self.holes
-
-        return data
-
-    def to_weak(self):
-        return WeakAnnotation(
-            target=self.target,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def to_frequency_interval(self):
-        _, min_freq, _, max_freq = self.geometry.bounds
-        return FrequencyIntervalAnnotation(
-            target=self.target,
-            min_freq=min_freq,
-            max_freq=max_freq,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def to_time_interval(self):
-        start_time, _, end_time, _ = self.geometry.bounds
-        return IntervalAnnotation(
-            target=self.target,
-            start_time=start_time,
-            end_time=end_time,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def to_bbox(self):
-        start_time, min_freq, end_time, max_freq = self.geometry.bounds
-        return BBoxAnnotation(
-            target=self.target,
-            start_time=start_time,
-            end_time=end_time,
-            min_freq=min_freq,
-            max_freq=max_freq,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def get_window_kwargs(self):
-        start, min_freq, end, max_freq = self.geometry.bounds
-        return {
-            'start': start,
-            'end': end,
-            'max': max_freq,
-            'min': min_freq
-        }
-
-    def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
-
-        lineplot, = ax.plot(
-            *self.geometry.exterior.xy,
-            linewidth=kwargs.get('linewidth', 1),
-            color=kwargs.get('color', None),
-            linestyle=kwargs.get('linestyle', '--'),
-        )
-
-        color = lineplot.get_color()
-
-        for interior in self.geometry.interiors:
-            ax.plot(
-                *interior.xy,
-                linewidth=kwargs.get('linewidth', 1),
-                color=color,
-                linestyle=kwargs.get('linestyle', '--'),
-            )
-
-        if kwargs.get('fill', True):
-            if self.geometry.exterior.is_ccw:
-                coords = self.geometry.exterior.coords
-            else:
-                coords = self.geometry.exterior.coords[::-1]
-
-            xcoords, ycoords = map(list, zip(*coords))
-            xstart = xcoords[0]
-            ystart = ycoords[0]
-
-            for interior in self.geometry.interiors:
-                if interior.is_ccw:
-                    coords = interior.coords[::-1]
-                else:
-                    coords = interior.coords
-
-                intxcoords, intycoords = map(list, zip(*coords))
-                xcoords += intxcoords
-                ycoords += intycoords
-
-                xcoords.append(xstart)
-                ycoords.append(ystart)
-
-            ax.fill(
-                xcoords,
-                ycoords,
-                color=color,
-                alpha=kwargs.get('alpha', 0.5),
-                linewidth=0)
-
-        if kwargs.get('label', True):
-            label = self.labels.get_text_repr(kwargs.get('key', None))
-            xcoords, ycoords = self.geometry.exterior.xy
-            ax.text(np.mean(xcoords), np.mean(ycoords), label)
-
-        return ax
-
-    def buffer(self, buffer):
-        if isinstance(buffer, (int, float)):
-            buffer = [buffer, buffer]
-
-        geometry = buffer_geometry(self.geometry, buffer=buffer)
-        return PolygonAnnotation(
-            target=self.target,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata,
-            geometry=geometry)
