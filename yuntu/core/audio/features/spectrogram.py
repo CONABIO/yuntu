@@ -767,6 +767,7 @@ class PowerSpectrogram(Spectrogram):
         """Get decibel spectrogram from power spec."""
         kwargs = self.to_dict()
         kwargs['annotations'] = self.annotations.annotations
+        kwargs['window'] = self.window
 
         if ref is not None:
             kwargs['ref'] = ref
@@ -776,9 +777,6 @@ class PowerSpectrogram(Spectrogram):
 
         if top_db is not None:
             kwargs['top_db'] = top_db
-
-        if not self.window.is_trivial():
-            kwargs['window'] = self.window
 
         if self.has_audio():
             kwargs['audio'] = self.audio

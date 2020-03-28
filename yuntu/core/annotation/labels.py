@@ -102,6 +102,9 @@ class Labels:
     def __contains__(self, key):
         return key in self.labels_dict
 
+    def __getitem__(self, key):
+        return self.labels_dict[key]
+
     def remove(self, key):
         del self.labels_dict[key]
 
@@ -123,7 +126,7 @@ class Labels:
 
     def iter_values(self):
         for label in self.labels_dict.values():
-            yield label.values
+            yield label.value
 
     def __repr__(self):
         arguments = ', '.join([
