@@ -1,6 +1,6 @@
 """Instalation script."""
 import os
-import yuntu
+import version
 
 from setuptools import find_packages, setup
 
@@ -12,7 +12,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='yuntu',
-    version=yuntu.__version__,
+    version=version.__version__,
     packages=find_packages(exclude=['tests']),
     include_package_data=True,
     license='BSD License',
@@ -33,10 +33,16 @@ setup(
     ),
     install_requires=['numpy',
                       'pony',
+                      'dill',
+                      'pickle-mixin',
                       'matplotlib',
                       'librosa',
+                      'scikit-image',
                       'shapely',
+                      'requests',
+                      'tqdm',
                       'dask[complete]',
+                      'fastparquet',
                       'pymongo'],
     classifiers=[
         'Programming Language :: Python :: 3.6',

@@ -355,7 +355,8 @@ class Audio(AnnotatedObject, Media):
 
         if parsed.scheme == 'scp':
             filename = os.path.basename(parsed.path)
-            return scp_file(src=self.path, dest=filename)
+            path = parsed.netloc+":"+parsed.path.replace("//", "/")
+            return scp_file(src=path, dest=filename)
 
         message = (
             'Remote loading is not implemented for '

@@ -1,6 +1,7 @@
 """Base class for audio processing pipelines."""
 from abc import ABC
 from abc import abstractmethod
+from yuntu.core.pipeline.nodes import Node
 
 
 class Pipeline(ABC):
@@ -8,8 +9,16 @@ class Pipeline(ABC):
 
     def __init__(self, name):
         self.name = name
+        self.nodes = {}
         self.persist = []
         self.outputs = []
+
+    def add_node(self, node):
+        """Add node element to pipeline."""
+        if not isinstance(node, Node):
+            raise ValueError("Argument 'node' must be of class Node.")
+        if node.name not in self.operations and node.name not in self.inputs:
+            node.set_pipeline(self)
 
     @abstractmethod
     def add_operation(self,
@@ -25,11 +34,11 @@ class Pipeline(ABC):
         """Add input."""
 
     @abstractmethod
-    def get_node(self, name):
+    def get_node(self, name, compute=False, force=False):
         """Get node from pipeline graph."""
 
     @abstractmethod
-    def compute(self, nodes=None, force=False):
+    def compute(self, nodes=None, force=False, **kwargs):
         """Compute pipeline."""
 
     @abstractmethod
@@ -39,6 +48,9 @@ class Pipeline(ABC):
     @abstractmethod
     def read_node(self, nodes=None):
         """Read computations from files."""
+
+    def node_exists(self, name):
+        return name in self.nodes
 
     def _mark_output(self, name):
         """Mark as output."""

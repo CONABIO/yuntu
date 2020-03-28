@@ -5,6 +5,9 @@ from dask.threaded import get
 import dask.dataframe as dd
 from dask.optimization import cull, inline, inline_functions, fuse
 from yuntu.core.pipeline.base import Pipeline
+from yuntu.core.pipeline.nodes import DictInput
+
+DASK_CONFIG = {'npartitions': 1}
 
 
 class DaskPipeline(Pipeline):
@@ -14,22 +17,15 @@ class DaskPipeline(Pipeline):
                  *args,
                  work_dir,
                  client=None,
-                 npartitions=10,
+                 dask_config=DASK_CONFIG,
                  overwrite=False,
                  **kwargs):
         super().__init__(*args, *kwargs)
         if not os.path.isdir(work_dir):
             message = "Argument 'work_dir' must be a valid directory."
             raise ValueError(message)
-        if client is not None:
-            if npartitions is None:
-                self.npartitions = 1
-            else:
-                if npartitions <= 0:
-                    message = "Wrong number of partitions. Should be > 0."
-                    raise ValueError(message)
-                self.npartitions = npartitions
-        self._linearize = []
+        if dask_config is not None:
+            self.dask_config = dask_config
         self.work_dir = work_dir
         self.client = client
         self.graph = {}
@@ -48,13 +44,22 @@ class DaskPipeline(Pipeline):
         if not os.path.exists(persist_dir):
             os.mkdir(persist_dir)
 
+    def build(self):
+        """Build full pipeline with dask specs."""
+        DictInput("dask_config",
+                  data=self.dask_config,
+                  pipeline=self)
+        self.build_pipeline()
+
+    def build_pipeline(self):
+        """Add operations that are specific to each pipeline."""
+
     def add_operation(self,
                       name,
                       operation,
                       inputs=None,
                       is_output=False,
-                      persist=False,
-                      linearize=False):
+                      persist=False):
         """Add operation."""
         if not isinstance(name, str):
             message = "Argument 'name' must be a string."
@@ -75,8 +80,6 @@ class DaskPipeline(Pipeline):
             self._mark_output(name)
         elif persist:
             self._mark_persist(name)
-        if linearize:
-            self._mark_linearize(name)
 
     def add_input(self, name, data):
         """Add input."""
@@ -90,72 +93,90 @@ class DaskPipeline(Pipeline):
 
     def write_node(self, name, result):
         """Persist computations as files."""
-        path = self._build_persisted_path(name)
-        return result.to_parquet(path, compression="GZIP")
+        if self.node_exists(name):
+            return self.nodes[name].write()
+        raise ValueError("Node does not exist.")
 
     def read_node(self, name):
         """Read persisted node."""
-        path = self._build_persisted_path(name)
-        return dd.read_parquet(path)
+        if self.node_exists(name):
+            return self.nodes[name].read()
+        raise ValueError("Node does not exist.")
 
     def clear_persisted(self, name):
         """Delete persisted node."""
-        path = self._build_persisted_path(name)
-        if os.path.exists(path):
-            os.remove(path)
+        if self.node_exists(name):
+            return self.nodes[name].clear()
+        raise ValueError("Node does not exist.")
 
     def clear(self):
         """Clear all persisted information."""
         for name in self.persist:
             self.clear_persisted(name)
 
-    def get_node(self, name, compute=False, force=False):
-        """Get node from pipeline graph."""
-        if not isinstance(name, str):
-            message = "Argument 'name' must be a string."
-            raise ValueError(message)
+    def rebuild(self):
+        """Cear all data and rebuild."""
+        self.clear()
+        self.graph = {}
+        self.inputs = {}
+        self.operations = {}
+        self.persist = []
+        self.outputs = []
+        self.build()
 
-        if name in self.persist:
-            persist = True
+    def get_nodes(self, names, client=None, compute=False, force=False):
+        for name in names:
+            if not self.node_exists(name):
+                raise ValueError('No node named '+name)
 
-        if not force and os.path.exists(self._build_persisted_path(name)):
-            node = self.read_node(name)
-            persist = False
-        elif self.client is not None:
-            node = self.client.get(self.graph,
-                                   name,
+        results = {}
+        to_retrieve = []
+
+        for name in names:
+            if name in self.persist:
+                if not force and self.nodes[name].is_persisted():
+                    node = self.nodes[name].read()
+                    if compute and hasattr(self.nodes[name], 'compute'):
+                        node = node.compute()
+                        self.nodes[name].result = node
+                    results[name] = node
+                else:
+                    to_retrieve.append(name)
+            else:
+                to_retrieve.append(name)
+        if client is not None:
+            retrieved = client.get(self.graph,
+                                   to_retrieve,
                                    sync=False).result()
         else:
-            node = get(self.graph, name)
+            retrieved = get(self.graph, to_retrieve)
+        for i in range(len(to_retrieve)):
+            node = retrieved[i]
+            if compute and hasattr(node, 'compute'):
+                node = node.compute()
+                self.nodes[name].result = node
+                if name in self.persist:
+                    self.nodes[name].write()
+            results[name] = node
+        return results
 
-        if compute and self.client is not None:
-            result = node.compute()
-            if persist:
-                self.write_node(name, result)
-            return result
-        return node
+    def get_node(self, name, client=None, compute=False, force=False):
+        """Get node from pipeline graph."""
+        return self.get_nodes(names=[name],
+                              client=client,
+                              compute=compute, force=force)[name]
 
-    def compute(self, nodes=None, force=False):
+    def compute(self, nodes=None, force=False, client=None):
         """Compute pipeline."""
-        results = {}
         if nodes is None:
             nodes = self.outputs
         if not isinstance(nodes, (tuple, list)):
             message = "Argument 'nodes' must be a tuple or a list."
             raise ValueError(message)
-        for name in nodes:
-            results[name] = self.get_node(name, compute=True, force=force)
-        return results
+        return self.get_nodes(nodes, client=client, compute=True, force=force)
 
-    def linearize_operations(self, operations=None):
+    def linearize_operations(self, operations):
         """Linearize dask operations."""
-        if operations is not None:
-            if not isinstance(operations, (tuple, list)):
-                message = "Argument 'operations' should be a tuple or a " + \
-                          "list of node names."
-                raise ValueError(message)
-        else:
-            operations = self._linearize
         graph1, deps = cull(self.graph, operations)
         graph2 = inline(graph1, dependencies=deps)
         graph3 = inline_functions(graph2,
@@ -164,15 +185,3 @@ class DaskPipeline(Pipeline):
                                   dependencies=deps)
         graph4, deps = fuse(graph3)
         self.graph = graph4
-
-    def _build_persisted_path(self, name):
-        """Return path to persisted directory within 'work_dir'."""
-        return os.path.join(self.work_dir,
-                            self.name,
-                            "persist",
-                            name+".parquet")
-
-    def _mark_linearize(self, name):
-        """Mark operation to be linearized on computation."""
-        if name not in self._linearize:
-            self._linearize.append(name)

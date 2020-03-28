@@ -15,7 +15,7 @@ def interpercentile_power_mean(power, ref, perc_ranges):
             arr_filter = arr_filter | \
                          ((ref > np.percentile(ref, perc_ranges[i][0])) &
                           (ref <= np.percentile(ref, perc_ranges[i][1])))
-    return np.mean(power[filter])
+    return np.mean(power[arr_filter])
 
 
 def interpercentile_mean_decibels(power, ref, perc_ranges):
@@ -50,7 +50,7 @@ def decile_mod(x, tolerance=0.1):
 
 def slice_windows(time_unit, duration, frequency_bins, frequency_limits):
     """Produce a list of time frequency windows."""
-    frequency_unit = (frequency_limits[1]-frequency_limits[1]) / frequency_bins
+    frequency_unit = (frequency_limits[1]-frequency_limits[0]) / frequency_bins
     bounds = itertools.product([(t, t+time_unit)
                                 for t in np.arange(0, duration, time_unit)],
                                [(f, f+frequency_unit)

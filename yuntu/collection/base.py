@@ -45,9 +45,32 @@ class Collection:
         record = self.recordings(lambda rec: rec.id == key).get()
         return self.build_audio(record)
 
-    def get_recording_dataframe(self):
+    def get_recording_dataframe(self, query=None, limit=None, offset=None):
+        if query is not None:
+            recordings = self.db_manager.select(query, model="recording")
+        else:
+            recordings = self.recordings()
         records = []
-        for recording in self.recordings():
+        if limit is not None or offset is not None:
+            has_offset = False
+            has_limit = False
+            if offset is not None:
+                if not isinstance(offset, int):
+                    message = "Offset must be an integer."
+                    raise ValueError(message)
+                has_offset = True
+            if limit is not None:
+                if not isinstance(limit, int):
+                    message = "Limit must be an integer."
+                    raise ValueError(message)
+                has_limit = True
+            if has_offset and has_limit:
+                recordings = recordings[offset:offset+limit]
+            elif has_offset:
+                recordings = recordings[offset:]
+            elif has_limit:
+                recordings = recordings[:limit]
+        for recording in recordings:
             data = recording.to_dict()
             media_info = data.pop('media_info')
             data.update(media_info)
@@ -55,10 +78,14 @@ class Collection:
 
         return pd.DataFrame(records)
 
-    def get_annotation_dataframe(self):
+    def get_annotation_dataframe(self, query=None):
+        if query is not None:
+            annotations = self.db_manager.select(query, model="annotation")
+        else:
+            annotations = self.annotations()
         records = []
-        for annotations in self.annotations():
-            data = annotations.to_dict()
+        for annotation in annotations:
+            data = annotation.to_dict()
             labels = data.pop('labels')
 
             for label in labels:

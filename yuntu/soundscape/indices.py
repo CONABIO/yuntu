@@ -2,8 +2,8 @@
 from abc import ABC
 from abc import abstractmethod
 import numpy as np
-from yuntu.core.pipeline.soundscape.utils import interpercentile_mean_decibels
-from yuntu.core.pipeline.soundscape.utils import decile_mod
+from yuntu.soundscape.utils import interpercentile_mean_decibels
+from yuntu.soundscape.utils import decile_mod
 
 
 class AcousticIndex(ABC):
@@ -16,7 +16,7 @@ class AcousticIndex(ABC):
 
     def __call__(self, array):
         """Call method for class."""
-        self.run(array)
+        return self.run(array)
 
     @abstractmethod
     def run(self, array):
@@ -64,8 +64,11 @@ class INFORMATION(AcousticIndex):
 
 class EXAG(AcousticIndex):
     name = 'EXAG'
-    tail = TAIL()
-    core = CORE()
 
     def run(self, array):
-        return self.tail(array)-self.core(array)
+        power = np.clip(array, 1e-3, 1e+3)**2
+        ref = 10*np.log10(power)
+        tail = interpercentile_mean_decibels(power, ref, [(90, 100)])
+        _, mod_deciles, perc_ranges = decile_mod(ref)
+        core = interpercentile_mean_decibels(power, ref, perc_ranges)
+        return tail-core

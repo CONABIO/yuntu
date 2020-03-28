@@ -10,4 +10,3 @@ __all__ = [
     'datastore',
     'collection'
 ]
-__version__ = "0.1.2"
