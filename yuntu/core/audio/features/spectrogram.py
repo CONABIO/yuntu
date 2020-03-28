@@ -52,7 +52,7 @@ WINDOW_FUNCTION = HANN
 Shape = namedtuple('Shape', ['rows', 'columns'])
 
 
-class Spectrogram(AnnotatedObject, Feature):
+class Spectrogram(Feature, AnnotatedObject):
     """Spectrogram class."""
 
     units = 'amplitude'
@@ -563,6 +563,7 @@ class Spectrogram(AnnotatedObject, Feature):
         """Get power spectrogram from spec."""
         kwargs = self.to_dict()
         kwargs['window'] = self.window
+        kwargs['annotations'] = self.annotations.annotations
 
         if self.has_audio():
             kwargs['audio'] = self.audio
@@ -582,6 +583,7 @@ class Spectrogram(AnnotatedObject, Feature):
         """Get decibel spectrogram from spec."""
         kwargs = self.to_dict()
         kwargs['window'] = self.window
+        kwargs['annotations'] = self.annotations.annotations
 
         if ref is not None:
             kwargs['ref'] = ref
@@ -645,6 +647,7 @@ class Spectrogram(AnnotatedObject, Feature):
             pass
 
         kwargs = self.to_dict()
+        kwargs['annotations'] = self.annotations.annotations
         kwargs['window'] = TimeFrequencyWindow(
             start=start_time,
             end=end_time,
@@ -763,6 +766,7 @@ class PowerSpectrogram(Spectrogram):
             top_db: Optional[float] = None):
         """Get decibel spectrogram from power spec."""
         kwargs = self.to_dict()
+        kwargs['annotations'] = self.annotations.annotations
 
         if ref is not None:
             kwargs['ref'] = ref

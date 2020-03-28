@@ -2,10 +2,17 @@
 from typing import Optional
 from abc import ABC
 from abc import abstractmethod
+import yuntu.core.geometry.utils as geom_utils
+
+
+INFINITY = 10e+15
 
 
 class Window(ABC):
     """A window is an object used to select portions of data."""
+    def __init__(self, geometry=None):
+        self.geometry = geometry
+
     def cut(self, other):
         """Use window to cut out object."""
         return other.cut(window=self)
@@ -66,6 +73,19 @@ class TimeWindow(Window):
         """
         self.start = start
         self.end = end
+
+        if 'geometry' not in kwargs:
+            if start is None:
+                start = 0
+
+            if end is None:
+                end = INFINITY
+
+            kwargs['geometry'] = geom_utils.bbox_to_polygon([
+                start, end,
+                0, INFINITY
+            ])
+
         super().__init__(**kwargs)
 
     def plot(self, ax=None, **kwargs):
@@ -151,6 +171,19 @@ class FrequencyWindow(Window):
         """
         self.min = min
         self.max = max
+
+        if 'geometry' not in kwargs:
+            if min is None:
+                min = 0
+
+            if max is None:
+                max = INFINITY
+
+            kwargs['geometry'] = geom_utils.bbox_to_polygon([
+                0, INFINITY,
+                min, max
+            ])
+
         super().__init__(**kwargs)
 
     def buffer(self, buffer):
@@ -240,6 +273,16 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
         max:
             Interval ending frequency in hertz.
         """
+        if 'geometry' not in kwargs:
+            start_time = start if start is not None else 0
+            end_time = end if end is not None else INFINITY
+            min_freq = min if min is not None else 0
+            max_freq = max if max is not None else INFINITY
+            kwargs['geometry'] = geom_utils.bbox_to_polygon([
+                start_time, end_time,
+                min_freq, max_freq
+            ])
+
         super().__init__(start=start, end=end, min=min, max=max)
 
     def to_dict(self):

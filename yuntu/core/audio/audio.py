@@ -53,7 +53,7 @@ def media_info_is_complete(media_info: MediaInfoType) -> bool:
     return True
 
 
-class Audio(AnnotatedObject, Media):
+class Audio(Media):
     """Base class for all audio."""
 
     window_class = TimeWindow

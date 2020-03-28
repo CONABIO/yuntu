@@ -18,20 +18,21 @@ class AnnotationList:
 
     def add_annotation(self, annotation):
         """Append annotation to AnnotationList."""
-        annotation.target = annotation
+        annotation.target = self
         self.annotations.append(annotation)
 
     def to_dataframe(self):
         """Produce pandas DataFrame from AnnotationList."""
         data = []
         for annotation in self.annotations:
-            row = {'id': annotation.id,
-                   'type': type(annotation).__name__,
-                   'start_time': annotation.geometry.bounds[0],
-                   'end_time': annotation.geometry.bounds[2],
-                   'min_freq': annotation.geometry.bounds[1],
-                   'max_freq': annotation.geometry.bounds[3]
-                   }
+            row = {
+                'id': annotation.id,
+                'type': type(annotation).__name__,
+                'start_time': annotation.geometry.bounds[0],
+                'end_time': annotation.geometry.bounds[2],
+                'min_freq': annotation.geometry.bounds[1],
+                'max_freq': annotation.geometry.bounds[3]
+            }
             for label in annotation.iter_labels():
                 row[label.key] = label.value
             row['geometry'] = annotation.geometry
@@ -56,10 +57,10 @@ class AnnotationList:
 
         return ax
 
-    def buffer(self, buffer):
+    def buffer(self, buffer=None, **kwargs):
         annotations = [
-            annotation.buffer(buffer) for annotation
-            in self.annotations]
+            annotation.buffer(buffer=buffer, **kwargs)
+            for annotation in self.annotations]
         return AnnotationList(self.media, annotations)
 
     def apply(self, func):
@@ -89,17 +90,20 @@ class AnnotationList:
 class AnnotatedObject:
     annotation_list_class = AnnotationList
 
-    def __init__(self, *args, annotations=None, **kwargs):
-
+    def __init__(self, annotations=None, **kwargs):
         filtered_annotations = self.filter_annotations(annotations)
-        self.annotations = self.annotation_list_class(self, filtered_annotations)
-        super().__init__(*args, **kwargs)
+        self.annotations = self.annotation_list_class(
+            self,
+            filtered_annotations)
 
     def filter_annotations(self, annotation_list):
         if not hasattr(self, 'window'):
             return annotation_list
 
         if self.window is None:
+            return annotation_list
+
+        if self.window.is_trivial():
             return annotation_list
 
         filtered = [
