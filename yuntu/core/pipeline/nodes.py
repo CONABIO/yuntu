@@ -47,7 +47,7 @@ class Node(ABC):
         """Write node to path."""
 
 
-class Input(Node):
+class Input(Node, ABC):
     def __init__(self, *args, data=None, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.validate(data):
@@ -73,18 +73,6 @@ class Input(Node):
         self.pipeline.add_input(self.name,
                                 self.data)
         self.pipeline.nodes[self.name] = self
-
-    @abstractmethod
-    def read(self, path, **kwargs):
-        """Read node from path."""
-
-    @abstractmethod
-    def write(self, path, **kwargs):
-        """Write node to path."""
-
-    @abstractmethod
-    def get_persist_path(self):
-        """Path to operation persisted outputs."""
 
 
 class PickleableInput(Input):
@@ -128,25 +116,6 @@ class NumpyArrayInput(PickleableInput):
             return False
         return True
 
-    def write(self, path=None, data=None):
-        if path is None:
-            path = self.get_persist_path()
-        if data is None:
-            data = self.data
-        if not self.validate(data):
-            message = "Data is invalid."
-            raise ValueError(message)
-        data.to_pickle(path, None)
-
-    def read(self, path=None):
-        if path is None:
-            path = self.get_persist_path()
-        if not os.path.exists(path):
-            message = "No pickled data at path."
-            raise ValueError(message)
-        data = pickle.read_pickle(path, None)
-        return data
-
 
 class DictInput(PickleableInput):
 
@@ -167,6 +136,25 @@ class PandasDataFrameInput(PickleableInput):
 
     def validate(self, data):
         return isinstance(data, pd.DataFrame)
+
+    def write(self, path=None, data=None):
+        if path is None:
+            path = self.get_persist_path()
+        if data is None:
+            data = self.data
+        if not self.validate(data):
+            message = "Data is invalid."
+            raise ValueError(message)
+        data.to_pickle(path, None)
+
+    def read(self, path=None):
+        if path is None:
+            path = self.get_persist_path()
+        if not os.path.exists(path):
+            message = "No pickled data at path."
+            raise ValueError(message)
+        data = pd.read_pickle(path, None)
+        return data
 
 
 class DaskDataFrameInput(Input):
@@ -198,7 +186,7 @@ class DaskDataFrameInput(Input):
         return os.path.join(persist_dir, self.name+".parquet")
 
 
-class Operation(Node):
+class Operation(Node, ABC):
 
     def __init__(self,
                  *args,
@@ -243,20 +231,8 @@ class Operation(Node):
     def __call__(self, func):
         """Method to use class as decorator"""
 
-    @abstractmethod
-    def get_persist_path(self):
-        """Path to operation persisted outputs."""
 
-    @abstractmethod
-    def read(self, path, **kwargs):
-        """Read node from path."""
-
-    @abstractmethod
-    def write(self, path, **kwargs):
-        """Write node to path."""
-
-
-class DaskOperation(Operation):
+class DaskOperation(Operation, ABC):
 
     def compute(self, force=False, client=None):
         if not force and self.result is not None:
@@ -265,22 +241,6 @@ class DaskOperation(Operation):
                                             force=force,
                                             client=client)[self.name]
         return self.result
-
-    @abstractmethod
-    def __call__(self, func):
-        """Method to use class as decorator"""
-
-    @abstractmethod
-    def get_persist_path(self):
-        """Path to operation persisted outputs."""
-
-    @abstractmethod
-    def read(self, path, **kwargs):
-        """Read node from path."""
-
-    @abstractmethod
-    def write(self, path, **kwargs):
-        """Write node to path."""
 
 
 class DaskDataFrameOperation(DaskOperation):
