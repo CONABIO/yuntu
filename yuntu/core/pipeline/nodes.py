@@ -227,9 +227,9 @@ class Operation(Node, ABC):
                                     self.persist)
         self.pipeline.nodes[self.name] = self
 
-    @abstractmethod
-    def __call__(self, func):
-        """Method to use class as decorator"""
+    # @abstractmethod
+    # def __call__(self, func):
+    #     """Method to use class as decorator"""
 
 
 class DaskOperation(Operation, ABC):
@@ -273,11 +273,35 @@ class DaskDataFrameOperation(DaskOperation):
         persist_dir = os.path.join(work_dir, self.pipeline.name, 'persist')
         return os.path.join(persist_dir, self.name+".parquet")
 
-    def __call__(self, func):
+    # def __call__(self, func):
+    #     @functools.wraps(func)
+    #     def wrapper(*args, **kwargs):
+    #         all_args = list(args) + [kwargs[key] for key in kwargs]
+    #         pipeline = self.pipeline
+    #         if pipeline is None:
+    #             if len(all_args) == 0:
+    #                 raise ValueError("No pipeline.")
+    #             pipeline = all_args[0].pipeline
+    #         for arg in all_args:
+    #             if arg.pipeline != pipeline:
+    #                 raise ValueError('Nodes have different pipelines.')
+    #         inputs = [arg.name for arg in all_args]
+    #         self.inputs = inputs
+    #         self.operation = func
+    #         self.set_pipeline(pipeline)
+    #         return self
+    #     return wrapper
+
+
+def dd_op(name, pipeline=None, is_output=False, persist=False):
+    def wrapper(func):
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def creator(*args,
+                    pipeline=pipeline,
+                    is_output=is_output,
+                    persist=persist,
+                    **kwargs):
             all_args = list(args) + [kwargs[key] for key in kwargs]
-            pipeline = self.pipeline
             if pipeline is None:
                 if len(all_args) == 0:
                     raise ValueError("No pipeline.")
@@ -286,8 +310,11 @@ class DaskDataFrameOperation(DaskOperation):
                 if arg.pipeline != pipeline:
                     raise ValueError('Nodes have different pipelines.')
             inputs = [arg.name for arg in all_args]
-            self.inputs = inputs
-            self.operation = func
-            self.set_pipeline(pipeline)
-            return self
-        return wrapper
+            return DaskDataFrameOperation(name=name,
+                                          pipeline=pipeline,
+                                          operation=func,
+                                          inputs=inputs,
+                                          is_output=is_output,
+                                          persist=persist)
+        return creator
+    return wrapper

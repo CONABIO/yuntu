@@ -1,6 +1,6 @@
 """Soundscape base pipeline."""
 import numpy as np
-from yuntu.core.pipeline.dask import DaskPipeline
+from yuntu.core.pipeline.dask import DaskPipeline, DASK_CONFIG
 import yuntu.core.pipeline.nodes as pline_nodes
 import yuntu.soundscape.operations as ops
 from yuntu.soundscape.indices import EXAG
@@ -49,8 +49,11 @@ class SoundscapePipeline(DaskPipeline):
         self.feature_config = feature_config
         self.build()
 
-    def build_pipeline(self):
+    def build(self):
         """Build soundscape processing pipeline."""
+        dask_config = pline_nodes.DictInput("dask_config",
+                                            data=DASK_CONFIG,
+                                            pipeline=self)
         slice_config = (pline_nodes.DictInput(name='slice_config',
                         data={'time_unit': self.time_unit,
                               'frequency_bins': self.frequency_bins,
@@ -92,7 +95,7 @@ class SoundscapePipeline(DaskPipeline):
         indices = (pline_nodes.PickleableInput(name='indices',
                    data=self.indices,
                    pipeline=self))
-        recordings_dd = ops.as_dd(recordings, self.nodes['dask_config'])
+        recordings_dd = ops.as_dd(recordings, dask_config)
         slice_features = ops.slice_features(recordings_dd,
                                             slice_config,
                                             slices_meta)

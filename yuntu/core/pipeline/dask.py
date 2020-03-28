@@ -16,7 +16,6 @@ class DaskPipeline(Pipeline):
                  *args,
                  work_dir=None,
                  client=None,
-                 dask_config=DASK_CONFIG,
                  **kwargs):
         super().__init__(*args, *kwargs)
         if work_dir is None:
@@ -24,8 +23,6 @@ class DaskPipeline(Pipeline):
         if not os.path.isdir(work_dir):
             message = "Argument 'work_dir' must be a valid directory."
             raise ValueError(message)
-        if dask_config is not None:
-            self.dask_config = dask_config
         self.work_dir = work_dir
         self.client = client
         self.graph = {}
@@ -41,13 +38,6 @@ class DaskPipeline(Pipeline):
             os.mkdir(persist_dir)
 
     def build(self):
-        """Build full pipeline with dask specs."""
-        DictInput("dask_config",
-                  data=self.dask_config,
-                  pipeline=self)
-        self.build_pipeline()
-
-    def build_pipeline(self):
         """Add operations that are specific to each pipeline."""
 
     def add_operation(self,
@@ -162,8 +152,17 @@ class DaskPipeline(Pipeline):
                               client=client,
                               compute=compute, force=force)[name]
 
-    def compute(self, nodes=None, force=False, client=None):
+    def compute(self,
+                nodes=None,
+                force=False,
+                client=None,
+                dask_config=None):
         """Compute pipeline."""
+        if dask_config is None:
+            dask_config = DASK_CONFIG
+        DictInput("dask_config",
+                  data=dask_config,
+                  pipeline=self)
         if nodes is None:
             nodes = self.outputs
         if not isinstance(nodes, (tuple, list)):

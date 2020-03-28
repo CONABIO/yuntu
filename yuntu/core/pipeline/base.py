@@ -13,11 +13,17 @@ class Pipeline(ABC):
         self.persist = []
         self.outputs = []
 
+    def set_node(self, node):
+        """Add node element to pipeline."""
+        if not isinstance(node, Node):
+            raise ValueError("Argument 'node' must be of class Node.")
+        node.set_pipeline(self)
+
     def add_node(self, node):
         """Add node element to pipeline."""
         if not isinstance(node, Node):
             raise ValueError("Argument 'node' must be of class Node.")
-        if node.name not in self.operations and node.name not in self.inputs:
+        if node.name not in self.nodes:
             node.set_pipeline(self)
 
     @abstractmethod
@@ -50,6 +56,7 @@ class Pipeline(ABC):
         """Read computations from files."""
 
     def node_exists(self, name):
+        """Check if node exists."""
         return name in self.nodes
 
     def _mark_output(self, name):
