@@ -1,6 +1,5 @@
 """Base class for dask pipeline."""
 import os
-import shutil
 from dask.threaded import get
 import dask.dataframe as dd
 from dask.optimization import cull, inline, inline_functions, fuse
@@ -15,12 +14,13 @@ class DaskPipeline(Pipeline):
 
     def __init__(self,
                  *args,
-                 work_dir,
+                 work_dir=None,
                  client=None,
                  dask_config=DASK_CONFIG,
-                 overwrite=False,
                  **kwargs):
         super().__init__(*args, *kwargs)
+        if work_dir is None:
+            work_dir = "/tmp"
         if not os.path.isdir(work_dir):
             message = "Argument 'work_dir' must be a valid directory."
             raise ValueError(message)
@@ -29,17 +29,13 @@ class DaskPipeline(Pipeline):
         self.work_dir = work_dir
         self.client = client
         self.graph = {}
-        self.init_pipeline(overwrite)
+        self.init_pipeline()
 
-    def init_pipeline(self, overwrite=False):
+    def init_pipeline(self):
         """Initialize pipeline."""
         base_dir = os.path.join(self.work_dir, self.name)
         persist_dir = os.path.join(base_dir, 'persist')
-        if os.path.exists(base_dir):
-            if overwrite:
-                shutil.rmtree(base_dir)
-                os.mkdir(base_dir)
-        else:
+        if not os.path.exists(base_dir):
             os.mkdir(base_dir)
         if not os.path.exists(persist_dir):
             os.mkdir(persist_dir)
