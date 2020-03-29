@@ -188,36 +188,7 @@ class DaskPipeline(Pipeline):
         employed to indicate the origin (left and right). The resulting
         pipeline's 'work_dir' will be that of the first operand.
         """
-        name = self.name + "|" + other.name
-        work_dir = self.work_dir
-        new_pipeline = DaskPipeline(name, work_dir=work_dir)
-        node_rel = {}
-        for key in self.nodes:
-            if key not in node_rel:
-                node_rel[key] = []
-            node_rel[key].append(self.nodes[key])
-        for key in other.nodes:
-            if key not in node_rel:
-                node_rel[key] = []
-            node_rel[key].append(other.nodes[key])
-        to_linearize = []
-        for key in node_rel:
-            if len(node_rel[key]) > 1:
-                for i in range(len(node_rel[key])):
-                    to_add = node_rel[key][i]
-                    new_name = f"{to_add.name}_{i}"
-                    new_inputs = []
-                    if hasattr(to_add, 'inputs'):
-                        to_linearize.append(new_name)
-                        for inp in range(len(to_add.inputs)):
-                            input_name = to_add.inputs[inp]
-                            if len(node_rel[input_name]) > 1:
-                                input_name = f"{input_name}_{i}"
-                            new_inputs.append(input_name)
-                        to_add.inputs = new_inputs
-                    to_add.name = new_name
-                    new_pipeline.add_node(to_add)
-            else:
-                new_pipeline.add_node(node_rel[key][0])
-        new_pipeline.linearize_operations(to_linearize)
-        return new_pipeline
+
+
+    def knit_inputs(self, knit_map):
+        """Reduce input nodes by mapping and return new pipeline."""
