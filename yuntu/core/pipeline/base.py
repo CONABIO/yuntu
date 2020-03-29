@@ -36,14 +36,40 @@ class Pipeline(ABC):
 
     def knit_inputs(self, knit_map):
         """Reduce input nodes by mapping."""
-        seen = []
+        for key in knit_map:
+            if key not in self.nodes:
+                raise ValueError(f"Node {name} does not exist.")
+            for name in knit_map[key]:
+                if name not in self.nodes:
+                    raise KeyError(f"Node {name} does not exist.")
         for cat1 in knit_map:
             for cat2 in knit_map:
                 if cat1 != cat2:
                     if bool(set(knit_map[cat1]) & set(knit_map[cat2])):
-                        raise ValueError("Knitting elements must be disjoint.")
-
-
+                        raise ValueError("Knitting lists must be disjoint.")
+        for keep_name in knit_map:
+            class_members = knit_map[keep_name]["members"]
+            new_name = keep_name
+            if "rename" in knit_map[keep_name]:
+                new_name = knit_map[keep_name]["rename"]
+                if not isinstance(new_name, str):
+                    raise ValueError("New name must be a string.")
+            for member_name in class_members:
+                for name in self.nodes:
+                    self.nodes[name].inputs = [new_name
+                                               if x == member_name
+                                               else
+                                               x
+                                               for x in
+                                               self.nodes[name].inputs]
+                if member_name != keep_name:
+                    self.remove_node(member_name)
+                else:
+                    if keep_name != new_name:
+                        node = self.nodes[keep_name]
+                        node.name = new_name
+                        self.set_node(node)
+                        del self.nodes[keep_name]
 
     def add_node(self, node):
         """Add node element to pipeline."""
