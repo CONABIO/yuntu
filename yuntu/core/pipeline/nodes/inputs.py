@@ -62,6 +62,11 @@ class PickleableInput(Input):
         persist_dir = os.path.join(work_dir, self.pipeline.name, 'persist')
         return os.path.join(persist_dir, self.name+".pickle")
 
+    def __copy__(self):
+        return PickleableInput(name=self.name,
+                               pipeline=None,
+                               data=self.data)
+
 
 class NumpyArrayInput(PickleableInput):
 
@@ -72,11 +77,21 @@ class NumpyArrayInput(PickleableInput):
             return False
         return True
 
+    def __copy__(self):
+        return NumpyArrayInput(name=self.name,
+                               pipeline=None,
+                               data=self.data)
+
 
 class DictInput(PickleableInput):
 
     def validate(self, data):
         return super().validate(data) and isinstance(data, dict)
+
+    def __copy__(self):
+        return DictInput(name=self.name,
+                         pipeline=None,
+                         data=self.data)
 
 
 class ScalarInput(PickleableInput):
@@ -86,6 +101,11 @@ class ScalarInput(PickleableInput):
             return True
         return (super().validate(data) and
                 not hasattr(data, '__len__'))
+
+    def __copy__(self):
+        return ScalarInput(name=self.name,
+                           pipeline=None,
+                           data=self.data)
 
 
 class PandasDataFrameInput(PickleableInput):
@@ -111,6 +131,11 @@ class PandasDataFrameInput(PickleableInput):
             raise ValueError(message)
         data = pd.read_pickle(path, None)
         return data
+
+    def __copy__(self):
+        return PandasDataFrameInput(name=self.name,
+                                    pipeline=None,
+                                    data=self.data)
 
 
 class DaskDataFrameInput(Input):
@@ -140,3 +165,8 @@ class DaskDataFrameInput(Input):
         work_dir = self.pipeline.work_dir
         persist_dir = os.path.join(work_dir, 'persist')
         return os.path.join(persist_dir, self.name+".parquet")
+
+    def __copy__(self):
+        return DaskDataFrameInput(name=self.name,
+                                  pipeline=None,
+                                  data=self.data)

@@ -32,6 +32,10 @@ class Node(ABC):
         self.pipeline.set_node(self)
 
     @abstractmethod
+    def __copy__(self):
+        """Return a shallow copy of self."""
+
+    @abstractmethod
     def get_persist_path(self):
         """Path to operation persisted outputs."""
 

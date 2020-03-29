@@ -1,6 +1,7 @@
 """Base class for audio processing pipelines."""
 from abc import ABC
 from abc import abstractmethod
+from collections import OrderedDict
 from yuntu.core.pipeline.nodes.base import Node
 from yuntu.core.pipeline.nodes.inputs import Input
 from yuntu.core.pipeline.nodes.operations import Operation
@@ -11,7 +12,7 @@ class Pipeline(ABC):
 
     def __init__(self, name):
         self.name = name
-        self.nodes = {}
+        self.nodes = OrderedDict()
         self.persist = []
         self.outputs = []
 
