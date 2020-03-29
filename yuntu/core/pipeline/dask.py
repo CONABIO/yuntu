@@ -1,5 +1,6 @@
 """Base class for dask pipeline."""
 import os
+from collections import OrderedDict
 import copy
 from dask.threaded import get
 import dask.dataframe as dd
@@ -103,8 +104,7 @@ class DaskPipeline(Pipeline):
         """Cear all data and rebuild."""
         self.clear()
         self.graph = {}
-        self.inputs = {}
-        self.operations = {}
+        self.nodes = OrderedDict()
         self.persist = []
         self.outputs = []
         self.build()
