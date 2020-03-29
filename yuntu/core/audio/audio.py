@@ -567,6 +567,7 @@ class Audio(Media):
 
         kwargs_dict = self.to_dict()
         kwargs_dict['window'] = TimeWindow(start=start_time, end=end_time)
+        kwargs_dict['annotations'] = self.annotations.annotations
         kwargs_dict['lazy'] = lazy
 
         if not self.is_empty():
