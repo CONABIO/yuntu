@@ -1,7 +1,7 @@
 """Operations for soundscape Pipeline."""
 import dask.dataframe as dd
 from yuntu.core.audio.audio import Audio, MEDIA_INFO_FIELDS
-from yuntu.core.pipeline.nodes import dd_op
+from yuntu.core.pipeline.nodes.decorators import dd_op
 from yuntu.soundscape.utils import slice_windows
 from yuntu.soundscape.dataframe import SoundscapeAccessor
 

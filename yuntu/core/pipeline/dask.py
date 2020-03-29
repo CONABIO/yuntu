@@ -4,7 +4,7 @@ from dask.threaded import get
 import dask.dataframe as dd
 from dask.optimization import cull, inline, inline_functions, fuse
 from yuntu.core.pipeline.base import Pipeline
-from yuntu.core.pipeline.nodes import DictInput
+from yuntu.core.pipeline.nodes.inputs import DictInput
 
 DASK_CONFIG = {'npartitions': 1}
 
@@ -15,7 +15,6 @@ class DaskPipeline(Pipeline):
     def __init__(self,
                  *args,
                  work_dir=None,
-                 client=None,
                  **kwargs):
         super().__init__(*args, *kwargs)
         if work_dir is None:
@@ -24,7 +23,6 @@ class DaskPipeline(Pipeline):
             message = "Argument 'work_dir' must be a valid directory."
             raise ValueError(message)
         self.work_dir = work_dir
-        self.client = client
         self.graph = {}
         self.init_pipeline()
 
@@ -40,12 +38,12 @@ class DaskPipeline(Pipeline):
     def build(self):
         """Add operations that are specific to each pipeline."""
 
-    def add_operation(self,
-                      name,
-                      operation,
-                      inputs=None,
-                      is_output=False,
-                      persist=False):
+    def _add_operation(self,
+                       name,
+                       operation,
+                       inputs=None,
+                       is_output=False,
+                       persist=False):
         """Add operation."""
         if not isinstance(name, str):
             message = "Argument 'name' must be a string."
@@ -67,7 +65,7 @@ class DaskPipeline(Pipeline):
         elif persist:
             self._mark_persist(name)
 
-    def add_input(self, name, data):
+    def _add_input(self, name, data):
         """Add input."""
         if not isinstance(name, str):
             message = "Argument 'name' must be a string."
@@ -112,6 +110,7 @@ class DaskPipeline(Pipeline):
 
     def get_nodes(self, names, client=None, compute=False, force=False):
         for name in names:
+            print(self.nodes.keys())
             if not self.node_exists(name):
                 raise ValueError('No node named '+name)
 
@@ -170,13 +169,55 @@ class DaskPipeline(Pipeline):
             raise ValueError(message)
         return self.get_nodes(nodes, client=client, compute=True, force=force)
 
-    def linearize_operations(self, operations):
+    def linearize_operations(self, op_names):
         """Linearize dask operations."""
-        graph1, deps = cull(self.graph, operations)
+        graph1, deps = cull(self.graph, op_names)
         graph2 = inline(graph1, dependencies=deps)
         graph3 = inline_functions(graph2,
-                                  operations,
+                                  op_names,
                                   [len, str.split],
                                   dependencies=deps)
         graph4, deps = fuse(graph3)
         self.graph = graph4
+
+    def __and__(self, other):
+        """Disjoint parallelism operator '&'.
+
+        Returns new pipeline with nodes from both pipelines running in disjoint
+        paralellism. If node names are duplicated, subindices '0' and '1' are
+        employed to indicate the origin (left and right). The resulting
+        pipeline's 'work_dir' will be that of the first operand.
+        """
+        name = self.name + "|" + other.name
+        work_dir = self.work_dir
+        new_pipeline = DaskPipeline(name, work_dir=work_dir)
+        node_rel = {}
+        for key in self.nodes:
+            if key not in node_rel:
+                node_rel[key] = []
+            node_rel[key].append(self.nodes[key])
+        for key in other.nodes:
+            if key not in node_rel:
+                node_rel[key] = []
+            node_rel[key].append(other.nodes[key])
+        to_linearize = []
+        for key in node_rel:
+            if len(node_rel[key]) > 1:
+                for i in range(len(node_rel[key])):
+                    to_add = node_rel[key][i]
+                    new_name = f"{to_add.name}_{i}"
+                    new_inputs = []
+                    if hasattr(to_add, 'inputs'):
+                        to_linearize.append(new_name)
+                        for inp in range(len(to_add.inputs)):
+                            input_name = to_add.inputs[inp]
+                            if len(node_rel[input_name]) > 1:
+                                input_name = f"{input_name}_{i}"
+                            new_inputs.append(input_name)
+                        to_add.inputs = new_inputs
+                    to_add.name = new_name
+                    new_pipeline.add_node(to_add)
+            else:
+                new_pipeline.add_node(node_rel[key][0])
+        new_pipeline.linearize_operations(to_linearize)
+        return new_pipeline
