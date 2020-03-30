@@ -28,9 +28,7 @@ class Pipeline(ABC):
             node.set_pipeline(self)
             self._add_operation(node.name,
                                 node.operation,
-                                node.inputs,
-                                node.is_output,
-                                node.persist)
+                                node.inputs)
             self.nodes[node.name] = node
         else:
             raise NotImplementedError("Node type not implemented.")
@@ -51,9 +49,7 @@ class Pipeline(ABC):
             node.set_pipeline(self)
             self._add_operation(node.name,
                                 node.operation,
-                                node.inputs,
-                                node.is_output,
-                                node.persist)
+                                node.inputs)
             self.nodes[node.name] = node
         else:
             raise NotImplementedError("Node type not implemented.")
@@ -67,8 +63,9 @@ class Pipeline(ABC):
             else:
                 raise TypeError("Item must be a pipeline node or a string.")
         else:
-            self.nodes[node.name].clear()
-            del self.nodes[node.name]
+            name = node.name
+            self.nodes[name].clear()
+            del self.nodes[name]
 
     def keys(self):
         return self.nodes.keys()
@@ -122,9 +119,7 @@ class Pipeline(ABC):
     def _add_operation(self,
                        name,
                        operation,
-                       inputs=None,
-                       is_output=False,
-                       persist=False):
+                       inputs=None):
         """Add operation."""
 
     @abstractmethod
@@ -150,14 +145,3 @@ class Pipeline(ABC):
     def node_exists(self, name):
         """Check if node exists."""
         return name in self.nodes
-
-    def _mark_output(self, name):
-        """Mark as output."""
-        self._mark_persist(name)
-        if name not in self.outputs:
-            self.outputs.append(name)
-
-    def _mark_persist(self, name):
-        """Mark to be persisted when computed."""
-        if name not in self.persist:
-            self.persist.append(name)

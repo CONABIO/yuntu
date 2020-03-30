@@ -141,7 +141,7 @@ class PandasDataFrameInput(PickleableInput):
 class DaskDataFrameInput(Input):
 
     def validate(self, data):
-        return isinstance(data, dd)
+        return isinstance(data, dd.core.DataFrame)
 
     def write(self, path=None, data=None):
         if path is None:

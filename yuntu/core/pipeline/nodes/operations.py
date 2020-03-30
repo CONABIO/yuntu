@@ -4,6 +4,7 @@ from abc import abstractmethod
 import os
 from yuntu.core.pipeline.nodes.base import Node
 import dask.dataframe as dd
+import pandas as pd
 
 
 class Operation(Node, ABC):
@@ -14,12 +15,14 @@ class Operation(Node, ABC):
                  inputs=None,
                  is_output=False,
                  persist=False,
+                 keep=False,
                  **kwargs):
         super().__init__(*args, **kwargs)
         self.operation = operation
         self.inputs = inputs
         self.is_output = is_output
         self.persist = persist
+        self.keep = keep
         self.result = None
         if self.pipeline is not None and self.operation is not None:
             self.attach()
@@ -38,23 +41,26 @@ class DaskOperation(Operation, ABC):
             raise ValueError(message)
         if not force and self.result is not None:
             return self.result
-        self.result = self.pipeline.compute([self.name],
-                                            force=force,
-                                            client=None,
-                                            dask_config=dask_config)[self.name]
-        return self.result
+        result = self.pipeline.compute([self.name],
+                                       force=force,
+                                       client=None,
+                                       dask_config=dask_config)[self.name]
+        if self.keep:
+            self.result = result
+        return result
 
 
 class DaskDataFrameOperation(DaskOperation):
 
-    def write(self, path=None, dataframe=None):
+    def write(self, path=None, data=None):
         if path is None:
             path = self.get_persist_path()
-        if dataframe is not None:
-            if not isinstance(dataframe, dd):
-                message = "Argument 'dataframe' must be a dask dataframe."
+        if data is not None:
+            if not isinstance(data, (pd.DataFrame,
+                                     dd.core.DataFrame)):
+                message = "Argument 'data' must be a dask or pandas dataframe."
                 raise ValueError(message)
-            results = dataframe
+            results = data
         elif self.result is not None:
             results = self.result
         else:
@@ -68,7 +74,10 @@ class DaskDataFrameOperation(DaskOperation):
         if not os.path.exists(path):
             message = "No operation results at path."
             raise ValueError(message)
-        return dd.read_parquet(self.get_persist_path())
+        results = dd.read_parquet(self.get_persist_path())
+        if self.keep:
+            self.results = results
+        return results
 
     def get_persist_path(self):
         work_dir = self.pipeline.work_dir
@@ -81,4 +90,5 @@ class DaskDataFrameOperation(DaskOperation):
                                       operation=self.operation,
                                       inputs=self.inputs,
                                       is_output=self.is_output,
-                                      persist=self.persist)
+                                      persist=self.persist,
+                                      keep=self.keep)

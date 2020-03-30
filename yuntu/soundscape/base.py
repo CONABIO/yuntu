@@ -106,29 +106,29 @@ class SoundscapePipeline(DaskPipeline):
     def set_indices(self, indices):
         """Set soundscape indices."""
         self.indices = indices
-        self.rebuild()
+        self.clear()
 
     def set_time_unit(self, time_unit):
         """Set time unit."""
         self.time_unit = time_unit
-        self.rebuild()
+        self.clear()
 
     def set_frequency_bins(self, frequency_bins):
         """Set frequency limits."""
         self.frequency_bins = frequency_bins
-        self.rebuild()
+        self.clear()
 
     def set_frequency_limits(self, frequency_limits):
         """Set frequency limits."""
         self.frequency_limits = frequency_limits
-        self.rebuild()
+        self.clear()
 
     def set_feature_type(self, feature_type):
         """Set feature type."""
         self.feature_type = feature_type
-        self.rebuild()
+        self.clear()
 
     def set_feature_config(self, feature_config):
         """Set feature configuration."""
         self.feature_config = feature_config
-        self.rebuild()
+        self.clear()

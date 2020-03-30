@@ -6,7 +6,7 @@ import functools
 from yuntu.core.pipeline.nodes.operations import DaskDataFrameOperation
 
 
-def dd_op(name, pipeline=None, is_output=False, persist=False):
+def dd_op(name, pipeline=None, is_output=False, persist=False, keep=False):
     """Return a dask dataframe operation.
 
     A dask dataframe operation returns a dataframe and has methods for saving
@@ -18,6 +18,7 @@ def dd_op(name, pipeline=None, is_output=False, persist=False):
                     pipeline=pipeline,
                     is_output=is_output,
                     persist=persist,
+                    keep=keep,
                     **kwargs):
             all_args = list(args) + [kwargs[key] for key in kwargs]
             if pipeline is None:

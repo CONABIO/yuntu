@@ -67,7 +67,7 @@ def slice_features(recordings, config, meta):
     return exploded_slices
 
 
-@dd_op(name='apply_indices', is_output=True, persist=True)
+@dd_op(name='apply_indices', is_output=True, persist=True, keep=True)
 def apply_indices(slices, indices, meta):
     """Apply acoustic indices to slices."""
     index_names = [index.name for index in indices]
@@ -85,6 +85,8 @@ def apply_indices(slices, indices, meta):
 @dd_op(name='as_dd')
 def as_dd(pd_dataframe, dask_config):
     """Transform audio dataframe to a dask dataframe for computations."""
-    return dd.from_pandas(pd_dataframe,
-                          npartitions=dask_config['npartitions'],
-                          name="as_dd")
+    dask_dataframe = dd.from_pandas(pd_dataframe,
+                                    npartitions=dask_config['npartitions'],
+                                    name="as_dd")
+    print(type(dask_dataframe))
+    return dask_dataframe
