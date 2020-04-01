@@ -63,10 +63,14 @@ class Operation(Node, ABC):
     @property
     def inputs(self):
         if self.pipeline is None or self.key is None:
-            return [node for node in self._inputs]
+            return self._inputs
         elif self.key not in self.pipeline.deps:
-            return [node for node in self._inputs]
-        return self.pipeline.get_deps(self.key)
+            return self._inputs
+        deps = self.pipeline.get_deps(self.key)
+        for node in deps:
+            if node is None:
+                return self._inputs
+        return deps
 
     def set_inputs(self, inputs):
         """Set hard value for inputs (when pipeline is None)"""
