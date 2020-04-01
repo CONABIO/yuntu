@@ -22,17 +22,19 @@ def dd_op(name, pipeline=None, is_output=False, persist=False, keep=False):
                     **kwargs):
             all_args = list(args) + [kwargs[key] for key in kwargs]
             if pipeline is None:
-                if len(all_args) == 0:
-                    raise ValueError("No pipeline.")
-                pipeline = all_args[0].pipeline
+                if len(all_args) != 0:
+                    pipeline = all_args[0].pipeline
             for arg in all_args:
-                if arg.pipeline != pipeline:
+                if ((arg.pipeline is None
+                    and pipeline is not None) or
+                   (arg.pipeline is not None
+                    and pipeline is None) or
+                   (arg.pipeline != pipeline)):
                     raise ValueError('Nodes have different pipelines.')
-            inputs = [arg.name for arg in all_args]
             return DaskDataFrameOperation(name=name,
                                           pipeline=pipeline,
                                           operation=func,
-                                          inputs=inputs,
+                                          inputs=all_args,
                                           is_output=is_output,
                                           persist=persist)
         return creator

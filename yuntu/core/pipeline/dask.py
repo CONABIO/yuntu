@@ -1,7 +1,7 @@
 """Base class for dask pipeline."""
 import os
 from collections import OrderedDict
-import copy
+from copy import copy
 from dask.threaded import get
 import dask.dataframe as dd
 from dask.optimization import cull, inline, inline_functions, fuse
@@ -38,7 +38,6 @@ class DaskPipeline(Pipeline):
             message = "Argument 'work_dir' must be a valid directory."
             raise ValueError(message)
         self.work_dir = work_dir
-        self.graph = {}
         self.init_pipeline()
 
     def init_pipeline(self):
@@ -53,71 +52,31 @@ class DaskPipeline(Pipeline):
     def build(self):
         """Add operations that are specific to each pipeline."""
 
-    def _add_operation(self,
-                       name,
-                       operation,
-                       inputs=None):
-        """Add operation."""
-        if not isinstance(name, str):
-            message = "Argument 'name' must be a string."
-            raise ValueError(message)
-        if not hasattr(operation, '__call__'):
-            message = "Argument 'operation' must be a callable object."
-            raise ValueError(message)
-        if inputs is not None:
-            if not isinstance(inputs, (tuple, list)):
-                message = "Argument 'inputs' must be a list or a tuple" + \
-                          " of node names."
-                raise ValueError(message)
-            self.graph[name] = (operation, *inputs)
-        else:
-            self.graph[name] = (operation,)
-
-    def _add_input(self, name, data):
-        """Add input."""
-        if not isinstance(name, str):
-            message = "Argument 'name' must be a string."
-            raise ValueError(message)
-        if data is None:
-            message = "Argument 'data' can not be undefined."
-            raise ValueError(message)
-        self.graph[name] = data
-
-    def remove_node(self, node):
-        """Remove node."""
-        if not isinstance(node, Node):
-            if isinstance(node, str):
-                self.nodes[node].clear()
-                del self.nodes[node]
-                del self.graph[node]
+    @property
+    def graph(self):
+        if len(self.nodes) == 0:
+            return None
+        graph = {}
+        for key in self.keys():
+            node = self.nodes[key]
+            if key not in self.deps:
+                message = (f"Dependencies for node {key} have not been" +
+                           "assigned yet.")
+                raise KeyError(message)
+            if self.deps[key] is None:
+                graph[key] = node.data
             else:
-                raise TypeError("Argument must be a node or a string.")
-        else:
-            name = node.name
-            if self.node_exists(name):
-                self.nodes[name].clear()
-                del self.nodes[name]
-                del self.graph[name]
-            else:
-                raise KeyError(f"Node {name} does not exist.")
-
-    def write_node(self, name, result):
-        """Persist computations as files."""
-        if self.node_exists(name):
-            return self.nodes[name].write()
-        raise ValueError("Node does not exist.")
-
-    def read_node(self, name):
-        """Read persisted node."""
-        if self.node_exists(name):
-            return self.nodes[name].read()
-        raise ValueError("Node does not exist.")
-
-    def clear_persisted(self, name):
-        """Delete persisted node."""
-        if self.node_exists(name):
-            return self.nodes[name].clear()
-        raise ValueError("Node does not exist.")
+                inputs = []
+                for dkey in self.deps[key]:
+                    if dkey not in self.nodes:
+                        raise KeyError(f"Dependency for node {key} with " +
+                                       "key {dkey} does not exist.")
+                    inputs.append(dkey)
+                if len(inputs) > 0:
+                    graph[key] = (node.operation, *inputs)
+                else:
+                    graph[key] = (node.operation,)
+        return graph
 
     def clear(self):
         """Clear all persisted information."""
@@ -125,15 +84,17 @@ class DaskPipeline(Pipeline):
             self.nodes[name].clear()
 
     def get_nodes(self,
-                  names,
-                  client=None,
+                  nodes,
                   compute=False,
                   force=False,
+                  client=None,
                   linearize=None):
-        for name in names:
-            if not self.node_exists(name):
-                raise ValueError('No node named '+name)
-        graph = dict(self.graph)
+        if len(nodes) == 0:
+            raise ValueError("At least one node must be specified.")
+        for key in nodes:
+            if key not in self:
+                raise ValueError(f'No node with key {key}')
+        graph = self.graph
         if linearize is not None:
             if not isinstance(linearize, (tuple, list)):
                 message = ("Argument 'linearize' must be a tuple or a list " +
@@ -150,21 +111,21 @@ class DaskPipeline(Pipeline):
 
         results = {}
         to_retrieve = []
-        for name in names:
-            if isinstance(self.nodes[name], Input):
-                results[name] = self.nodes[name].data
-            elif self.nodes[name].persist:
-                if not force and self.nodes[name].is_persisted():
-                    node = self.nodes[name].read()
+        for key in nodes:
+            if isinstance(self.nodes[key], Input):
+                results[key] = self.nodes[key].data
+            elif self.nodes[key].persist:
+                if not force and self.nodes[key].is_persisted():
+                    node = self.nodes[key].read()
                     if compute and hasattr(node, 'compute'):
                         node = node.compute()
-                    if self.nodes[name].keep:
-                        self.nodes[name].result = node
-                    results[name] = node
+                    if self.nodes[key].keep:
+                        self.nodes[key].set_value(node)
+                    results[key] = node
                 else:
-                    to_retrieve.append(name)
+                    to_retrieve.append(key)
             else:
-                to_retrieve.append(name)
+                to_retrieve.append(key)
         if client is not None:
             retrieved = client.get(graph,
                                    to_retrieve,
@@ -175,24 +136,24 @@ class DaskPipeline(Pipeline):
             node = retrieved[i]
             if compute and hasattr(node, 'compute'):
                 node = node.compute()
-                if self.nodes[name].persist:
-                    self.nodes[name].write(data=node)
-                if self.nodes[name].keep:
-                    self.nodes[name].result = node
-            results[name] = node
+                if self.nodes[key].persist:
+                    self.nodes[key].write(data=node)
+                if self.nodes[key].keep:
+                    self.nodes[key].set_value(node)
+            results[key] = node
         return results
 
     def get_node(self,
-                 name,
-                 client=None,
+                 key,
                  compute=False,
-                 force=False):
+                 force=False,
+                 client=None):
         """Get node from pipeline graph."""
-        return self.get_nodes(names=[name],
-                              client=client,
+        return self.get_nodes(nodes=[key],
                               compute=compute,
                               force=force,
-                              linearize=[name])[name]
+                              client=client,
+                              linearize=[key])[key]
 
     def compute(self,
                 nodes=None,
@@ -201,16 +162,15 @@ class DaskPipeline(Pipeline):
                 dask_config=None,
                 linearize=None):
         """Compute pipeline."""
-        if dask_config is None:
-            dask_config = DASK_CONFIG
-        DictInput("dask_config",
-                  data=dask_config,
-                  pipeline=self)
         if nodes is None:
-            nodes = [name for name in self.nodes if self.nodes[name].is_output]
+            nodes = [key for key in self.nodes if self.nodes[key].is_output]
         if not isinstance(nodes, (tuple, list)):
             message = "Argument 'nodes' must be a tuple or a list."
             raise ValueError(message)
+        if dask_config is None:
+            dask_config = DASK_CONFIG
+        config = DictInput("dask_config", data=dask_config)
+        self['dask_config'] = config
         return self.get_nodes(nodes,
                               client=client,
                               compute=True,
@@ -228,33 +188,35 @@ class DaskPipeline(Pipeline):
         name = self.name + "&" + other.name
         work_dir = self.work_dir
         new_pipeline = DaskPipeline(name, work_dir=work_dir)
-        node_rel = {}
-        for key in self.nodes:
-            if key not in node_rel:
-                node_rel[key] = []
-            node_rel[key].append(self.nodes[key])
-        for key in other.nodes:
-            if key not in node_rel:
-                node_rel[key] = []
-            node_rel[key].append(other.nodes[key])
-        for key in node_rel:
-            if len(node_rel[key]) > 1 and key != "dask_config":
-                for i in range(len(node_rel[key])):
-                    to_add = copy.copy(node_rel[key][i])
-                    new_name = f"{to_add.name}_{i}"
-                    new_inputs = []
-                    if hasattr(to_add, 'inputs'):
-                        for inp in range(len(to_add.inputs)):
-                            input_name = to_add.inputs[inp]
-                            if (len(node_rel[input_name]) > 1 and
-                               input_name != "dask_config"):
-                                input_name = f"{input_name}_{i}"
-                            new_inputs.append(input_name)
-                        to_add.inputs = new_inputs
-                    to_add.name = new_name
-                    new_pipeline.add_node(to_add)
+        dask_config = DictInput("dask_config", data=DASK_CONFIG)
+        dask_config.set_pipeline(new_pipeline)
+        dask_config.attach()
+        node_map = {"self": {"dask_config": dask_config},
+                    "other": {"dask_config": dask_config}}
+        for operand in ["self", "other"]:
+            if operand == "self":
+                pipeline = self
             else:
-                new_pipeline.add_node(copy.copy(node_rel[key][0]))
+                pipeline = other
+            for key in pipeline.operations:
+                node = pipeline.nodes[key]
+                input_keys = [inp.key for inp in node.inputs]
+                new_inputs = []
+                for dkey in input_keys:
+                    if dkey not in node_map[operand]:
+                        dep = pipeline.nodes[dkey]
+                        new_dep = copy(dep)
+                        new_dep.set_pipeline(new_pipeline)
+                        new_dep.attach()
+                        node_map[operand][dkey] = new_dep
+                        new_inputs.append(new_dep)
+                    else:
+                        new_inputs.append(node_map[operand][dkey])
+                new_node = copy(node)
+                new_node.set_inputs(new_inputs)
+                new_node.set_pipeline(new_pipeline)
+                new_node.attach()
+                node_map[operand][key] = new_node
         return new_pipeline
 
     def knit_inputs(self, knit_map):

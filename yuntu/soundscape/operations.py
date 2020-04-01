@@ -88,5 +88,4 @@ def as_dd(pd_dataframe, dask_config):
     dask_dataframe = dd.from_pandas(pd_dataframe,
                                     npartitions=dask_config['npartitions'],
                                     name="as_dd")
-    print(type(dask_dataframe))
     return dask_dataframe

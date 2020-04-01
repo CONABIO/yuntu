@@ -18,17 +18,13 @@ class Input(Node, ABC):
         if not self.validate(data):
             message = "Data is invalid for this type of node."
             raise ValueError(message)
-        self.result = data
+        self._result = data
         if self.pipeline is not None:
             self.attach()
 
     @property
     def data(self):
-        return self.result
-
-    @abstractmethod
-    def validate(self, data):
-        """Validate data."""
+        return self._result
 
 
 class PickleableInput(Input):
