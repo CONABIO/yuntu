@@ -1,7 +1,7 @@
 """Soundscape base pipeline."""
 import numpy as np
 from yuntu.core.pipeline.dask import DaskPipeline, DASK_CONFIG
-import yuntu.core.pipeline.nodes as pline_nodes
+import yuntu.core.pipeline.nodes.inputs as pline_inputs
 import yuntu.soundscape.operations as ops
 from yuntu.soundscape.indices import EXAG
 from yuntu.soundscape.indices import INFORMATION
@@ -51,10 +51,10 @@ class SoundscapePipeline(DaskPipeline):
 
     def build(self):
         """Build soundscape processing pipeline."""
-        dask_config = pline_nodes.DictInput("dask_config",
-                                            data=DASK_CONFIG,
-                                            pipeline=self)
-        slice_config = (pline_nodes.DictInput(name='slice_config',
+        dask_config = pline_inputs.DictInput("dask_config",
+                                             data=DASK_CONFIG,
+                                             pipeline=self)
+        slice_config = (pline_inputs.DictInput(name='slice_config',
                         data={'time_unit': self.time_unit,
                               'frequency_bins': self.frequency_bins,
                               'frequency_limits': self.frequency_limits,
@@ -71,7 +71,7 @@ class SoundscapePipeline(DaskPipeline):
                         ('max_freq', np.dtype('float64')),
                         ('weight', np.dtype('float64')),
                         ('feature_cut', np.dtype('float64'))]
-        slices_meta = (pline_nodes.PickleableInput(name='slices_meta',
+        slices_meta = (pline_inputs.PickleableInput(name='slices_meta',
                        data=meta_slices,
                        pipeline=self))
 
@@ -85,14 +85,14 @@ class SoundscapePipeline(DaskPipeline):
         meta_indices += [(index.name,
                          np.dtype('float64'))
                          for index in self.indices]
-        indices_meta = (pline_nodes.PickleableInput(name='indices_meta',
+        indices_meta = (pline_inputs.PickleableInput(name='indices_meta',
                         data=meta_indices,
                         pipeline=self))
 
-        recordings = (pline_nodes.PandasDataFrameInput(name='recordings',
+        recordings = (pline_inputs.PandasDataFrameInput(name='recordings',
                       data=self.recordings,
                       pipeline=self))
-        indices = (pline_nodes.PickleableInput(name='indices',
+        indices = (pline_inputs.PickleableInput(name='indices',
                    data=self.indices,
                    pipeline=self))
         recordings_dd = ops.as_dd(recordings, dask_config)
@@ -106,29 +106,29 @@ class SoundscapePipeline(DaskPipeline):
     def set_indices(self, indices):
         """Set soundscape indices."""
         self.indices = indices
-        self.rebuild()
+        self.clear()
 
     def set_time_unit(self, time_unit):
         """Set time unit."""
         self.time_unit = time_unit
-        self.rebuild()
+        self.clear()
 
     def set_frequency_bins(self, frequency_bins):
         """Set frequency limits."""
         self.frequency_bins = frequency_bins
-        self.rebuild()
+        self.clear()
 
     def set_frequency_limits(self, frequency_limits):
         """Set frequency limits."""
         self.frequency_limits = frequency_limits
-        self.rebuild()
+        self.clear()
 
     def set_feature_type(self, feature_type):
         """Set feature type."""
         self.feature_type = feature_type
-        self.rebuild()
+        self.clear()
 
     def set_feature_config(self, feature_config):
         """Set feature configuration."""
         self.feature_config = feature_config
-        self.rebuild()
+        self.clear()
