@@ -80,6 +80,7 @@ class Geometry(ABC):
         args = ', '.join([
             '{}={}'.format(key, value)
             for key, value in self.to_dict().items()
+            if key != 'type'
         ])
         name = type(self).__name__
         return f'{name}({args})'
@@ -129,7 +130,7 @@ class Geometry(ABC):
         transformed = geom_utils.transform_geometry(
             self.geometry,
             transform)
-        return LineString(geometry=transformed)
+        return type(self)(geometry=transformed)
 
     def intersects(self, other):
         if isinstance(other, (windows.Window, Geometry)):
@@ -264,7 +265,8 @@ class TimeLine(Geometry):
             self.time,
             linewidth=kwargs.get('linewidth', None),
             linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', None))
+            color=kwargs.get('color', None),
+            label=kwargs.get('label', None))
 
         return ax
 
@@ -323,7 +325,7 @@ class TimeInterval(Geometry):
         time = _parse_args(scale, 'scale', 'time', **kwargs)
 
         if center is None:
-            center = 0
+            center = (self.start_time + self.end_time) / 2
         elif isinstance(center, (list, tuple)):
             center = center[0]
 
@@ -363,7 +365,8 @@ class TimeInterval(Geometry):
                 self.start_time,
                 self.end_time,
                 alpha=kwargs.get('alpha', 0.5),
-                color=color)
+                color=color,
+                label=kwargs.get('label', None))
 
         return ax
 
@@ -419,7 +422,8 @@ class FrequencyLine(Geometry):
             self.freq,
             linewidth=kwargs.get('linewidth', None),
             linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', None))
+            color=kwargs.get('color', None),
+            label=kwargs.get('label', None))
 
         return ax
 
@@ -479,7 +483,7 @@ class FrequencyInterval(Geometry):
         freq = _parse_args(scale, 'scale', 'freq', index=1, **kwargs)
 
         if center is None:
-            center = 0
+            center = (self.min_freq + self.max_freq) / 2
         elif isinstance(center, (list, tuple)):
             center = center[0]
 
@@ -519,7 +523,8 @@ class FrequencyInterval(Geometry):
                 self.min_freq,
                 self.max_freq,
                 alpha=kwargs.get('alpha', 0.5),
-                color=color)
+                color=color,
+                label=kwargs.get('label', None))
 
         return ax
 
@@ -659,7 +664,8 @@ class BBox(Geometry):
                 ycoords,
                 color=color,
                 alpha=kwargs.get('alpha', 0.5),
-                linewidth=0)
+                linewidth=0,
+                label=kwargs.get('label', None))
 
         return ax
 
@@ -707,7 +713,8 @@ class LineString(Geometry):
         return data
 
     def interpolate(self, s, normalized=True):
-        return self.geometry.interpolate(s, normalized=normalized)
+        point = self.geometry.interpolate(s, normalized=normalized)
+        return Point(point.x, point.y)
 
     def resample(self, num_samples):
         vertices = [
