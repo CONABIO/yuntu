@@ -45,6 +45,13 @@ class Pipeline(ABC):
                 if dep.name not in self.names:
                     dep.set_pipeline(self)
                     dep.attach()
+                elif dep.key is not None:
+                    if dep.key not in self.nodes:
+                        dep.set_pipeline(self)
+                        dep.attach()
+                    elif dep.pipeline != self:
+                        dep.set_pipeline(self)
+                        dep.attach()
                 if dep.key is None:
                     message = ("Automatic input assignation was not " +
                                f" safe for node with name '{dep.name}'." +
@@ -188,9 +195,21 @@ class Pipeline(ABC):
                                " only allowded for existing nodes.")
             self.nodes[key].set_value(value)
         else:
-            value.set_pipeline(self)
-            self.nodes[key] = value
-            self.add_deps(key)
+            if value in self:
+                if value.key != key:
+                    for node_key in self.deps:
+                        if self.deps[node_key] is not None:
+                            for i in range(len(self.deps[node_key])):
+                                if self.deps[node_key][i] == value.key:
+                                    self.deps[node_key][i] = key
+                    former_key = value.key
+                    self.nodes[key] = self.nodes.pop(former_key)
+                    self.deps[key] = self.deps.pop(former_key)
+            else:
+                value.set_pipeline(self)
+                self.nodes[key] = value
+                self.add_deps(key)
+
 
     def __iter__(self):
         """Return node iterator."""

@@ -70,7 +70,7 @@ class DaskPipeline(Pipeline):
                 for dkey in self.deps[key]:
                     if dkey not in self.nodes:
                         raise KeyError(f"Dependency for node {key} with " +
-                                       "key {dkey} does not exist.")
+                                       f"key {dkey} does not exist.")
                     inputs.append(dkey)
                 if len(inputs) > 0:
                     graph[key] = (node.operation, *inputs)

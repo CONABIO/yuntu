@@ -120,10 +120,10 @@ class DaskOperation(Operation, ABC):
             raise ValueError(message)
         if not force and self._result is not None:
             return self._result
-        result = self.pipeline.compute([self.name],
+        result = self.pipeline.compute([self.key],
                                        force=force,
                                        client=None,
-                                       dask_config=dask_config)[self.name]
+                                       dask_config=dask_config)[self.key]
         if self.keep:
             self._result = result
         return result
