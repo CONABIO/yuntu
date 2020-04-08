@@ -29,6 +29,10 @@ class Window(ABC):
     def plot(self, ax=None, **kwargs):
         """Get a buffer window."""
 
+    def copy(self):
+        """Copy window object."""
+        return self.from_dict(self.to_dict())
+
     @classmethod
     def from_dict(cls, data):
         """Rebuild the window from dictionary data."""
@@ -283,7 +287,7 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
                 min_freq, max_freq
             ])
 
-        super().__init__(start=start, end=end, min=min, max=max)
+        super().__init__(start=start, end=end, min=min, max=max, **kwargs)
 
     def to_dict(self):
         """Get dictionary representation of window."""

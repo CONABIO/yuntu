@@ -4,24 +4,21 @@ from typing import Dict
 from typing import Any
 from typing import Union
 from uuid import uuid4
-from urllib.parse import urlparse
 from collections import namedtuple
 from collections import OrderedDict
 import os
 
 import numpy as np
 
-from yuntu.utils import download_file
-from yuntu.utils import scp_file
-from yuntu.utils import tmp_file
+
 from yuntu.core.windows import TimeWindow
 from yuntu.logging import logger
-from yuntu.core.media import Media
-from yuntu.core.annotation.annotated_object import AnnotatedObject
+from yuntu.core.media.time import TimeMedia
+from yuntu.core.media.time import TimeMediaMixin
+import yuntu.core.media.masked as masked_media
 from yuntu.core.audio.utils import read_info
 from yuntu.core.audio.utils import read_media
 from yuntu.core.audio.utils import write_media
-from yuntu.core.audio.utils import resample
 import yuntu.core.audio.audio_features as features
 
 
@@ -53,10 +50,9 @@ def media_info_is_complete(media_info: MediaInfoType) -> bool:
     return True
 
 
-class Audio(Media):
+class Audio(TimeMedia):
     """Base class for all audio."""
 
-    window_class = TimeWindow
     features_class = features.AudioFeatures
 
     # pylint: disable=redefined-builtin, invalid-name
@@ -68,7 +64,9 @@ class Audio(Media):
             media_info: Optional[MediaInfoType] = None,
             metadata: Optional[Dict[str, Any]] = None,
             id: Optional[str] = None,
-            read_samplerate: Optional[int] = None,
+            samplerate: Optional[int] = None,
+            duration: Optional[float] = None,
+            resolution: Optional[float] = None,
             **kwargs):
         """Construct an Audio object.
 
@@ -95,7 +93,7 @@ class Audio(Media):
         lazy: bool, optional
             A boolean flag indicating whether loading of audio data
             is done only when required. Defaults to false.
-        read_samplerate: int, optional
+        samplerate: int, optional
             The samplerate used to read the audio data. If different
             from the native sample rate, the audio will be resampled
             at read.
@@ -118,28 +116,44 @@ class Audio(Media):
         if media_info is None:
             media_info = self.read_info()
 
-        if not media_info_is_complete(media_info):
-            message = (
-                f'Media info is not complete. Provided media info'
-                f'{media_info}. Required fields: {str(MEDIA_INFO_FIELDS)}')
-            raise ValueError(message)
+        if not isinstance(media_info, MediaInfo):
+            if not media_info_is_complete(media_info):
+                message = (
+                    f'Media info is not complete. Provided media info'
+                    f'{media_info}. Required fields: {str(MEDIA_INFO_FIELDS)}')
+                raise ValueError(message)
+            media_info = MediaInfo(**media_info)
 
-        self.media_info = MediaInfo(**media_info)
+        self.media_info = media_info
 
-        if read_samplerate is None:
-            read_samplerate = self.media_info.samplerate
-        self.read_samplerate = read_samplerate
+        if samplerate is None:
+            samplerate = self.media_info.samplerate
+
+        if resolution is None:
+            resolution = samplerate
+
+        if duration is None:
+            duration = self.media_info.duration
 
         self.features = self.features_class(self)
 
-        super().__init__(array=array, path=self.path, **kwargs)
+        super().__init__(
+            array=array,
+            path=self.path,
+            duration=duration,
+            resolution=resolution,
+            **kwargs)
+
+    @property
+    def samplerate(self):
+        return self.resolution
 
     @classmethod
     def from_instance(
             cls,
             recording,
             lazy: Optional[bool] = False,
-            read_samplerate: Optional[int] = None,
+            samplerate: Optional[int] = None,
             **kwargs):
         """Create a new Audio object from a database recording instance."""
         data = {
@@ -148,7 +162,7 @@ class Audio(Media):
             'media_info': recording.media_info,
             'metadata': recording.metadata,
             'lazy': lazy,
-            'read_samplerate': read_samplerate,
+            'samplerate': samplerate,
             'id': recording.id,
             **kwargs
         }
@@ -159,7 +173,7 @@ class Audio(Media):
             cls,
             dictionary: Dict[Any, Any],
             lazy: Optional[bool] = False,
-            read_samplerate: Optional[int] = None,
+            samplerate: Optional[int] = None,
             **kwargs):
         """Create a new Audio object from a dictionary of metadata."""
         if 'path' not in dictionary:
@@ -173,8 +187,8 @@ class Audio(Media):
         if lazy:
             dictionary['lazy'] = True
 
-        if read_samplerate is not None:
-            dictionary['read_samplerate'] = read_samplerate
+        if samplerate is not None:
+            dictionary['samplerate'] = samplerate
 
         return cls(**dictionary, **kwargs)
 
@@ -215,153 +229,14 @@ class Audio(Media):
             metadata=metadata,
             **kwargs)
 
-    @property
-    def times(self):
-        """Get the time array.
-
-        This is an array of the same length as the wav data array and holds
-        the time (in seconds) corresponding to each piece of the wav array.
-        """
-        start = self._get_start()
-        end = self._get_end()
-
-        if self.is_empty():
-            duration = end - start
-            length = int(duration * self.media_info.samplerate)
-        else:
-            length = len(self.array)
-
-        return np.linspace(start, end, length)
-
-    def resample(
-            self,
-            samplerate: int,
-            lazy: Optional[bool] = False,
-            **kwargs):
-        """Get a new Audio object with the resampled audio."""
-        audio_info = self.to_dict()
-        audio_info['window'] = self.window
-        audio_info['read_samplerate'] = samplerate
-        audio_info['media_info']['samplerate'] = samplerate
-        audio_info['lazy'] = lazy
-
-        if not self.path_exists():
-            data = resample(
-                self.array,
-                self.read_samplerate,
-                samplerate,
-                **kwargs)
-            audio_info['array'] = data
-
-        return Audio(**audio_info)
-
-    def get_index_from_time(self, time):
-        """Get the index of the wav array corresponding to the given time."""
-        start = self._get_start()
-        if time < start:
-            message = (
-                'Time earlier that start of recording file or window start '
-                'was requested')
-            raise ValueError(message)
-
-        if time > self._get_end():
-            message = (
-                'Time earlier that start of recording file or window start '
-                'was requested')
-            raise ValueError('Requested time is larger than audio duration')
-
-        index = int((time - start) * self.media_info.samplerate)
-        return index
-
-    def _get_start(self):
-        if self.window.start is not None:
-            return self.window.start
-        return 0
-
-    def _get_end(self):
-        if self.window.end is not None:
-            return self.window.end
-        return self.media_info.duration
-
-    def read(self, start=None, end=None):
-        """Read a section of the wav array.
-
-        Parameters
-        ----------
-        start: float, optional
-            Time at which read starts, in seconds. If not provided
-            start will be defined as the recording start. Should
-            be larger than 0. If a non trivial window is set, the
-            provided starting time should be larger that the window
-            starting time.
-        end: float, optional
-            Time at which read ends, in seconds. If not provided
-            end will be defined as the recording end. Should be
-            less than the duration of the audio. If a non trivial
-            window is set, the provided ending time should be
-            larger that the window ending time.
-
-        Returns
-        -------
-        np.array
-            The wav data contained in the demanded temporal limits.
-
-        Raises
-        ------
-        ValueError
-            When start is less than end, or end is larger than the
-            duration of the audio, or start is less than 0. If a non
-            trivial window is set, it will also throw an error if
-            the requested starting and ending times are smaller or
-            larger that those set by the window.
-        """
-        if start is None:
-            start = self._get_start()
-
-        if end is None:
-            end = self._get_end()
-
-        if start > end:
-            message = 'Read start should be less than read end.'
-            raise ValueError(message)
-
-        start_index = self.get_index_from_time(start)
-        end_index = self.get_index_from_time(end)
-        return self.array[start_index: end_index + 1]
-
-    def is_remote(self):
-        if os.path.exists(self.path):
-            return False
-
-        parsed = urlparse(self.path)
-
-        if not parsed.scheme:
-            return False
-
-        if parsed.scheme == 'file':
-            return False
-
-        return True
-
-    def remote_load(self):
-        parsed = urlparse(self.path)
-
-        if parsed.scheme in ['http', 'https']:
-            filename = os.path.basename(parsed.path)
-            with tmp_file(filename) as (name, tmpfile):
-                download_file(self.path, tmpfile)
-
-            return name
-
-        if parsed.scheme == 'scp':
-            filename = os.path.basename(parsed.path)
-            path = parsed.netloc+":"+parsed.path.replace("//", "/")
-            return scp_file(src=path, dest=filename)
-
-        message = (
-            'Remote loading is not implemented for '
-            f'scheme {parsed.scheme}')
-        raise NotImplementedError(message)
+    def _copy_dict(self, **kwargs):
+        return {
+            'timeexp': self.timeexp,
+            'media_info': self.media_info,
+            'metadata': self.metadata,
+            'id': self.id,
+            **super()._copy_dict(**kwargs),
+        }
 
     def read_info(self):
         if self.is_remote():
@@ -380,7 +255,7 @@ class Audio(Media):
 
         signal, _ = read_media(
             self.path,
-            self.read_samplerate,
+            self.samplerate,
             offset=start,
             duration=duration)
         return signal
@@ -395,21 +270,20 @@ class Audio(Media):
         self.path = path
 
         signal = self.array
-        out_sr = self.media_info.samplerate
-        if samplerate is not None:
-            out_sr = samplerate
+        if samplerate is None:
+            samplerate = self.samplerate
 
         write_media(self.path,
                     signal,
-                    out_sr,
+                    samplerate,
                     self.media_info.nchannels,
                     media_format)
 
-    def listen(self, speed_modifier: Optional[float] = 1):
+    def listen(self, speed: Optional[float] = 1):
         """Return HTML5 audio element player of current audio."""
         # pylint: disable=import-outside-toplevel
         from IPython.display import Audio as HTMLAudio
-        rate = self.media_info.samplerate * speed_modifier
+        rate = self.media_info.samplerate * speed
         return HTMLAudio(data=self.array, rate=rate)
 
     def plot(self, ax=None, **kwargs):
@@ -463,19 +337,6 @@ class Audio(Media):
 
         return ax
 
-    def to_mask(self, geometry):
-        """Return masked 1d array."""
-        start, _, end, _ = geometry.bounds
-        start_index = self.get_index_from_time(start)
-        end_index = self.get_index_from_time(end)
-
-        mask = np.zeros(self.media_info.length)
-        if end_index > start_index:
-            mask[start_index: end_index] = 1
-        else:
-            mask[start_index] = 1
-        return mask
-
     def to_dict(self, absolute_path=True):
         """Return a dictionary holding all audio metadata."""
         data = {
@@ -484,7 +345,7 @@ class Audio(Media):
             'metadata': self.metadata.copy(),
             'id': self.id,
             'window': self.window.to_dict(),
-            'read_samplerate': self.read_samplerate
+            'samplerate': self.samplerate
         }
 
         if self.path_exists():
@@ -522,62 +383,39 @@ class Audio(Media):
         args_string = ', '.join(args)
         return f'Audio({args_string})'
 
-    def cut(
-            self,
-            start_time: float = None,
-            end_time: float = None,
-            window: TimeWindow = None,
-            lazy=True):
-        """Get a window to the audio data.
 
-        Parameters
-        ----------
-        start: float, optional
-            Window starting time in seconds. If not provided
-            it will default to the beggining of the recording.
-        end: float, optional
-            Window ending time in seconds. If not provided
-            it will default to the duration of the recording.
-        window: TimeWindow, optional
-            A window object to use for cutting.
-        lazy: bool, optional
-            Boolean flag that determines if the fragment loads
-            its data lazily.
+@masked_media.masks(Audio)
+class MaskedAudio(TimeMediaMixin, masked_media.MaskedMedia):
+    def plot(self, ax=None, **kwargs):
+        # pylint: disable=import-outside-toplevel
+        import matplotlib.pyplot as plt
 
-        Returns
-        -------
-        Audio
-            The resulting audio object with the correct window set.
-        """
-        current_start = self._get_start()
-        current_end = self._get_end()
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
 
-        if start_time is None:
-            start_time = window.start if window.start is not None else current_start
+        ax.pcolormesh(
+            self.times,
+            [0, 1],
+            np.array([self.array]),
+            cmap=kwargs.get('cmap', 'gray'),
+            alpha=kwargs.get('alpha', 1))
 
-        if end_time is None:
-            end_time = window.end if window.end is not None else current_end
+        xlabel = kwargs.get('xlabel', False)
+        if xlabel:
+            if not isinstance(xlabel, str):
+                xlabel = 'Time (s)'
+            ax.set_xlabel(xlabel)
 
-        start_time = max(min(start_time, current_end), current_start)
-        end_time = max(min(end_time, current_end), current_start)
+        title = kwargs.get('title', False)
+        if title:
+            if not isinstance(title, str):
+                title = 'Mask'
+            ax.set_title(title)
 
-        if end_time < start_time:
-            message = 'Window is empty'
-            raise ValueError(message)
+        if kwargs.get('window', False):
+            linestyle = kwargs.get('window_linestyle', '--')
+            color = kwargs.get('window_color', 'red')
+            ax.axvline(self._get_start(), color=color, linestyle=linestyle)
+            ax.axvline(self._get_end(), color=color, linestyle=linestyle)
 
-        kwargs_dict = self.to_dict()
-        kwargs_dict['window'] = TimeWindow(start=start_time, end=end_time)
-        kwargs_dict['annotations'] = self.annotations.annotations
-        kwargs_dict['lazy'] = lazy
-
-        if not self.is_empty():
-            if start_time is not None:
-                start_time = self.get_index_from_time(start_time)
-
-            if end_time is not None:
-                end_time = self.get_index_from_time(end_time)
-
-            data = self.array[slice(start_time, end_time)]
-            kwargs_dict['data'] = data.copy()
-
-        return Audio(**kwargs_dict)
+        return ax

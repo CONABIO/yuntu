@@ -164,11 +164,14 @@ class DaskPipeline(Pipeline):
         """Compute pipeline."""
         if nodes is None:
             nodes = [key for key in self.nodes if self.nodes[key].is_output]
+
         if not isinstance(nodes, (tuple, list)):
             message = "Argument 'nodes' must be a tuple or a list."
             raise ValueError(message)
+
         if dask_config is None:
             dask_config = DASK_CONFIG
+
         config = DictInput("dask_config", data=dask_config)
         self['dask_config'] = config
         return self.get_nodes(nodes,

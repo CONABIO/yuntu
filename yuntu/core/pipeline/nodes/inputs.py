@@ -69,7 +69,7 @@ class NumpyArrayInput(PickleableInput):
     def validate(self, data):
         if data is None:
             return False
-        if not isinstance(data, np.array):
+        if not isinstance(data, np.ndarray):
             return False
         return True
 

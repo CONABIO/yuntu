@@ -91,6 +91,9 @@ class AnnotatedObject:
     annotation_list_class = AnnotationList
 
     def __init__(self, annotations=None, **kwargs):
+        if annotations is None:
+            annotations = []
+
         filtered_annotations = self.filter_annotations(annotations)
         self.annotations = self.annotation_list_class(
             self,
