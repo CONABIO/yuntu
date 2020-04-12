@@ -78,8 +78,9 @@ class Geometry(ABC):
 
     def __repr__(self):
         args = ', '.join([
-            '{}={}'.format(key, value)
+            '{}={}'.format(key, repr(value))
             for key, value in self.to_dict().items()
+            if key != 'type'
         ])
         name = type(self).__name__
         return f'{name}({args})'
@@ -129,7 +130,7 @@ class Geometry(ABC):
         transformed = geom_utils.transform_geometry(
             self.geometry,
             transform)
-        return LineString(geometry=transformed)
+        return type(self)(geometry=transformed)
 
     def intersects(self, other):
         if isinstance(other, (windows.Window, Geometry)):
@@ -147,6 +148,33 @@ class Geometry(ABC):
 
     def to_dict(self):
         return {'type': self.name.value}
+
+    @staticmethod
+    def from_geometry(geometry):
+        try:
+            geom_type = Geometry.Types[geometry.geom_type]
+        except AttributeError:
+            message = (
+                'The given geometry does not have a geom_type'
+                ' attribute.')
+            raise ValueError(message)
+        except KeyError:
+            message = (
+                f'The geom_type {geometry.geom_type} is no implemented'
+                ' in yuntu')
+            raise ValueError(message)
+
+        if geom_type == Geometry.Types.Point:
+            return Point(geometry=geometry)
+
+        if geom_type == Geometry.Types.LineString:
+            return LineString(geometry=geometry)
+
+        if geom_type == Geometry.Types.Polygon:
+            return Polygon(geometry=geometry)
+
+        message = f'Geometry Type {geom_type} has not been implemented'
+        raise NotImplementedError(message)
 
     @staticmethod
     def from_dict(data):
@@ -264,7 +292,8 @@ class TimeLine(Geometry):
             self.time,
             linewidth=kwargs.get('linewidth', None),
             linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', None))
+            color=kwargs.get('color', None),
+            label=kwargs.get('label', None))
 
         return ax
 
@@ -323,7 +352,7 @@ class TimeInterval(Geometry):
         time = _parse_args(scale, 'scale', 'time', **kwargs)
 
         if center is None:
-            center = 0
+            center = (self.start_time + self.end_time) / 2
         elif isinstance(center, (list, tuple)):
             center = center[0]
 
@@ -363,7 +392,8 @@ class TimeInterval(Geometry):
                 self.start_time,
                 self.end_time,
                 alpha=kwargs.get('alpha', 0.5),
-                color=color)
+                color=color,
+                label=kwargs.get('label', None))
 
         return ax
 
@@ -419,7 +449,8 @@ class FrequencyLine(Geometry):
             self.freq,
             linewidth=kwargs.get('linewidth', None),
             linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', None))
+            color=kwargs.get('color', None),
+            label=kwargs.get('label', None))
 
         return ax
 
@@ -479,7 +510,7 @@ class FrequencyInterval(Geometry):
         freq = _parse_args(scale, 'scale', 'freq', index=1, **kwargs)
 
         if center is None:
-            center = 0
+            center = (self.min_freq + self.max_freq) / 2
         elif isinstance(center, (list, tuple)):
             center = center[0]
 
@@ -519,7 +550,8 @@ class FrequencyInterval(Geometry):
                 self.min_freq,
                 self.max_freq,
                 alpha=kwargs.get('alpha', 0.5),
-                color=color)
+                color=color,
+                label=kwargs.get('label', None))
 
         return ax
 
@@ -566,7 +598,8 @@ class Point(Geometry):
             [self.freq],
             s=kwargs.get('size', None),
             color=kwargs.get('color', None),
-            marker=kwargs.get('marker', None))
+            marker=kwargs.get('marker', None),
+            label=kwargs.get('label', None))
 
         return ax
 
@@ -624,6 +657,18 @@ class BBox(Geometry):
         freq = (self.min_freq + self.max_freq) / 2
         return Point(time=time, freq=freq)
 
+    @property
+    def time_range(self):
+        return TimeInterval(
+            start_time=self.start_time,
+            end_time=self.end_time)
+
+    @property
+    def frequency_range(self):
+        return FrequencyInterval(
+            min_freq=self.min_freq,
+            max_freq=self.max_freq)
+
     def buffer(self, buffer=None, **kwargs):
         time, freq = _parse_tf(buffer, 'buffer', default=0, **kwargs)
         start_time = self.start_time - time
@@ -659,7 +704,8 @@ class BBox(Geometry):
                 ycoords,
                 color=color,
                 alpha=kwargs.get('alpha', 0.5),
-                linewidth=0)
+                linewidth=0,
+                label=kwargs.get('label', None))
 
         return ax
 
@@ -706,14 +752,46 @@ class LineString(Geometry):
         data['wkt'] = self.wkt
         return data
 
-    def interpolate(self, s, normalized=True):
-        return self.geometry.interpolate(s, normalized=normalized)
+    def interpolate(self, s, normalized=True, ratio=1):
+        geometry = self.geometry
+        if ratio != 1:
+            geometry = geom_utils.scale_geometry(
+                geometry,
+                xfact=ratio,
+                origin=(0, 0))
 
-    def resample(self, num_samples):
+        point = geometry.interpolate(s, normalized=normalized)
+
+        if ratio != 1:
+            point = geom_utils.scale_geometry(
+                point,
+                xfact=1/ratio,
+                origin=(0, 0))
+
+        return Point(point.x, point.y)
+
+    def resample(self, num_samples, ratio=1):
+        geometry = self.geometry
+
+        if ratio != 1:
+            geometry = geom_utils.scale_geometry(
+                geometry,
+                xfact=ratio,
+                origin=(0, 0))
+
         vertices = [
-            self.interpolate(param)
+            geometry.interpolate(param, normalized=True)
             for param in np.linspace(0, 1, num_samples, endpoint=True)
         ]
+
+        if ratio != 1:
+            vertices = [
+                geom_utils.scale_geometry(
+                    point,
+                    xfact=1/ratio,
+                    origin=(0, 0))
+                for point in vertices
+            ]
         return LineString(vertices=vertices)
 
     def plot(self, ax=None, **kwargs):
@@ -729,7 +807,7 @@ class LineString(Geometry):
             linewidth=kwargs.get('linewidth', None),
             color=kwargs.get('color', None),
             linestyle=kwargs.get('linestyle', '--'),
-        )
+            label=kwargs.get('label', None))
 
         color = lineplot.get_color()
 
@@ -741,6 +819,15 @@ class LineString(Geometry):
                 s=kwargs.get('size', None))
 
         return ax
+
+    @property
+    def bbox(self):
+        start_time, min_freq, end_time, max_freq = self.bounds
+        return BBox(
+            start_time=start_time,
+            end_time=end_time,
+            min_freq=min_freq,
+            max_freq=max_freq)
 
 
 class Polygon(Geometry):
@@ -760,6 +847,15 @@ class Polygon(Geometry):
         super().__init__(geometry=geometry)
 
         self.wkt = self.geometry.wkt
+
+    @property
+    def bbox(self):
+        start_time, min_freq, end_time, max_freq = self.bounds
+        return BBox(
+            start_time=start_time,
+            end_time=end_time,
+            min_freq=min_freq,
+            max_freq=max_freq)
 
     def to_dict(self):
         data = super().to_dict()
@@ -786,8 +882,7 @@ class Polygon(Geometry):
                 *interior.xy,
                 linewidth=kwargs.get('linewidth', None),
                 color=color,
-                linestyle=kwargs.get('linestyle', '--'),
-            )
+                linestyle=kwargs.get('linestyle', '--'))
 
         if kwargs.get('fill', True):
             if self.geometry.exterior.is_ccw:
@@ -817,6 +912,7 @@ class Polygon(Geometry):
                 ycoords,
                 color=color,
                 alpha=kwargs.get('alpha', 0.5),
-                linewidth=0)
+                linewidth=0,
+                label=kwargs.get('label', None))
 
         return ax

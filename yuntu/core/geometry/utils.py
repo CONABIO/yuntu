@@ -17,14 +17,6 @@ import shapely.ops as shapely_ops
 from skimage.draw import polygon, line, circle
 
 
-class Geometries(Enum):
-    LINESTRING = 'LineString'
-    POINT = 'Point'
-    POLYGON = 'Polygon'
-    MULTIPOLYGON = 'MultiPolygon'
-    MULTILINESTRING = 'MultiLineString'
-
-
 def point_geometry(x, y):
     """Return point geometry.
 
@@ -123,47 +115,11 @@ def buffer_geometry(geom, buffer):
         New geometry with buffer applied on each dimension.
     """
     ratio = buffer[1] / buffer[0]
-    geometry = shapely_affinity.scale(geom, xfact=ratio)
+    geometry = shapely_affinity.scale(geom, xfact=ratio, origin=(0, 0))
     geometry = geometry.buffer(buffer[1],
                                cap_style=1,
                                join_style=1)
-    return shapely_affinity.scale(geometry, xfact=1/ratio)
-
-
-def validate_geometry(geom, geom_type=Geometries.LINESTRING):
-    """Validate geometry by type.
-
-    Parameters
-    ----------
-    geom: shapely.geometry
-        Geometry to validate.
-    geom_type: str
-        Target geometry type.
-
-    Returns
-    -------
-    valid: bool
-        Boolean result of validation.
-
-    Raises
-    ------
-    NotImplementedError
-        If target geometry type is not supported.
-    """
-    if geom_type == Geometries.LINESTRING:
-        return isinstance(geom, LineString)
-
-    if geom_type == Geometries.POLYGON:
-        return isinstance(geom, Polygon)
-
-    if geom_type == Geometries.MULTILINESTRING:
-        return isinstance(geom, MultiLineString)
-
-    if geom_type == Geometries.MULTIPOLYGON:
-        return isinstance(geom, MultiPolygon)
-
-    message = 'Unsopported geometry type'
-    raise NotImplementedError(message)
+    return shapely_affinity.scale(geometry, xfact=1/ratio, origin=(0, 0))
 
 
 def geom_from_wkt(wkt):
