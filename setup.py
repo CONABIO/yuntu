@@ -43,6 +43,7 @@ setup(
                       'tqdm',
                       'dask[complete]',
                       'fastparquet',
+                      'pygraphviz',
                       'pymongo'],
     classifiers=[
         'Programming Language :: Python :: 3.6',

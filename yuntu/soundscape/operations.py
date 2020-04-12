@@ -1,8 +1,14 @@
 """Operations for soundscape Pipeline."""
+import numpy as np
 import dask.dataframe as dd
 from yuntu.core.audio.audio import Audio, MEDIA_INFO_FIELDS
-from yuntu.core.pipeline.nodes.decorators import dd_op
+from yuntu.core.pipeline.node.decorators import dd_op
 from yuntu.soundscape.utils import slice_windows
+from yuntu.core.pipeline.node.places import DictPlace
+from yuntu.core.pipeline.node.places import PickleablePlace
+from yuntu.core.pipeline.node.places import ScalarPlace
+from yuntu.core.pipeline.node.extended import PandasDataFramePlace
+from yuntu.core.pipeline.node.extended import DaskDataFramePlace
 from yuntu.soundscape.dataframe import SoundscapeAccessor
 
 
@@ -51,9 +57,19 @@ def feature_indices(row, indices):
     return row
 
 
-@dd_op(name='slice_features', is_output=False, persist=True)
-def slice_features(recordings, config, meta):
+@dd_op(name='slice_features', persist=True,
+       signature=((DaskDataFramePlace, DictPlace), (DaskDataFramePlace,)))
+def slice_features(recordings, config):
     """Produce feature slices dataframe."""
+    meta = [(name, dtype)
+            for name, dtype in zip(recordings.columns,
+                                   recordings.dtypes.values)]
+    meta += [('start_time', np.dtype('float64')),
+             ('end_time', np.dtype('float64')),
+             ('min_freq', np.dtype('float64')),
+             ('max_freq', np.dtype('float64')),
+             ('weight', np.dtype('float64')),
+             ('feature_cut', np.dtype('float64'))]
     result = recordings.apply(feature_slices,
                               meta=meta,
                               axis=1,
@@ -67,25 +83,42 @@ def slice_features(recordings, config, meta):
     return exploded_slices
 
 
-@dd_op(name='apply_indices', is_output=True, persist=True, keep=True)
-def apply_indices(slices, indices, meta):
+@dd_op(name='apply_indices', is_output=True, persist=True,
+       keep=True, signature=((DaskDataFramePlace, PickleablePlace),
+                             (DaskDataFramePlace, )))
+def apply_indices(slices, indices):
     """Apply acoustic indices to slices."""
     index_names = [index.name for index in indices]
     if len(index_names) != len(set(index_names)):
         message = "Index names have duplicates. Please use a diferent name" + \
                   " for each index to compute."
         raise ValueError(message)
+
+    meta = [('id', np.dtype('int64')),
+            ('start_time', np.dtype('float64')),
+            ('end_time', np.dtype('float64')),
+            ('min_freq', np.dtype('float64')),
+            ('max_freq', np.dtype('float64')),
+            ('weight', np.dtype('float64')),
+            ('feature_cut', np.dtype('float64'))]
+
+    meta += [(index.name,
+             np.dtype('float64'))
+             for index in indices]
+
     results = slices.apply(feature_indices,
                            meta=meta,
                            axis=1,
                            indices=indices)
+
     return results.drop(['feature_cut'], axis=1)
 
 
-@dd_op(name='as_dd')
-def as_dd(pd_dataframe, dask_config):
+@dd_op(name='as_dd', signature=((PandasDataFramePlace, ScalarPlace),
+                                (DaskDataFramePlace,)))
+def as_dd(pd_dataframe, npartitions):
     """Transform audio dataframe to a dask dataframe for computations."""
     dask_dataframe = dd.from_pandas(pd_dataframe,
-                                    npartitions=dask_config['npartitions'],
+                                    npartitions=npartitions,
                                     name="as_dd")
     return dask_dataframe
