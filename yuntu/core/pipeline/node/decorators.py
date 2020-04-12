@@ -35,16 +35,7 @@ def dd_op(name=None,
                     signature=signature,
                     **kwargs):
             all_args = list(args) + [kwargs[key] for key in kwargs]
-            if pipeline is None:
-                if len(all_args) != 0:
-                    pipeline = knit(*all_args)
-            else:
-                name = pipeline.name
-                if len(all_args) != 0:
-                    pipeline = pipeline.merge(knit(*all_args))
-                    pipeline.name = name
 
-            transition_outs = []
             if outputs is not None:
                 if not isinstance(outputs, list):
                     message = "Argument 'outputs' must be a tuple or a list."
@@ -59,6 +50,18 @@ def dd_op(name=None,
                             failed_class = type(out)
                             message = f"Incompatible output {failed_class}."
                             raise ValueError(message)
+
+            if pipeline is None:
+                if len(all_args) != 0:
+                    pipeline = knit(*all_args)
+            else:
+                name = pipeline.name
+                if len(all_args) != 0:
+                    pipeline = pipeline.merge(knit(*all_args))
+                    pipeline.name = name
+
+            transition_outs = []
+            if outputs is not None:
                 for ind, out in enumerate(outputs):
                     if isinstance(out, str):
                         node_class = signature[1][ind]
