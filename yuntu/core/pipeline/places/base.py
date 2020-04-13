@@ -3,11 +3,10 @@ from abc import ABC
 from abc import abstractmethod
 import os
 import pickle
-from copy import copy
 import dill
 import pandas as pd
-from yuntu.core.pipeline.node.base import Node
-from yuntu.core.pipeline.dask import DaskPipeline
+from yuntu.core.pipeline.base import Node
+from yuntu.core.pipeline.base import Pipeline
 
 
 class Place(Node, ABC):
@@ -46,7 +45,7 @@ class Place(Node, ABC):
                 self.pipeline = self._parent.pipeline
 
         if self.pipeline is None:
-            self.pipeline = DaskPipeline(name=self.name)
+            self.pipeline = Pipeline(name=self.name)
 
         self.attach()
 

@@ -3,17 +3,17 @@
 This methods are intended to make operation declaration more friendly.
 """
 import functools
-from yuntu.core.pipeline.node.transitions import Transition
-from yuntu.core.pipeline.node.tools import knit
+from yuntu.core.pipeline.transitions.base import Transition
+from yuntu.core.pipeline.tools import knit
 
 
-def dd_op(name=None,
-          pipeline=None,
-          is_output=False,
-          persist=False,
-          keep=False,
-          outputs=None,
-          signature=None):
+def transition(name=None,
+               pipeline=None,
+               is_output=False,
+               persist=False,
+               keep=False,
+               outputs=None,
+               signature=None):
     """Return a dask dataframe operation.
 
     A dask dataframe operation returns a dataframe and has methods for saving
@@ -51,13 +51,13 @@ def dd_op(name=None,
                             message = f"Incompatible output {failed_class}."
                             raise ValueError(message)
 
-            if pipeline is None:
+            if pipeline is not None:
                 if len(all_args) != 0:
-                    pipeline = knit(*all_args)
+                    pipeline = pipeline.merge(knit(*all_args, prune=True))
+                    pipeline.name = name
             else:
-                name = pipeline.name
                 if len(all_args) != 0:
-                    pipeline = pipeline.merge(knit(*all_args))
+                    pipeline = knit(*all_args, prune=True)
                     pipeline.name = name
 
             transition_outs = []
@@ -83,14 +83,15 @@ def dd_op(name=None,
                                                       persist=persist,
                                                       keep=keep))
 
-            transition = Transition(name=name,
-                                    pipeline=pipeline,
-                                    operation=func,
-                                    inputs=all_args,
-                                    outputs=transition_outs,
-                                    signature=signature)
-            if len(transition.outputs) == 1:
-                return transition.outputs[0]
-            return transition.outputs
+            new_trans = Transition(name=name,
+                                   pipeline=pipeline,
+                                   operation=func,
+                                   inputs=all_args,
+                                   outputs=transition_outs,
+                                   signature=signature)
+
+            if len(new_trans.outputs) == 1:
+                return new_trans.outputs[0]
+            return new_trans.outputs
         return creator
     return wrapper

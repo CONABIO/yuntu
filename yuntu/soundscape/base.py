@@ -1,9 +1,9 @@
 """Soundscape base pipeline."""
-from yuntu.core.pipeline.dask import DaskPipeline
-from yuntu.core.pipeline.node.inputs import DictInput
-from yuntu.core.pipeline.node.inputs import ScalarInput
-from yuntu.core.pipeline.node.inputs import PickleableInput
-from yuntu.core.pipeline.node.extended import PandasDataFrameInput
+from yuntu.core.pipeline.dask import Pipeline
+from yuntu.core.pipeline.places.base import DictPlace
+from yuntu.core.pipeline.places.base import ScalarPlace
+from yuntu.core.pipeline.places.base import PickleablePlace
+from yuntu.core.pipeline.places.extended import PandasDataFramePlace
 import yuntu.soundscape.operations as ops
 from yuntu.soundscape.indices import EXAG
 from yuntu.soundscape.indices import INFORMATION
@@ -24,7 +24,7 @@ FEATURE_CONFIG = {"n_fft": N_FFT,
                   "window_function": WINDOW_FUNCTION}
 
 
-class SoundscapePipeline(DaskPipeline):
+class SoundscapePipeline(Pipeline):
     """Base class for soundscape pipelines."""
 
     def __init__(self,
@@ -53,20 +53,20 @@ class SoundscapePipeline(DaskPipeline):
 
     def build(self):
         """Build soundscape processing pipeline."""
-        slice_config = (DictInput(name='slice_config',
+        slice_config = (DictPlace(name='slice_config',
                         data={'time_unit': self.time_unit,
                               'frequency_bins': self.frequency_bins,
                               'frequency_limits': self.frequency_limits,
                               'feature_type': self.feature_type,
                               'feature_config': self.feature_config},
                         pipeline=self))
-        recordings = (PandasDataFrameInput(name='recordings',
+        recordings = (PandasDataFramePlace(name='recordings',
                       data=self.recordings,
                       pipeline=self))
-        indices = (PickleableInput(name='indices',
+        indices = (PickleablePlace(name='indices',
                    data=self.indices,
                    pipeline=self))
-        npartitions = ScalarInput("npartitions",
+        npartitions = ScalarPlace("npartitions",
                                   data=10,
                                   pipeline=self)
         recordings_dd = ops.as_dd(recordings, npartitions)

@@ -1,20 +1,19 @@
 """Place nodes that behave like frames."""
 import os
 from copy import copy
-import glob
 import numpy as np
 import dask.array as dask_array
 from dask.delayed import Delayed
 import dask.bag as dask_bag
 import dask.dataframe as dd
 import pandas as pd
-from yuntu.core.pipeline.node.base import Node
-from yuntu.core.pipeline.node.places import Place
-from yuntu.core.pipeline.node.places import DynamicPlace
-from yuntu.core.pipeline.node.places import PickleablePlace
-from yuntu.core.pipeline.node.places import ScalarPlace
-from yuntu.core.pipeline.node.places import DictPlace
-from yuntu.core.pipeline.node.transitions import Transition
+from yuntu.core.pipeline.base import Node
+from yuntu.core.pipeline.places.base import Place
+from yuntu.core.pipeline.places.base import DynamicPlace
+from yuntu.core.pipeline.places.base import PickleablePlace
+from yuntu.core.pipeline.places.base import ScalarPlace
+from yuntu.core.pipeline.places.base import DictPlace
+from yuntu.core.pipeline.transitions.base import Transition
 
 
 class NumpyArrayMixin:
@@ -28,7 +27,7 @@ class NumpyArrayMixin:
             if isinstance(item, Node):
                 op_inputs.append(item)
             else:
-                input_class = _guess_input_class(item)
+                input_class = _guess_place_class(item)
                 op_inputs.append(input_class(name=f"{ufunc.__name__}" +
                                              f"_input_{arg_count}",
                                              pipeline=self.pipeline,
@@ -45,7 +44,7 @@ class NumpyArrayMixin:
             if isinstance(out, Node):
                 op_outputs.append(out)
             else:
-                input_class = _guess_input_class(out)
+                input_class = _guess_place_class(out)
                 op_outputs.append(input_class(name=f"{ufunc.__name__}" +
                                               f"_input_ufunc_out_{arg_count}",
                                               pipeline=self.pipeline,
@@ -62,7 +61,7 @@ class NumpyArrayMixin:
             if isinstance(kwargs[key], Node):
                 extra_args.append(kwargs[key])
             else:
-                input_class = _guess_input_class(kwargs[key])
+                input_class = _guess_place_class(kwargs[key])
                 extra_args.append(input_class(name=f"{key}",
                                               pipeline=self.pipeline,
                                               data=kwargs[key]))
@@ -336,7 +335,7 @@ class DaskDataFrameGroupByPlace(DynamicPlace, DaskSeriesMixin):
     data_class = dd.groupby.DataFrameGroupBy
 
 
-def _guess_input_class(data):
+def _guess_place_class(data):
     """Determine the closest fit amongst input nodes."""
     if data is None:
         return PickleablePlace
@@ -361,6 +360,24 @@ def _guess_input_class(data):
     if DaskDataFramePlace().validate(data):
         return DaskDataFramePlace
     return PickleablePlace
+
+
+def place(data,
+          name=None,
+          pipeline=None,
+          parent=None,
+          is_output=False,
+          persist=False,
+          keep=False):
+    """Return input node according to data input class."""
+    place_class = _guess_place_class(data)
+    return place_class(name=name,
+                       data=data,
+                       pipeline=pipeline,
+                       parent=parent,
+                       is_output=is_output,
+                       persist=persist,
+                       keep=keep)
 
 
 NUMPY_ARRAY_METHOD_SPECS = {
@@ -707,8 +724,8 @@ DASK_DATAFRAME_METHOD_SPECS = {
 
 DASK_DATAFRAME_GROUPBY_METHOD_SPECS = {
     # 'aggregate': {'out_sig':  ((ScalarPlace,
-    #                                   DaskSeriesPlace,
-    #                                   DaskDataFramePlace),)},
+    #                             DaskSeriesPlace,
+    #                             DaskDataFramePlace),)},
     # 'apply': {'out_sig':  ((DaskSeriesPlace, DaskDataFramePlace),)},
     # 'count': {'out_sig':  ((DaskSeriesPlace, DaskDataFramePlace),)},
     'cumcount': {'out_sig':  (DaskSeriesPlace,)},
@@ -771,7 +788,7 @@ def _build_method_op(self, method_name, args, kwargs, op_class, out_sig):
         if isinstance(item, Node):
             op_args.append(item)
         else:
-            input_class = _guess_input_class(item)
+            input_class = _guess_place_class(item)
             op_args.append(input_class(name=f"{method_name}" +
                                             f"_input_{arg_count}",
                                        pipeline=self.pipeline,

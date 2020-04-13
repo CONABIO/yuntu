@@ -1,7 +1,7 @@
 """Operation pipeline nodes."""
 from copy import copy
-from yuntu.core.pipeline.node.base import Node
-from yuntu.core.pipeline.dask import DaskPipeline
+from yuntu.core.pipeline.base import Node
+from yuntu.core.pipeline.base import Pipeline
 
 
 class Transition(Node):
@@ -145,7 +145,7 @@ class Transition(Node):
             self.pipeline = self._places_pipeline()
 
         if self.pipeline is None:
-            self.pipeline = DaskPipeline(name=self.name)
+            self.pipeline = Pipeline(name=self.name)
 
         self.attach()
 

@@ -1,6 +1,6 @@
 """Pandas accesor for soundscape methods."""
-import pandas as pd
 import numpy as np
+import pandas as pd
 from sklearn.manifold import Isomap
 
 

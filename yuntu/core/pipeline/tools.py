@@ -1,13 +1,6 @@
 """Collection of tools for pipeline management."""
 from copy import copy
-from yuntu.core.pipeline.node.base import Node
-from yuntu.core.pipeline.node.extended import _guess_input_class
-
-
-def input_node(data, name=None, pipeline=None):
-    """Return input node according to data input class."""
-    input_class = _guess_input_class(data)
-    return input_class(name=name, data=data, pipeline=pipeline)
+from yuntu.core.pipeline.base import Node
 
 
 def are_compatible(node1, node2):
@@ -19,7 +12,7 @@ def are_compatible(node1, node2):
     return False
 
 
-def knit(*nodes):
+def knit(*nodes, prune=False):
     """Knit nodes into a single pipeline."""
     for ind, node in enumerate(nodes):
         if not isinstance(node, Node):
@@ -35,7 +28,7 @@ def knit(*nodes):
 
     for ind, pipeline in enumerate(pipelines):
         if ind > 0:
-            new_pipeline = new_pipeline & pipeline
+            new_pipeline.merge(pipeline, prune=prune)
 
     str_names = ",".join([node.name if node.name is not None
                           else 'NoName'for node in nodes])
