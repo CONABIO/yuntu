@@ -10,7 +10,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
 from networkx.drawing.nx_agraph import graphviz_layout
-import dask.bag as dask_bag
 from dask.threaded import get
 from dask.optimization import cull
 from dask.optimization import inline as dask_inline
@@ -57,10 +56,6 @@ class Node(ABC):
                 "name": self.name,
                 "node_type": self.node_type}
         return meta
-
-    @abstractmethod
-    def is_compatible(self, other):
-        """Check if nodes is compatible with self for replacement."""
 
     def refresh_index(self):
         """Retrieve index from pipeline if exists and update."""
@@ -117,10 +112,6 @@ class Node(ABC):
         elif self.pipeline[self.key] != self:
             self.pipeline[self.key] = self
 
-    @abstractmethod
-    def __copy__(self):
-        """Return a shallow copy of self."""
-
     def validate(self, data):
         """Validate data."""
         if data is None:
@@ -128,6 +119,10 @@ class Node(ABC):
         if self.data_class is None:
             return True
         return isinstance(data, self.data_class)
+
+    @abstractmethod
+    def is_compatible(self, other):
+        """Check if nodes is compatible with self for replacement."""
 
     @abstractmethod
     def future(self,
@@ -147,6 +142,21 @@ class Node(ABC):
                 **kwargs):
         """Compute self."""
 
+    @abstractmethod
+    def __call__(self,
+                 client=None,
+                 strict=False,
+                 feed=None,
+                 read=None,
+                 write=False,
+                 keep=None,
+                 **inputs):
+        """Execute node on inputs."""
+
+    @abstractmethod
+    def __copy__(self):
+        """Return a shallow copy of self."""
+
 
 class MetaPipeline(ABC):
     """Base class for processing pipelines."""
@@ -161,6 +171,45 @@ class MetaPipeline(ABC):
         self.transitions = OrderedDict()
         self.nodes_up = OrderedDict()
         self.nodes_down = OrderedDict()
+
+    @property
+    def struct(self):
+        """Full networkx directed acyclic graph."""
+        return self.build_struct()
+
+    @property
+    def outputs(self):
+        """Pipeline outputs."""
+        return [key for key in self.nodes
+                if len(self.nodes_down[key]) == 0]
+
+    @property
+    def inputs(self):
+        inputs = [key for key in self.places
+                  if len(self.nodes_up[key]) == 0]
+        for node in inputs:
+            yield node
+
+    @property
+    def operations(self):
+        operations = [key for key in self.transitions]
+        for node in operations:
+            yield node
+
+    @property
+    def names(self):
+        """Return iterator of names."""
+        keys = list(self.keys())
+        unique_names = list(set([self.nodes[key].name for key in keys]))
+        for name in unique_names:
+            yield name
+
+    @property
+    def identifiers(self):
+        """Return an iterator of tuples of the form (index, key, name)."""
+        keys = list(self.keys())
+        for i in range(len(keys)):
+            yield i, keys[i], self.nodes[keys[i]].name
 
     def add_node(self, node):
         """Add node to pipeline."""
@@ -287,6 +336,8 @@ class MetaPipeline(ABC):
                         dep.attach()
 
                 nodes_up.append(dep.key)
+                if key not in self.nodes_down[dep.key]:
+                    self.nodes_down[dep.key].append(key)
 
             for child in self.nodes[key].outputs:
                 if child.key is None:
@@ -580,121 +631,6 @@ class MetaPipeline(ABC):
 
         return path
 
-    @property
-    def struct(self):
-        """Full networkx directed acyclic graph."""
-        return self.build_struct()
-
-    @property
-    def outputs(self):
-        """Pipeline outputs."""
-        return [key for key in self.nodes
-                if len(self.nodes_down[key]) == 0]
-
-    @property
-    def inputs(self):
-        inputs = [key for key in self.places
-                  if len(self.nodes_up[key]) == 0]
-        for node in inputs:
-            yield node
-
-    @property
-    def operations(self):
-        operations = [key for key in self.transitions]
-        for node in operations:
-            yield node
-
-    @property
-    def names(self):
-        """Return iterator of names."""
-        keys = list(self.keys())
-        unique_names = list(set([self.nodes[key].name for key in keys]))
-        for name in unique_names:
-            yield name
-
-    @property
-    def identifiers(self):
-        """Return an iterator of tuples of the form (index, key, name)."""
-        keys = list(self.keys())
-        for i in range(len(keys)):
-            yield i, keys[i], self.nodes[keys[i]].name
-
-    def keys(self):
-        """Return iterator of keys."""
-        return self.nodes.keys()
-
-    def __len__(self):
-        """Return the number of pipeline nodes."""
-        return len(self.nodes)
-
-    def __getitem__(self, key):
-        """Return node with key."""
-        key = self.node_key(key)
-        return self.nodes[key]
-
-    def __delitem__(self, key):
-        key = self.node_key(key)
-        if self.nodes[key].is_place:
-            if self.nodes[key].parent is not None:
-                parent_key = self.nodes[key].parent.key
-                message = (f"This node is an output place for {parent_key}" +
-                           f" transition. Delete node {parent_key} fisrt. " +
-                           "If you want to set this place use " +
-                           "pipeline['node_key'] = new_node")
-                raise ValueError(message)
-        self.nodes[key].clear()
-        del self.nodes_up[key]
-        del self.nodes_down[key]
-        del self.nodes[key]
-
-    def __setitem__(self, key, value):
-        """Set node with key to value."""
-        if not isinstance(value, Node):
-            if key not in self.nodes:
-                raise KeyError("Key not found. Setting node result value is" +
-                               " only allowded for existing nodes.")
-            self.nodes[key].set_value(value)
-        else:
-            if value in self:
-                if value.key != key:
-                    for node_key in self.nodes:
-                        for ind, node in enumerate(self.nodes_up[node_key]):
-                            if node == value.key:
-                                self.nodes_up[node_key][ind] = key
-                        for ind, node in enumerate(self.nodes_down[node_key]):
-                            if node == value.key:
-                                self.nodes_down[node_key][ind] = key
-                    prev_key = value.key
-                    self.nodes[key] = self.nodes.pop(prev_key)
-                    self.nodes_up[key] = self.nodes_up.pop(prev_key)
-                    self.nodes_down[key] = self.nodes_down.pop(prev_key)
-                    if self.nodes[key].is_transition:
-                        self.transitions[key] = self.transitions.pop(prev_key)
-                    else:
-                        self.places[key] = self.places.pop(prev_key)
-                    self.nodes[key].refresh_key()
-            else:
-                value.set_pipeline(self)
-                self.nodes[key] = value
-                if self.nodes[key].is_transition:
-                    self.transitions[key] = self.nodes[key]
-                else:
-                    self.places[key] = self.nodes[key]
-                self.nodes[key].refresh_key()
-                self.add_neighbours(key)
-
-    def __iter__(self):
-        """Return node iterator."""
-        for key in self.nodes:
-            yield key
-
-    def __contains__(self, node):
-        """Return true if item in pipeline."""
-        if isinstance(node, Node):
-            nodes = list(self.nodes.items())
-            return node in [item[1] for item in nodes]
-        return node in list(self.nodes.keys())
-
     def plot(self,
              ax=None,
              nodes=None,
@@ -790,6 +726,10 @@ class MetaPipeline(ABC):
                                 )
         return ax
 
+    def keys(self):
+        """Return iterator of keys."""
+        return self.nodes.keys()
+
     @abstractmethod
     def get_node(self, key, feed=None, compute=False, force=False, **kwargs):
         """Get node from pipeline graph."""
@@ -805,8 +745,26 @@ class MetaPipeline(ABC):
                 **kwargs):
         """Compute pipeline."""
 
-    def __call___(self, client=None, strict=False, **inputs):
+    @abstractmethod
+    def __copy__(self):
+        """Copy self."""
+
+    def __call__(self,
+                 client=None,
+                 strict=False,
+                 feed=None,
+                 read=None,
+                 write=None,
+                 keep=None,
+                 **inputs):
         """Execute pipeline on inputs."""
+        if feed is not None:
+            if not isinstance(feed, dict):
+                message = "Argument 'feed' must be a dictionary."
+                raise ValueError(message)
+        else:
+            feed = {}
+
         if len(inputs) > 0:
             ikeys = list(inputs.keys())
             for key in ikeys:
@@ -829,7 +787,87 @@ class MetaPipeline(ABC):
                         message = (f"Wrong type for parameter {key}" +
                                    f". Pipeline expects: {data_class}")
                         raise TypeError(message)
-        return self.compute(client=client, feed=inputs, force=True)
+
+        feed.update(inputs)
+
+        return self.compute(client=client,
+                            feed=feed,
+                            read=read,
+                            write=write,
+                            keep=keep,
+                            force=True)
+
+    def __len__(self):
+        """Return the number of pipeline nodes."""
+        return len(self.nodes)
+
+    def __getitem__(self, key):
+        """Return node with key."""
+        key = self.node_key(key)
+        return self.nodes[key]
+
+    def __delitem__(self, key):
+        key = self.node_key(key)
+        if self.nodes[key].is_place:
+            if self.nodes[key].parent is not None:
+                parent_key = self.nodes[key].parent.key
+                message = (f"This node is an output place for {parent_key}" +
+                           f" transition. Delete node {parent_key} fisrt. " +
+                           "If you want to set this place use " +
+                           "pipeline['node_key'] = new_node")
+                raise ValueError(message)
+        self.nodes[key].clear()
+        del self.nodes_up[key]
+        del self.nodes_down[key]
+        del self.nodes[key]
+
+    def __setitem__(self, key, value):
+        """Set node with key to value."""
+        if not isinstance(value, Node):
+            if key not in self.nodes:
+                raise KeyError("Key not found. Setting node result value is" +
+                               " only allowded for existing nodes.")
+            self.nodes[key].set_value(value)
+        else:
+            if value in self:
+                if value.key != key:
+                    for node_key in self.nodes:
+                        for ind, node in enumerate(self.nodes_up[node_key]):
+                            if node == value.key:
+                                self.nodes_up[node_key][ind] = key
+                        for ind, node in enumerate(self.nodes_down[node_key]):
+                            if node == value.key:
+                                self.nodes_down[node_key][ind] = key
+                    prev_key = value.key
+                    self.nodes[key] = self.nodes.pop(prev_key)
+                    self.nodes_up[key] = self.nodes_up.pop(prev_key)
+                    self.nodes_down[key] = self.nodes_down.pop(prev_key)
+                    if self.nodes[key].is_transition:
+                        self.transitions[key] = self.transitions.pop(prev_key)
+                    else:
+                        self.places[key] = self.places.pop(prev_key)
+                    self.nodes[key].refresh_key()
+            else:
+                value.set_pipeline(self)
+                self.nodes[key] = value
+                if self.nodes[key].is_transition:
+                    self.transitions[key] = self.nodes[key]
+                else:
+                    self.places[key] = self.nodes[key]
+                self.nodes[key].refresh_key()
+                self.add_neighbours(key)
+
+    def __iter__(self):
+        """Return node iterator."""
+        for key in self.nodes:
+            yield key
+
+    def __contains__(self, node):
+        """Return true if item in pipeline."""
+        if isinstance(node, Node):
+            nodes = list(self.nodes.items())
+            return node in [item[1] for item in nodes]
+        return node in list(self.nodes.keys())
 
 
 class Pipeline(MetaPipeline):
@@ -860,7 +898,7 @@ class Pipeline(MetaPipeline):
     def build(self):
         """Add operations that are specific to each pipeline."""
 
-    def build_graph(self, feed=None, linearize=None):
+    def build_graph(self, nodes=None, feed=None, linearize=None):
         """Build a dask computing graph."""
         if len(self.nodes) == 0:
             raise ValueError("Can not buid a graph from an empty pipeline.")
@@ -871,7 +909,35 @@ class Pipeline(MetaPipeline):
                            " names as arguments and input data as values.")
                 raise ValueError(message)
 
+        if nodes is not None:
+            if not isinstance(nodes, (tuple, list)):
+                message = "First argument must be a list of node keys."
+                raise ValueError(message)
+            for key in nodes:
+                if key not in self.nodes:
+                    raise KeyError(f"Key {key} not found.")
+        else:
+            nodes = self.outputs
+
+        G = self.struct
+
+        feed_keys = feed.keys()
+        for key in feed_keys:
+            for nkey in nodes:
+                if nkey == key:
+                    del feed[key]
+                if self.shortest_path(nkey, key, nxgraph=G) is not None:
+                    del feed[key]
+
+        feed_keys = feed.keys()
+        for key in feed_keys:
+            for nkey in feed_keys:
+                if key != nkey:
+                    if self.shortest_path(nkey, key, nxgraph=G) is not None:
+                        del feed[key]
+
         graph = {}
+        to_include = []
         if feed is not None:
             for key in feed:
                 node = self.nodes[key]
@@ -879,8 +945,25 @@ class Pipeline(MetaPipeline):
                     raise ValueError("Feeding data is invalid for node " +
                                      f"{key}")
                 graph[key] = feed[key]
+                for nkey in nodes:
+                    for path in nx.all_simple_paths(G, key, nkey):
+                        to_include += path
 
-        for key in self.keys():
+        to_include = list(set(to_include))
+        for nkey in nodes:
+            for ikey in self.inputs:
+                if ikey not in to_include:
+                    if self.shortest_path(ikey, nkey, nxgraph=G) is not None:
+                        for path in nx.all_simple_paths(G, ikey, nkey):
+                            include = True
+                            for key in feed:
+                                if key in path:
+                                    include = False
+                            if include:
+                                to_include += path
+
+        to_include = list(set(to_include))
+        for key in to_include:
             node = self.nodes[key]
             if key not in self.nodes_down or key not in self.nodes_up:
                 message = (f"Neighbours for node {key} have not been" +
@@ -1061,7 +1144,7 @@ class Pipeline(MetaPipeline):
                 node = self.nodes[key].read(path=read[key])
                 feed[key] = node
 
-        graph = self.build_graph(feed=feed, linearize=linearize)
+        graph = self.build_graph(nodes=nodes, feed=feed, linearize=linearize)
 
         results = {}
         if client is not None:
@@ -1075,7 +1158,7 @@ class Pipeline(MetaPipeline):
             key = nodes[ind]
             if compute and hasattr(xnode, 'compute'):
                 node = xnode.compute()
-                if isinstance(xnode, dask_bag.core.Bag):
+                if not self.nodes[key].can_persist:
                     data = xnode
                 else:
                     data = node
@@ -1092,14 +1175,20 @@ class Pipeline(MetaPipeline):
                 results[key] = node
             elif key in self.transitions and self.nodes[key].coarity > 0:
                 if compute:
-                    computed = []
-                    for oind in range(self.nodes[key].coarity):
-                        sub_node = xnode[oind]
-                        if hasattr(sub_node, "compute"):
-                            computed.append(sub_node.compute())
+                    if self.nodes[key].coarity > 1:
+                        computed = []
+                        for oind in range(self.nodes[key].coarity):
+                            sub_node = xnode[oind]
+                            if hasattr(sub_node, "compute"):
+                                computed.append(sub_node.compute())
+                            else:
+                                computed.append(sub_node)
+                        results[key] = tuple(computed)
+                    else:
+                        if hasattr(xnode, "compute"):
+                            results[key] = xnode.compute()
                         else:
-                            computed.append(sub_node)
-                    results[key] = tuple(computed)
+                            results[key] = xnode
                 else:
                     results[key] = xnode
             else:
@@ -1139,6 +1228,8 @@ class Pipeline(MetaPipeline):
                 linearize=None):
         """Compute pipeline."""
         if nodes is None:
+            nodes = self.outputs
+        elif len(nodes) == 0:
             nodes = self.outputs
 
         if not isinstance(nodes, (tuple, list)):
@@ -1298,6 +1389,36 @@ class Pipeline(MetaPipeline):
 
         return new_pipeline
 
+    def __gt__(self, other):
+        """Return pipeline concatenation by input/output keys.
+
+        If pipelines have no inputs/outputs in common, the result is
+        equivalent to disjoint paralelism.
+        """
+        knit_points = {}
+        for key in self.outputs:
+            if key in other.inputs:
+                knit_points[key] = {"map": key,
+                                    "new_key": key,
+                                    "new_name": self.nodes[key].name}
+        if len(knit_points) == 0:
+            new_pipeline = union(self, other)
+        else:
+            new_pipeline = merge(self, other,
+                                 knit_points=knit_points,
+                                 prune=False)
+
+        return new_pipeline
+
+    def __lt__(self, other):
+        """Return pipeline concatenation by input/output keys.
+
+        If pipelines have no inputs/outputs in common, the result is
+        equivalent to disjoint paralelism.
+        """
+        message = "Only forward concatenation is allowded."
+        raise NotImplementedError(message)
+
     def __or__(self, other):
         """Disjoint sum operator '|'.
 
@@ -1352,7 +1473,7 @@ def union(p1, p2, new=True):
 
     node_map = {}
     for key in p2.inputs:
-        node = p1.nodes[key]
+        node = p2.nodes[key]
         new_node = copy(node)
         new_pipeline.add_place(new_node)
         node_map[key] = new_node
@@ -1398,7 +1519,57 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
     if on is None:
         on = "key"
 
-    if knit_points is None:
+    if knit_points:
+        if not isinstance(knit_points, dict):
+            message = "Argument 'knit_points' must be a dictionary."
+            raise ValueError(message)
+
+        knit_keys = list(knit_points.keys())
+        for key in knit_keys:
+            p1_key = knit_points[key]["map"]
+            new_key = knit_points[key]["new_key"]
+            safe = True
+
+            if new_key in p1.keys():
+                if new_key != p1_key:
+                    safe = False
+            if new_key in p2.keys():
+                if new_key != key:
+                    safe = False
+
+            if not safe:
+                message = ("Attribute 'new_key' of knit points " +
+                           "should be a brand new key within both " +
+                           "pipelines, otherwise entry key,  " +
+                           "'new_key' and 'map' should be equal.")
+                raise ValueError(message)
+
+            if key not in p2.keys():
+                message = (f"Key {key} not found in second pipeline. " +
+                           "All keys in argument " +
+                           "'knit_points' must exist within the second " +
+                           "pipeline. Removing entry from" +
+                           " knitting points.")
+                warnings.warn(message)
+                del knit_points[key]
+
+            if p1_key not in p1.keys():
+                message = (f"Key {p1_key} not found " +
+                           "in first pipeline. All map keys in argument " +
+                           "'knit_points' must exist within the first " +
+                           "pipeline. Removing entry from" +
+                           " knitting points.")
+                warnings.warn(message)
+                del knit_points[key]
+
+            if not p1.nodes[p1_key].is_compatible(p2.nodes[key]):
+                message = (f"Node {p1_key} of first pipeline is not " +
+                           f"compatible with node {key} of second " +
+                           "pipeline. Removing entry from" +
+                           " knitting points.")
+                warnings.warn(message)
+                del knit_points[key]
+    else:
         if on not in ["key", "name"]:
             raise ValueError("Argument 'by' should be 'key' or 'name'.")
 
@@ -1444,49 +1615,6 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
                     knit_points[p2_key] = {"map": p1_key,
                                            "new_key": p1_key,
                                            "new_name": name}
-    else:
-        knit_keys = list(knit_points)
-        for key in knit_keys:
-            p1_key = knit_points[key]["map"]
-            new_key = knit_points[key]["new_key"]
-            safe = True
-
-            if new_key in p1.keys():
-                if new_key != p1_key:
-                    safe = False
-            if new_key in p2.keys():
-                if new_key != key:
-                    safe = False
-
-            if not safe:
-                message = ("Attribute 'new_key' of knit points " +
-                           "should be a brand new key within both " +
-                           "pipelines, otherwise entry key,  " +
-                           "'new_key' and 'map' should be equal.")
-                raise ValueError(message)
-
-            if key not in p2.keys():
-                message = (f"Key {key} not found in second pipeline. " +
-                           "All keys in argument " +
-                           "'knit_points' must exist within the second " +
-                           "pipeline. Removing entry from" +
-                           " knitting points.")
-                warnings.warn(message)
-
-            if p1_key not in p1.keys():
-                message = (f"Key {p1_key} not found " +
-                           "in first pipeline. All map keys in argument " +
-                           "'knit_points' must exist within the first " +
-                           "pipeline. Removing entry from" +
-                           " knitting points.")
-                warnings.warn(message)
-
-            if not p1.nodes[p1_key].is_compatible(p2.nodes[key]):
-                message = (f"Node {p1_key} of first pipeline is not " +
-                           f"compatible with node {key} of second " +
-                           "pipeline. Removing entry from" +
-                           " knitting points.")
-                warnings.warn(message)
 
     if not new:
         new_pipeline = p1
@@ -1520,7 +1648,7 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
                     new_key = knit_points[key]["new_key"]
                 else:
                     new_key = key
-                if new_key not in new_pipeline:
+                if new_key not in new_pipeline or new_key not in knit_points:
                     node = p2.nodes[key]
                     if key in p2.inputs:
                         new_node = copy(node)
@@ -1539,13 +1667,17 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
                                 new_ikey = knit_points[ikey]["new_key"]
                             else:
                                 new_ikey = ikey
-                            if new_ikey not in new_pipeline:
+                            if (new_ikey not in new_pipeline or
+                               new_ikey not in knit_points):
                                 if ikey not in node_map:
                                     new_in = copy(inode)
                                     new_in.set_pipeline(new_pipeline)
                                     node_map[ikey] = new_in
                                 else:
                                     new_in = node_map[ikey]
+                            else:
+                                new_in = new_pipeline[new_ikey]
+
                             new_inputs.append(new_in)
 
                         for ind, onode in enumerate(node.outputs):
@@ -1554,13 +1686,16 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
                                 new_okey = knit_points[okey]["new_key"]
                             else:
                                 new_okey = okey
-                            if new_okey not in new_pipeline:
+                            if (new_okey not in new_pipeline or
+                               new_okey not in knit_points):
                                 if okey not in node_map:
                                     new_out = copy(onode)
                                     new_out.set_pipeline(new_pipeline)
                                     node_map[okey] = new_out
                                 else:
                                     new_out = node_map[okey]
+                            else:
+                                new_out = new_pipeline[new_okey]
                             new_outputs.append(new_out)
 
                         new_node.set_inputs(new_inputs)
@@ -1569,12 +1704,14 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
                         for ind, inode in enumerate(node.inputs):
                             ikey = inode.key
                             if new_node.inputs[ind] not in new_pipeline:
-                                new_pipeline[ikey] = new_node.inputs[ind]
+                                if ikey not in new_pipeline.keys():
+                                    new_pipeline[ikey] = new_node.inputs[ind]
 
                         for ind, onode in enumerate(node.outputs):
                             okey = onode.key
                             if new_node.outputs[ind] not in new_pipeline:
-                                new_pipeline[okey] = new_node.outputs[ind]
+                                if okey not in new_pipeline.keys():
+                                    new_pipeline[okey] = new_node.outputs[ind]
 
                         new_pipeline[new_key] = new_node
                         node_map[key] = new_node

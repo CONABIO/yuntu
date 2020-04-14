@@ -2,6 +2,7 @@
 from abc import ABC
 from abc import abstractmethod
 import os
+import warnings
 import pickle
 import dill
 import pandas as pd
@@ -176,6 +177,55 @@ class Place(Node, ABC):
                                        force=force,
                                        **kwargs)[self.key]
         return result
+
+    def __call__(self,
+                 client=None,
+                 strict=False,
+                 feed=None,
+                 read=None,
+                 write=None,
+                 keep=None,
+                 **inputs):
+        """Execute node results on local inputs."""
+        if feed is not None:
+            if not isinstance(feed, dict):
+                message = "Argument 'feed' must be a dictionary."
+                raise ValueError(message)
+        else:
+            feed = {}
+
+        if self.parent is not None:
+            if len(inputs) > 0:
+                ikeys = list(inputs.keys())
+                for key in ikeys:
+                    if key not in self.pipeline.nodes_up[self.parent.key]:
+                        message = (f"Unknown input {key} for parent " +
+                                   f"transition {self.key}.")
+                        raise ValueError(message)
+                    if not self.pipeline.places[key].validate(inputs[key]):
+                        data_class = self.pipeline.places[key].data_class
+                        message = (f"Wrong type for parameter {key}" +
+                                   ". Parent transition expects: " +
+                                   f"{data_class}")
+                        raise TypeError(message)
+            feed.update(inputs)
+            return self.compute(feed=feed,
+                                read=read,
+                                write=write,
+                                keep=keep,
+                                force=True,
+                                client=client)
+
+        if len(inputs) > 0:
+            message = "No inputs needed. Ignoring."
+            warnings.warn(message)
+
+        return self.compute(feed=feed,
+                            read=read,
+                            write=write,
+                            keep=keep,
+                            force=True,
+                            client=client)
 
     def __copy__(self):
         """Copy self."""

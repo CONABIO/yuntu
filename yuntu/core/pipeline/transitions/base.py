@@ -187,7 +187,7 @@ class Transition(Node):
     def inputs(self):
         if self.pipeline is None or self.key is None:
             return self._inputs
-        elif self.key not in self.pipeline.nodes_up:
+        if self.key not in self.pipeline.nodes_up:
             return self._inputs
         deps = self.pipeline.upper_neighbours(self.key)
         for node in deps:
@@ -199,7 +199,7 @@ class Transition(Node):
     def outputs(self):
         if self.pipeline is None or self.key is None:
             return self._outputs
-        elif self.key not in self.pipeline.nodes_down:
+        if self.key not in self.pipeline.nodes_down:
             return self._outputs
         subs = self.pipeline.lower_neighbours(self.key)
         for node in subs:
@@ -316,6 +316,42 @@ class Transition(Node):
                                        force=force,
                                        **kwargs)[self.key]
         return result
+
+    def __call__(self,
+                 client=None,
+                 strict=False,
+                 feed=None,
+                 read=None,
+                 write=None,
+                 keep=None,
+                 **inputs):
+        """Execute node on inputs."""
+        if feed is not None:
+            if not isinstance(feed, dict):
+                message = "Argument 'feed' must be a dictionary."
+                raise ValueError(message)
+        else:
+            feed = {}
+        if len(inputs) > 0:
+            ikeys = list(inputs.keys())
+            for key in ikeys:
+                if key not in self.pipeline.nodes_up[self.key]:
+                    message = (f"Unknown input {key} for transition " +
+                               f"{self.key}.")
+                    raise ValueError(message)
+                if not self.pipeline.places[key].validate(inputs[key]):
+                    data_class = self.pipeline.places[key].data_class
+                    message = (f"Wrong type for parameter {key}" +
+                               f". Transition expects: {data_class}")
+                    raise TypeError(message)
+
+        feed.update(inputs)
+        return self.compute(feed=feed,
+                            read=read,
+                            write=write,
+                            keep=keep,
+                            force=True,
+                            client=client)
 
     def __copy__(self):
         inputs = [copy(node) for node in self.inputs]
