@@ -32,7 +32,10 @@ class Node(ABC):
             if not isinstance(name, str):
                 message = "Node name must be a string."
                 raise ValueError(message)
-        self.name = name
+        if name is None:
+            self.name = self.__class__.__name__
+        else:
+            self.name = name
         self.pipeline = pipeline
         self._key = None
         self._index = None
@@ -119,6 +122,36 @@ class Node(ABC):
         if self.data_class is None:
             return True
         return isinstance(data, self.data_class)
+
+    def plot(self, **kwargs):
+        if self.pipeline is None:
+            raise ValueError("No pipeline context. Set pipeline first.")
+        nodes = [self.key]
+        if "nodes" in kwargs:
+            if not isinstance(kwargs["nodes"], (tuple, list)):
+                raise ValueError("Argument 'nodes' must be a list or a tuple")
+            nodes = list(set(nodes + list(kwargs["nodes"])))
+        return self.pipeline.plot(nodes=nodes, **kwargs)
+
+    def __rshift__(self, other):
+        """Embed self in other's pipeline.
+
+        Merge other's pipeline with self's pipeline and return other.
+        """
+        if not isinstance(other, Node):
+            raise ValueError("Both operands must be nodes.")
+        other.pipeline.merge(self.pipeline)
+        return other
+
+    def __lshift__(self, other):
+        """Embed other in self's pipeline.
+
+        Merge self's pipeline with other's pipeline and return self.
+        """
+        if not isinstance(other, Node):
+            raise ValueError("Both operands must be nodes.")
+        self.pipeline.merge(other.pipeline)
+        return self
 
     @abstractmethod
     def is_compatible(self, other):
@@ -573,12 +606,39 @@ class MetaPipeline(ABC):
                         G.add_node(dkey, **self.nodes[dkey].meta)
                     edge = (dkey, key)
                     G.add_edge(*edge)
+                    if dkey in self.transitions:
+                        for sdkey in self.nodes_up[dkey]:
+                            if sdkey not in G:
+                                G.add_node(sdkey, **self.nodes[sdkey].meta)
+                            if sdkey != key:
+                                edge = (sdkey, dkey)
+                                G.add_edge(*edge)
+                        for ddkey in self.nodes_down[dkey]:
+                            if ddkey not in G:
+                                G.add_node(ddkey, **self.nodes[ddkey].meta)
+                            if ddkey != key:
+                                edge = (dkey, ddkey)
+                                G.add_edge(*edge)
+
             for dkey in self.nodes_down[key]:
                 if dkey is not None:
                     if dkey not in G:
                         G.add_node(dkey, **self.nodes[dkey].meta)
                     edge = (key, dkey)
                     G.add_edge(*edge)
+                    if dkey in self.transitions:
+                        for sdkey in self.nodes_up[dkey]:
+                            if sdkey not in G:
+                                G.add_node(sdkey, **self.nodes[sdkey].meta)
+                            if sdkey != key:
+                                edge = (sdkey, dkey)
+                                G.add_edge(*edge)
+                        for ddkey in self.nodes_down[dkey]:
+                            if ddkey not in G:
+                                G.add_node(ddkey, **self.nodes[ddkey].meta)
+                            if ddkey != key:
+                                edge = (dkey, ddkey)
+                                G.add_edge(*edge)
         return G
 
     def node_order(self, nodes=None):
@@ -636,19 +696,23 @@ class MetaPipeline(ABC):
              nodes=None,
              trans_color="white",
              trans_edge_color="black",
-             trans_size=3000,
+             trans_size=6500,
              trans_shape="s",
-             place_size=3000,
+             place_size=7500,
              place_color="lightgrey",
              place_edge_color="black",
              place_shape="o",
-             font_size=12,
+             input_color="tomato",
+             keep_color="gold",
+             persist_color="goldenrod",
+             keep_persist_color="yellowgreen",
+             font_size=14,
              font_color="black",
              font_weight=1.0,
              font_family='sans-serif',
              font_alpha=1.0,
-             min_target_margin=38,
-             min_source_margin=15,
+             min_target_margin=60,
+             min_source_margin=40,
              head_length=0.6,
              head_width=0.8,
              tail_width=0.4,
@@ -656,6 +720,7 @@ class MetaPipeline(ABC):
              arrow_width=3.0,
              graph_layout="dot",
              node_labels=None,
+             plot_style='fivethirtyeight',
              **kwargs):
         """Plot pipeline's graph."""
         if graph_layout is None:
@@ -667,14 +732,30 @@ class MetaPipeline(ABC):
         if ax is None:
             _, ax = plt.subplots(figsize=kwargs.get('figsize', (20, 20)))
 
+        plt.style.use(plot_style)
+
         G = self.build_struct(nodes)
-        places = []
+        input_places = []
+        regular_places = []
+        keep_places = []
+        persist_places = []
+        keep_persist_places = []
         transitions = []
         for key, meta in G.nodes(data=True):
             if meta["node_type"] == "transition":
                 transitions.append(key)
             else:
-                places.append(key)
+                if key in self.inputs:
+                    input_places.append(key)
+                elif self.nodes[key].persist:
+                    if self.nodes[key].keep:
+                        keep_persist_places.append(key)
+                    else:
+                        persist_places.append(key)
+                elif self.nodes[key].keep:
+                    keep_places.append(key)
+                else:
+                    regular_places.append(key)
 
         pos = graphviz_layout(G, prog=graph_layout, args='')
         # if use_graphviz:
@@ -682,23 +763,60 @@ class MetaPipeline(ABC):
         # else:
         #     pos = getattr(nx.drawing.layout, graph_layout)
 
-        nx.draw_networkx_nodes(G,
-                               pos=pos,
-                               ax=ax,
-                               nodelist=places,
-                               node_size=place_size,
-                               node_color=place_color,
-                               node_shape=place_shape,
-                               edgecolors=place_edge_color)
-
-        nx.draw_networkx_nodes(G,
-                               pos=pos,
-                               ax=ax,
-                               nodelist=transitions,
-                               node_size=trans_size,
-                               node_color=trans_color,
-                               node_shape=trans_shape,
-                               edgecolors=trans_edge_color)
+        if len(regular_places) > 0:
+            nx.draw_networkx_nodes(G,
+                                   pos=pos,
+                                   ax=ax,
+                                   nodelist=regular_places,
+                                   node_size=place_size,
+                                   node_color=place_color,
+                                   node_shape=place_shape,
+                                   edgecolors=place_edge_color)
+        if len(input_places) > 0:
+            nx.draw_networkx_nodes(G,
+                                   pos=pos,
+                                   ax=ax,
+                                   nodelist=input_places,
+                                   node_size=place_size,
+                                   node_color=input_color,
+                                   node_shape=place_shape,
+                                   edgecolors=place_edge_color)
+        if len(keep_places) > 0:
+            nx.draw_networkx_nodes(G,
+                                   pos=pos,
+                                   ax=ax,
+                                   nodelist=keep_places,
+                                   node_size=place_size,
+                                   node_color=keep_color,
+                                   node_shape=place_shape,
+                                   edgecolors=place_edge_color)
+        if len(persist_places) > 0:
+            nx.draw_networkx_nodes(G,
+                                   pos=pos,
+                                   ax=ax,
+                                   nodelist=persist_places,
+                                   node_size=place_size,
+                                   node_color=persist_color,
+                                   node_shape=place_shape,
+                                   edgecolors=place_edge_color)
+        if len(keep_persist_places) > 0:
+            nx.draw_networkx_nodes(G,
+                                   pos=pos,
+                                   ax=ax,
+                                   nodelist=keep_persist_places,
+                                   node_size=place_size,
+                                   node_color=keep_persist_color,
+                                   node_shape=place_shape,
+                                   edgecolors=place_edge_color)
+        if len(transitions) > 0:
+            nx.draw_networkx_nodes(G,
+                                   pos=pos,
+                                   ax=ax,
+                                   nodelist=transitions,
+                                   node_size=trans_size,
+                                   node_color=trans_color,
+                                   node_shape=trans_shape,
+                                   edgecolors=trans_edge_color)
 
         astyle = mpl.patches.ArrowStyle(arrow_style,
                                         head_length=head_length,
@@ -884,16 +1002,6 @@ class Pipeline(MetaPipeline):
             message = "Argument 'work_dir' must be a valid directory."
             raise ValueError(message)
         self.work_dir = work_dir
-        self.init_pipeline()
-
-    def init_pipeline(self):
-        """Initialize pipeline."""
-        base_dir = os.path.join(self.work_dir, self.name)
-        persist_dir = os.path.join(base_dir, 'persist')
-        if not os.path.exists(base_dir):
-            os.mkdir(base_dir)
-        if not os.path.exists(persist_dir):
-            os.mkdir(persist_dir)
 
     def build(self):
         """Add operations that are specific to each pipeline."""
@@ -902,7 +1010,6 @@ class Pipeline(MetaPipeline):
         """Build a dask computing graph."""
         if len(self.nodes) == 0:
             raise ValueError("Can not buid a graph from an empty pipeline.")
-
         if feed is not None:
             if not isinstance(feed, dict):
                 message = ("Feed argument must be a dictionary with node" +
@@ -942,8 +1049,9 @@ class Pipeline(MetaPipeline):
             for key in feed:
                 node = self.nodes[key]
                 if not node.validate(feed[key]):
+                    data_class = node.data_class
                     raise ValueError("Feeding data is invalid for node " +
-                                     f"{key}")
+                                     f"'{key}' expecting {data_class}.")
                 graph[key] = feed[key]
                 for nkey in nodes:
                     for path in nx.all_simple_paths(G, key, nkey):
@@ -1008,6 +1116,21 @@ class Pipeline(MetaPipeline):
             graph = linearize_operations(linearize, graph)
 
         return graph
+
+    @property
+    def persist_dir(self):
+        """Initialize pipeline."""
+        base_dir = os.path.join(self.work_dir, self.name)
+        persist_dir = os.path.join(base_dir, 'persist')
+        return persist_dir
+
+    def init_dirs(self):
+        base_dir = os.path.join(self.work_dir, self.name)
+        persist_dir = os.path.join(base_dir, 'persist')
+        if not os.path.exists(base_dir):
+            os.mkdir(base_dir)
+        if not os.path.exists(persist_dir):
+            os.mkdir(persist_dir)
 
     @property
     def graph(self):
@@ -1102,7 +1225,8 @@ class Pipeline(MetaPipeline):
             for nkey in nodes:
                 if nkey != key:
                     if self.shortest_path(nkey, key, nxgraph) is not None:
-                        del feed[key]
+                        if key in feed:
+                            del feed[key]
 
         for key in self.places:
             if key not in read:
@@ -1113,13 +1237,16 @@ class Pipeline(MetaPipeline):
         for key in read_keys:
             for nkey in nodes:
                 if self.shortest_path(nkey, key, nxgraph) is not None:
-                    del read[key]
+                    if key in read:
+                        del read[key]
             for fkey in feed:
                 if self.shortest_path(fkey, key, nxgraph) is not None:
-                    del read[key]
+                    if key in read:
+                        del read[key]
             for rkey in read_keys:
                 if self.shortest_path(rkey, key, nxgraph) is not None:
-                    del read[key]
+                    if key in read and key != rkey:
+                        del read[key]
 
         for key in nodes:
             if key not in keep:
@@ -1128,7 +1255,8 @@ class Pipeline(MetaPipeline):
         write_keys = list(write.keys())
         for key in write_keys:
             if key not in nodes:
-                del write[key]
+                if key in write:
+                    del write[key]
 
         for key in nodes:
             if key in self.places and key not in write:
@@ -1305,11 +1433,12 @@ class Pipeline(MetaPipeline):
         KeyError
             If one of the mapping keys does not exist in any of the pipelines.
         """
-        _ = merge(self, other,
-                  on=on,
-                  knit_points=knit_points,
-                  prune=prune,
-                  new=False)
+        if self != other:
+            _ = merge(self, other,
+                      on=on,
+                      knit_points=knit_points,
+                      prune=prune,
+                      new=False)
 
     def __copy__(self):
         """Return a shallow copy of self."""
@@ -1443,6 +1572,26 @@ class Pipeline(MetaPipeline):
         new_pipeline.name = name
 
         return new_pipeline
+
+    def __rshift__(self, other):
+        """Embed self in other.
+
+        Merge other with self and return other.
+        """
+        if not isinstance(other, Pipeline):
+            raise ValueError("Both operands must be pipelines.")
+        other.merge(self)
+        return other
+
+    def __lshift__(self, other):
+        """Embed other in self.
+
+        Merge self with other and return self.
+        """
+        if not isinstance(other, Pipeline):
+            raise ValueError("Both operands must be pipelines.")
+        self.merge(other)
+        return self
 
 
 def linearize_operations(op_names, graph):

@@ -1,6 +1,7 @@
 """Place nodes that behave like frames."""
 import os
 from copy import copy
+from collections import OrderedDict
 import numpy as np
 import dask.array as dask_array
 from dask.delayed import Delayed
@@ -12,6 +13,7 @@ from yuntu.core.pipeline.places.base import Place
 from yuntu.core.pipeline.places.base import DynamicPlace
 from yuntu.core.pipeline.places.base import PickleablePlace
 from yuntu.core.pipeline.places.base import ScalarPlace
+from yuntu.core.pipeline.places.base import BoolPlace
 from yuntu.core.pipeline.places.base import DictPlace
 from yuntu.core.pipeline.transitions.base import Transition
 
@@ -152,6 +154,10 @@ class PandasSeriesPlace(PickleablePlace, PandasSeriesMixin):
 
     def write(self, path=None, data=None):
         if path is None:
+            if self.pipeline is None:
+                raise ValueError("Can not infer output path for node without a"
+                                 "pipeline")
+            self.pipeline.init_dirs()
             path = self.get_persist_path()
         if data is None:
             data = self.data
@@ -181,6 +187,10 @@ class PandasDataFramePlace(PickleablePlace, PandasDataFrameMixin):
 
     def write(self, path=None, data=None):
         if path is None:
+            if self.pipeline is None:
+                raise ValueError("Can not infer output path for node without a"
+                                 "pipeline")
+            self.pipeline.init_dirs()
             path = self.get_persist_path()
         if data is None:
             data = self.data
@@ -245,12 +255,17 @@ class DaskSeriesPlace(Place, DaskSeriesMixin):
 
     def write(self, path=None, data=None):
         if path is None:
+            if self.pipeline is None:
+                raise ValueError("Can not infer output path for node without a"
+                                 "pipeline")
+            self.pipeline.init_dirs()
             path = self.get_persist_path()
         if data is None:
             data = self.data
-        if not self.validate(data):
-            message = "Data is invalid."
-            raise ValueError(message)
+        if not isinstance(data, pd.Series):
+            if not self.validate(data):
+                message = "Data is invalid."
+                raise ValueError(message)
         return data.to_csv(self.get_persist_path())
 
     def read(self, path=None):
@@ -262,13 +277,19 @@ class DaskSeriesPlace(Place, DaskSeriesMixin):
         return dd.read_csv(self.get_persist_path())
 
     def get_persist_path(self):
-        work_dir = self.pipeline.work_dir
-        persist_dir = os.path.join(work_dir, 'persist')
         if self.key is None:
             base_name = self.name
         else:
             base_name = self.key
-        return os.path.join(persist_dir, base_name+".csv")
+        return os.path.join(self.pipeline.persist_dir, base_name+".csv")
+
+    def set_value(self, value):
+        """Set result value manually."""
+        if not isinstance(value, pd.Series):
+            if not self.validate(value):
+                raise ValueError("Value is incompatible with node type "
+                                 f"{type(self)}")
+        self._result = value
 
 
 class DaskBagPlace(DynamicPlace, DaskBagMixin):
@@ -295,16 +316,21 @@ class DaskDelayedPlace(DynamicPlace, DaskDelayedMixin):
 
 class DaskDataFramePlace(Place, DaskDataFrameMixin):
     """Dask dataframe input."""
-    data_class = (dd.core.DataFrame, pd.DataFrame)
+    data_class = dd.core.DataFrame
 
     def write(self, path=None, data=None):
         if path is None:
+            if self.pipeline is None:
+                raise ValueError("Can not infer output path for node without a"
+                                 "pipeline")
+            self.pipeline.init_dirs()
             path = self.get_persist_path()
         if data is None:
             data = self.data
-        if not self.validate(data):
-            message = "Data is invalid."
-            raise ValueError(message)
+        if not isinstance(data, pd.DataFrame):
+            if not self.validate(data):
+                message = "Data is invalid."
+                raise ValueError(message)
         return data.to_parquet(self.get_persist_path(), compression="GZIP")
 
     def read(self, path=None):
@@ -316,13 +342,19 @@ class DaskDataFramePlace(Place, DaskDataFrameMixin):
         return dd.read_parquet(self.get_persist_path())
 
     def get_persist_path(self):
-        work_dir = self.pipeline.work_dir
-        persist_dir = os.path.join(work_dir, 'persist')
         if self.key is None:
             base_name = self.name
         else:
             base_name = self.key
-        return os.path.join(persist_dir, base_name+".parquet")
+        return os.path.join(self.pipeline.persist_dir, base_name+".parquet")
+
+    def set_value(self, value):
+        """Set result value manually."""
+        if not isinstance(value, pd.DataFrame):
+            if not self.validate(value):
+                raise ValueError("Value is incompatible with node type "
+                                 f"{type(self)}")
+        self._result = value
 
 
 class DaskSeriesGroupByPlace(DynamicPlace, DaskSeriesGroupByMixin):
@@ -335,34 +367,35 @@ class DaskDataFrameGroupByPlace(DynamicPlace, DaskSeriesMixin):
     data_class = dd.groupby.DataFrameGroupBy
 
 
+PLACES = OrderedDict()
+PLACES['dynamic'] = DynamicPlace
+PLACES['bool'] = BoolPlace
+PLACES['scalar'] = ScalarPlace
+PLACES['numpy_array'] = NumpyArrayPlace
+PLACES['dict'] = DictPlace
+PLACES['pandas_dataframe'] = PandasDataFramePlace
+PLACES['pandas_series'] = PandasSeriesPlace
+PLACES['dask_array'] = DaskArrayPlace
+PLACES['dask_bag'] = DaskBagPlace
+PLACES['dask_dataframe'] = DaskDataFramePlace
+PLACES['dask_delayed'] = DaskDelayedPlace
+PLACES['dask_series'] = DaskSeriesPlace
+PLACES['pickleable'] = PickleablePlace
+
+
 def _guess_place_class(data):
     """Determine the closest fit amongst input nodes."""
     if data is None:
-        return PickleablePlace
-    if ScalarPlace().validate(data):
-        return ScalarPlace
-    if DictPlace().validate(data):
-        return DictPlace
-    if NumpyArrayPlace().validate(data):
-        return NumpyArrayPlace
-    if PandasDataFramePlace().validate(data):
-        return PandasDataFramePlace
-    if PandasSeriesPlace().validate(data):
-        return PandasSeriesPlace
-    if DaskDelayedPlace().validate(data):
-        return DaskDelayedPlace
-    if DaskBagPlace().validate(data):
-        return DaskBagPlace
-    if DaskArrayPlace().validate(data):
-        return DaskArrayPlace
-    if DaskSeriesPlace().validate(data):
-        return DaskSeriesPlace
-    if DaskDataFramePlace().validate(data):
-        return DaskDataFramePlace
+        return PLACES['pickleable']
+    for pname in PLACES:
+        if pname not in ['pickleable', 'dynamic']:
+            if PLACES[pname]().validate(data):
+                return PLACES[pname]
     return PickleablePlace
 
 
-def place(data,
+def place(data=None,
+          ptype=None,
           name=None,
           pipeline=None,
           parent=None,
@@ -370,7 +403,13 @@ def place(data,
           persist=False,
           keep=False):
     """Return input node according to data input class."""
-    place_class = _guess_place_class(data)
+    if ptype is not None:
+        if ptype not in PLACES:
+            raise KeyError(f"Name {ptype} is not a place name.")
+        place_class = PLACES[ptype]
+    else:
+        place_class = _guess_place_class(data)
+
     return place_class(name=name,
                        data=data,
                        pipeline=pipeline,
@@ -452,7 +491,7 @@ NUMPY_ARRAY_METHOD_SPECS = {
     '__iadd__': {'out_sig':  (NumpyArrayPlace,)},
     '__iand__': {'out_sig':  (NumpyArrayPlace,)},
     '__ifloordiv__': {'out_sig':  (NumpyArrayPlace,)},
-    '__ilshift__': {'out_sig':  (NumpyArrayPlace,)},
+    # '__ilshift__': {'out_sig':  (NumpyArrayPlace,)},
     '__imatmul__': {'out_sig':  (NumpyArrayPlace,)},
     '__imod__': {'out_sig':  (NumpyArrayPlace,)},
     '__imul__': {'out_sig':  (NumpyArrayPlace,)},
@@ -461,14 +500,14 @@ NUMPY_ARRAY_METHOD_SPECS = {
     '__invert__': {'out_sig':  (NumpyArrayPlace,)},
     '__ior__': {'out_sig':  (NumpyArrayPlace,)},
     '__ipow__': {'out_sig':  (NumpyArrayPlace,)},
-    '__irshift__': {'out_sig':  (NumpyArrayPlace,)},
+    # '__irshift__': {'out_sig':  (NumpyArrayPlace,)},
     '__isub__': {'out_sig':  (NumpyArrayPlace,)},
     '__iter__': {'out_sig':  (NumpyArrayPlace,)},
     '__itruediv__': {'out_sig':  (NumpyArrayPlace,)},
     '__ixor__': {'out_sig':  (NumpyArrayPlace,)},
     # '__le__': {'out_sig':  (NumpyArrayPlace,)},
     '__len__': {'out_sig':  (NumpyArrayPlace,)},
-    '__lshift__': {'out_sig':  (NumpyArrayPlace,)},
+    # '__lshift__': {'out_sig':  (NumpyArrayPlace,)},
     # '__lt__': {'out_sig':  (NumpyArrayPlace,)},
     '__matmul__': {'out_sig':  (NumpyArrayPlace,)},
     '__mod__': {'out_sig':  (NumpyArrayPlace,)},
@@ -483,14 +522,14 @@ NUMPY_ARRAY_METHOD_SPECS = {
     '__rdivmod__': {'out_sig':  (NumpyArrayPlace,)},
     # '__repr__': {'out_sig':  (NumpyArrayPlace,)},
     '__rfloordiv__': {'out_sig':  (NumpyArrayPlace,)},
-    '__rlshift__': {'out_sig':  (NumpyArrayPlace,)},
+    # '__rlshift__': {'out_sig':  (NumpyArrayPlace,)},
     '__rmatmul__': {'out_sig':  (NumpyArrayPlace,)},
     '__rmod__': {'out_sig':  (NumpyArrayPlace,)},
     '__rmul__': {'out_sig':  (NumpyArrayPlace,)},
     '__ror__': {'out_sig':  (NumpyArrayPlace,)},
     '__rpow__': {'out_sig':  (NumpyArrayPlace,)},
-    '__rrshift__': {'out_sig':  (NumpyArrayPlace,)},
-    '__rshift__': {'out_sig':  (NumpyArrayPlace,)},
+    # '__rrshift__': {'out_sig':  (NumpyArrayPlace,)},
+    # '__rshift__': {'out_sig':  (NumpyArrayPlace,)},
     '__rsub__': {'out_sig':  (NumpyArrayPlace,)},
     '__rtruediv__': {'out_sig':  (NumpyArrayPlace,)},
     '__rxor__': {'out_sig':  (NumpyArrayPlace,)},

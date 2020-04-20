@@ -1,6 +1,7 @@
 """Places modules."""
 from .base import DynamicPlace
 from .base import PickleablePlace
+from .base import BoolPlace
 from .base import ScalarPlace
 from .base import DictPlace
 from .extended import NumpyArrayPlace
@@ -18,6 +19,7 @@ from .extended import place
 __all__ = [
     'DynamicPlace',
     'PickleablePlace',
+    'BoolPlace',
     'ScalarPlace',
     'DictPlace',
     'NumpyArrayPlace',

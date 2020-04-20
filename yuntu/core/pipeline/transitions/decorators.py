@@ -53,13 +53,16 @@ def transition(name=None,
 
             if pipeline is not None:
                 if len(all_args) != 0:
-                    pipeline = pipeline.merge(knit(*all_args, prune=False))
-                    pipeline.name = name
+                    for arg in all_args:
+                        if arg.pipeline is not None:
+                            pipeline.merge(arg.pipeline)
             else:
                 if len(all_args) != 0:
-                    pipeline = knit(*all_args, prune=False)
-                    pipeline.name = name
-            pipeline.keys()
+                    pipeline = all_args[0].pipeline
+                    if len(all_args) > 1:
+                        for arg in all_args:
+                            if arg.pipeline is not None:
+                                pipeline.merge(arg.pipeline)
             transition_inputs = [pipeline[node.key] for node in all_args]
             transition_outs = []
             if outputs is not None:

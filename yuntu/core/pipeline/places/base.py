@@ -122,6 +122,7 @@ class Place(Node, ABC):
 
         if self._parent != parent:
             self._parent = parent
+        if self.parent.pipeline != self.pipeline:
             if self.pipeline is not None and self.key is not None:
                 if self._parent.pipeline is not None:
                     if self._parent.pipeline != self.pipeline:
@@ -281,6 +282,10 @@ class PickleablePlace(Place):
 
     def write(self, path=None, data=None):
         if path is None:
+            if self.pipeline is None:
+                raise ValueError("Can not infer output path for node without a"
+                                 "pipeline")
+            self.pipeline.init_dirs()
             path = self.get_persist_path()
         if data is None:
             data = self.data
@@ -304,13 +309,11 @@ class PickleablePlace(Place):
         return data
 
     def get_persist_path(self):
-        work_dir = self.pipeline.work_dir
-        persist_dir = os.path.join(work_dir, self.pipeline.name, 'persist')
         if self.key is None:
             base_name = self.name
         else:
             base_name = self.key
-        return os.path.join(persist_dir, base_name+".pickle")
+        return os.path.join(self.pipeline.persist_dir, base_name+".pickle")
 
 
 class BoolPlace(PickleablePlace):

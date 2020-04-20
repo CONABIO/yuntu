@@ -14,24 +14,24 @@ class SoundscapeAccessor:
                               'min_freq',
                               'weight']
         self.index_columns = None
-        self._validate(self, pandas_obj)
+        self._basic_validation(self, pandas_obj)
         self._obj = pandas_obj
 
     @staticmethod
-    def _validate(self, obj):
+    def _basic_validation(self, obj):
         for col in self.basic_columns:
             if col not in obj.columns:
                 message = f"Not a soundscape. Missing '{col}' column."
                 raise ValueError(message)
         self.index_columns = list(set(obj.columns) -
-                                  set(self.basic_columns))
+                                  set(self.basic_columns+['hash']))
         if len(self.index_columns) == 0:
             message = "Could not find any indices."
             raise ValueError(message)
         for col in self.index_columns:
             if obj[col].dtype != np.float64 and obj[col].dtype != np.float32:
                 raise ValueError("All columns must be of type float.")
-        print("Access soundscape methods :P")
+        print("Access to soundscape methods")
 
     def isomap(self, n_components=2):
         """Produce isomap embedding of indices and return new soundscape."""
@@ -41,9 +41,15 @@ class SoundscapeAccessor:
             raise ValueError(message)
         out_df = self._obj.fillna(0)
         values = out_df[self.index_columns].values
-        out_df = out_df[self.basic_columns]
+        out_cols = self.basic_columns
+        if self.is_hashed():
+            out_cols.append('hash')
+        out_df = out_df[out_cols]
         embedding = Isomap(n_components=2)
         values_ = embedding.fit_transform(values)
         for comp in range(n_components):
             out_df[f"COMP{comp}"] = values_[:, [comp]]
         return out_df
+
+    def is_hashed(self):
+        return 'hash' in self._obj.columns

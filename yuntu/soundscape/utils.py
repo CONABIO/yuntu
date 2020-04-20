@@ -2,6 +2,9 @@
 import itertools
 import numpy as np
 from yuntu.core.windows import TimeFrequencyWindow
+import datetime,time
+import pytz
+from pytz import timezone
 
 
 def interpercentile_power_mean(power, ref, perc_ranges):
@@ -68,3 +71,16 @@ def slice_windows(time_unit, duration, frequency_bins, frequency_limits):
                                            min=min_frequency,
                                            max=max_frequency))
     return windows, weights
+
+
+def aware_time(strtime, tzone, time_format):
+    tzobj = pytz.timezone(tzone)
+
+    return tzobj.localize(datetime.datetime.strptime(strtime, time_format))
+
+
+def time_as_seconds(time_obj):
+    tzobj = pytz.timezone("UTC")
+    globalstart = tzobj.localize(datetime.datetime(1970, 1, 1, 0, 0, 0))
+
+    return (time_obj - globalstart).total_seconds()
