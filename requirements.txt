@@ -58,5 +58,4 @@ tornado==6.0.4
 tqdm==4.45.0
 typing-extensions==3.7.4.2
 urllib3==1.25.9
-yuntu==0.1.2
 zict==2.0.0
