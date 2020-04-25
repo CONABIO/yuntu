@@ -392,13 +392,11 @@ class MetaPipeline(ABC):
 
     def get_parent(self, key):
         """Get parent for place with key."""
-        if key not in self.places:
+        if key not in self.nodes_up:
             return None
-        for tkey in self.transitions:
-            if tkey in self.nodes_down:
-                if key in self.nodes_down[tkey]:
-                    return self.transitions[tkey]
-        return None
+        if len(self.nodes_up[key]) == 0:
+            return None
+        return self.transitions[self.nodes_up[key][0]]
 
     def upper_neighbours(self, key):
         """Return node's upper neighbours.
@@ -939,6 +937,16 @@ class MetaPipeline(ABC):
         del self.nodes_down[key]
         del self.nodes[key]
 
+    def _replace_neighbour(self, key, before, after, dir="up"):
+        if dir == "up":
+            for ind, node in enumerate(self.nodes_up[key]):
+                if node == before:
+                    self.nodes_up[key][ind] = after
+        else:
+            for ind, node in enumerate(self.nodes_down[key]):
+                if node == before:
+                    self.nodes_down[key][ind] = after
+
     def __setitem__(self, key, value):
         """Set node with key to value."""
         if not isinstance(value, Node):
@@ -947,15 +955,81 @@ class MetaPipeline(ABC):
                                " only allowded for existing nodes.")
             self.nodes[key].set_value(value)
         else:
+            node_exists = False
+            if key in self.nodes:
+                if not self.nodes[key].is_compatible(value):
+                    raise TypeError("Can not replace existing "
+                                    "node by value. Nodes are "
+                                    "incompatible.")
+
+                node_exists = True
             if value in self:
                 if value.key != key:
-                    for node_key in self.nodes:
-                        for ind, node in enumerate(self.nodes_up[node_key]):
-                            if node == value.key:
-                                self.nodes_up[node_key][ind] = key
-                        for ind, node in enumerate(self.nodes_down[node_key]):
-                            if node == value.key:
-                                self.nodes_down[node_key][ind] = key
+                    if node_exists:
+                        nxgraph = self.struct
+                        pathr = self.shortest_path(value.key, key, nxgraph)
+                        if pathr is not None:
+                            raise ValueError("Cycles are not permitted.")
+
+                    if value.key in self.transitions or not node_exists:
+                        if node_exists and value.is_transition:
+                            inputs = []
+                            outputs = []
+                            for ind, node in enumerate(self.nodes_up[key]):
+                                anc_key = self.nodes_up[value.key][ind]
+                                self[node] = self.nodes[anc_key]
+                                inputs.append(self.nodes[node])
+
+                            down_enum = list(enumerate(self.nodes_down[key]))
+                            for ind, node in down_enum:
+                                dec_key = self.nodes_down[value.key][ind]
+                                self._replace_neighbour(node,
+                                                        key,
+                                                        value.key)
+                                self[node] = self.nodes[dec_key]
+                                outputs.append(self.nodes[node])
+                            value.set_inputs(inputs)
+                            value.set_outputs(outputs)
+
+                        for node_key in self.nodes:
+                            self._replace_neighbour(node_key,
+                                                    value.key,
+                                                    key)
+                            self._replace_neighbour(node_key,
+                                                    value.key,
+                                                    key,
+                                                    "down")
+                    else:
+                        for node_key in self.nodes:
+                            self._replace_neighbour(node_key,
+                                                    value.key,
+                                                    key)
+                        if value.parent is not None:
+                            if self.nodes[key].parent is not None:
+                                val_parent = value.parent
+                                curr_parent = self.nodes[key].parent
+                                if curr_parent != val_parent:
+                                    val_parent_key = val_parent.key
+                                    val_parent_children = self.nodes_down[val_parent_key]
+                                    new_child = copy(value)
+                                    new_child.set_parent(val_parent)
+                                    new_child.attach()
+                                    value.set_parent(curr_parent)
+                                    self.nodes_up[value.key] = [curr_parent.key]
+                                    for ind, node in enumerate(val_parent_children):
+                                        if node == value.key:
+                                            val_parent_children[ind] = new_child.key
+                                    self.nodes_down[val_parent_key] = val_parent_children
+                                    self._replace_neighbour(curr_parent.key,
+                                                            value.key,
+                                                            new_child.key,
+                                                            "down")
+                        for node_key in self.nodes:
+                            self._replace_neighbour(node_key,
+                                                    value.key,
+                                                    key,
+                                                    'down')
+
                     prev_key = value.key
                     self.nodes[key] = self.nodes.pop(prev_key)
                     self.nodes_up[key] = self.nodes_up.pop(prev_key)
@@ -1440,6 +1514,10 @@ class Pipeline(MetaPipeline):
                       prune=prune,
                       new=False)
 
+    def collapse(self, prune=False):
+        """Identify all compatible nodes with the same name."""
+        _ = collapse(self, new=False, prune=prune)
+
     def __copy__(self):
         """Return a shallow copy of self."""
         name = f"copy({self.name})"
@@ -1772,6 +1850,20 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
         new_pipeline = copy(p1)
         new_pipeline.name = name
 
+    do_not_knit = []
+    for key in p2.nodes:
+        if key not in knit_points:
+            do_not_knit.append(key)
+    nxgraph = p2.struct
+
+    knit_keys = list(knit_points.keys())
+    for key in knit_keys:
+        for not_key in do_not_knit:
+            if p2.shortest_path(not_key, key, nxgraph) is not None:
+                del knit_points[key]
+                do_not_knit.append(key)
+                break
+
     knit_points_inv = {}
     for key in knit_points:
         new_key = knit_points[key]["new_key"]
@@ -1782,7 +1874,6 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
         knit_points_inv[p1_key] = {"new_key": new_key,
                                    "map": key,
                                    "new_name": new_name}
-
     node_map = {}
     orders = p2.node_order()
     all_orders = list(set(orders[ordkey]
@@ -1797,7 +1888,7 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
                     new_key = knit_points[key]["new_key"]
                 else:
                     new_key = key
-                if new_key not in new_pipeline or new_key not in knit_points:
+                if new_key not in new_pipeline or new_key in do_not_knit:
                     node = p2.nodes[key]
                     if key in p2.inputs:
                         new_node = copy(node)
@@ -1817,7 +1908,7 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
                             else:
                                 new_ikey = ikey
                             if (new_ikey not in new_pipeline or
-                               new_ikey not in knit_points):
+                               new_ikey in do_not_knit):
                                 if ikey not in node_map:
                                     new_in = copy(inode)
                                     new_in.set_pipeline(new_pipeline)
@@ -1836,7 +1927,7 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
                             else:
                                 new_okey = okey
                             if (new_okey not in new_pipeline or
-                               new_okey not in knit_points):
+                               new_okey in do_not_knit):
                                 if okey not in node_map:
                                     new_out = copy(onode)
                                     new_out.set_pipeline(new_pipeline)
@@ -1853,16 +1944,22 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
                         for ind, inode in enumerate(node.inputs):
                             ikey = inode.key
                             if new_node.inputs[ind] not in new_pipeline:
-                                if ikey not in new_pipeline.keys():
+                                if (ikey not in new_pipeline.keys() and
+                                   ikey not in do_not_knit):
                                     new_pipeline[ikey] = new_node.inputs[ind]
 
                         for ind, onode in enumerate(node.outputs):
                             okey = onode.key
                             if new_node.outputs[ind] not in new_pipeline:
-                                if okey not in new_pipeline.keys():
+                                if (okey not in new_pipeline.keys() and
+                                   ikey not in do_not_knit and
+                                   key not in do_not_knit):
                                     new_pipeline[okey] = new_node.outputs[ind]
 
-                        new_pipeline[new_key] = new_node
+                        if new_key not in do_not_knit:
+                            new_pipeline[new_key] = new_node
+                        else:
+                            new_node.attach()
                         node_map[key] = new_node
                 else:
                     node_map[key] = new_pipeline[new_key]
@@ -1871,3 +1968,42 @@ def merge(p1, p2, on='key', knit_points=None, new=True, prune=True):
         new_pipeline.prune()
 
     return new_pipeline
+
+
+def collapse(pipeline, new=True, prune=True):
+    """Identify all compatible nodes with the same name within pipeline."""
+    if new:
+        dpipeline = copy(pipeline)
+        dpipeline.name = f'collapse({pipeline.name})'
+    else:
+        dpipeline = pipeline
+
+    nxgraph = dpipeline.struct
+    node_cats = {}
+    for name in dpipeline.names:
+        if name not in node_cats:
+            node_cats[name] = {}
+        for key in dpipeline.nodes:
+            node = dpipeline.nodes[key]
+            if name == dpipeline.nodes[key].name:
+                found = False
+                for rkey in node_cats[name]:
+                    if key != rkey:
+                        if node.is_compatible(node_cats[name][rkey][0]):
+                            spath = dpipeline.shortest_path(rkey,
+                                                            node.key,
+                                                            nxgraph)
+                            if spath is None:
+                                node_cats[name][rkey].append(node)
+                                found = True
+                                break
+                if not found:
+                    node_cats[name][key] = [node]
+    for name in node_cats:
+        for rkey in node_cats[name]:
+            for node in node_cats[name][rkey]:
+                dpipeline[rkey] = node
+
+    if prune:
+        dpipeline.prune()
+    return dpipeline

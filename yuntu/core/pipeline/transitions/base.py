@@ -237,8 +237,7 @@ class Transition(Node):
                     self._inputs[i].set_pipeline(self.pipeline)
                     if self._inputs[i].key not in self.pipeline:
                         self._inputs[i].attach()
-                self.pipeline.arcs_up[self.key][i] = (self.key,
-                                                      self._inputs[i].key)
+                self.pipeline.nodes_up[self.key][i] = self._inputs[i].key
 
     def set_outputs(self, places):
         """Set hard value for inputs (when pipeline is None)"""
@@ -256,8 +255,7 @@ class Transition(Node):
                     self._outputs[i].set_pipeline(self.pipeline)
                     if self._outputs[i].key not in self.pipeline:
                         self._outputs[i].attach()
-                self.pipeline.arcs_down[self.key][i] = (self.key,
-                                                        self._outputs[i].key)
+                self.pipeline.nodes_down[self.key][i] = self._outputs[i].key
 
     def validate_operation(self, operation):
         """Validates method to be set according to operation type."""

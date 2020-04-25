@@ -69,7 +69,7 @@ class Soundscape(Pipeline):
                                 name='indices',
                                 ptype='pickleable')
         self['npartitions'] = place(data=10,
-                                    name='napartitions',
+                                    name='npartitions',
                                     ptype='scalar')
         self['recordings_dd'] = trans.as_dd(self['recordings'],
                                             self['npartitions'])

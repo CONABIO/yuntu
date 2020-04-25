@@ -848,7 +848,7 @@ def _build_method_op(self, method_name, args, kwargs, op_class, out_sig):
         kwargs_ = node_args[n_args+1:]
         wrapper_kwargs = {}
         if len(kwargs_) > 0:
-            for i in range(len(kwarg_keys)):
+            for i in range(len(kwargs_)):
                 wrapper_kwargs[kwarg_keys[i]] = kwargs_[i]
         wrapper_kwargs.update(non_op_kwargs)
 
