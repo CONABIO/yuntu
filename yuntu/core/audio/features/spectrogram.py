@@ -1,6 +1,5 @@
 """Spectrogram class module."""
 from typing import Optional
-import os
 from collections import namedtuple
 from collections import OrderedDict
 
@@ -8,9 +7,7 @@ import numpy as np
 from librosa.core import amplitude_to_db
 from librosa.core import power_to_db
 
-from yuntu.logging import logger
-from yuntu.core.windows import Window
-import yuntu.core.audio.audio as audio
+import yuntu.core.audio.audio as audio_mod
 from yuntu.core.audio.features.base import TimeFrequencyFeature
 from yuntu.core.media.time_frequency import TimeFrequencyMediaMixin
 from yuntu.core.media.time_frequency import TimeFreqResolution
@@ -73,6 +70,9 @@ class Spectrogram(TimeFrequencyFeature):
         self.hop_length = hop_length
         self.window_function = window_function
 
+        if audio is not None and not isinstance(audio, audio_mod.Audio):
+            audio = audio_mod.Audio.from_dict(audio)
+
         if duration is None:
             if audio is None:
                 message = (
@@ -82,7 +82,7 @@ class Spectrogram(TimeFrequencyFeature):
 
         if resolution is None:
             if array is not None:
-                columns = array.shape[self.frequency_axis]
+                columns = array.shape[self.frequency_axis_index]
                 time_resolution = columns / duration
             elif audio is not None:
                 time_resolution = audio.samplerate / hop_length
@@ -175,12 +175,16 @@ class Spectrogram(TimeFrequencyFeature):
         if self._has_trivial_window():
             return result
 
-        max_freq = self._get_max()
-        min_freq = self._get_min()
-        rows = 1 + self.n_fft // 2
-        max_index = int(rows * (max_freq / self.max_freq))
-        min_index = int(rows * (min_freq / self.max_freq))
-        return result[slice(min_index, max_index)]
+        max_index = self.get_index_from_frequency(self._get_max())
+        min_index = self.get_index_from_frequency(self._get_min())
+
+        start_index = self.get_index_from_time(self._get_start())
+        end_index = self.get_index_from_time(self._get_end())
+
+        slices = (
+            slice(min_index, max_index),
+            slice(start_index, end_index))
+        return result[slices]
 
     def load(self):
         """Load the spectrogram array.
@@ -408,46 +412,19 @@ class Spectrogram(TimeFrequencyFeature):
 
         return DecibelSpectrogram(**kwargs)
 
-    # pylint: disable=arguments-differ
-    def to_dict(self, absolute_path=True):
+    def to_dict(self):
         """Return spectrogram metadata."""
-        data = {
+        return {
             'units': self.units,
             'n_fft': self.n_fft,
             'hop_length': self.hop_length,
             'window_function': self.window_function,
-            'window': self.window.to_dict(),
-            'duration': self.duration,
-            'samplerate': self.samplerate,
+            **super().to_dict()
         }
-
-        if self.path_exists():
-            if absolute_path:
-                data['path'] = os.path.abspath(self.path)
-            else:
-                data['path'] = self.path
-
-            return data
-
-        if self.has_audio():
-            data['audio'] = self.audio.to_dict(absolute_path=absolute_path)
-            return data
-
-        logger.warning(
-            'Spectrogram instance does not have a path or an associated '
-            'audio instance and reconstruction from dictionary values '
-            'will not be possible.')
-        return data
 
     @classmethod
     def from_dict(cls, data):
         units = data.pop('units', None)
-
-        if 'audio' in data:
-            data['audio'] = audio.Audio.from_dict(data['audio'])
-
-        if 'window' in data:
-            data['window'] = Window.from_dict(data['window'])
 
         if units == 'amplitude':
             return Spectrogram(**data)

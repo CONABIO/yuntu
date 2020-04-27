@@ -4,40 +4,72 @@ import numpy as np
 from yuntu.core.audio.utils import resample
 from yuntu.core.media.base import Media
 import yuntu.core.windows as windows
+from yuntu.core.axis import FrequencyAxis
+
+
+class FrequencyItem(Media):
+    def __init__(self, freq, *args, **kwargs):
+        self.freq = freq
+        super().__init__(*args, **kwargs)
+
+    def load(self, path):
+        pass
+
+    def write(self, path):
+        pass
+
+    def plot(self, ax=None, **kwargs):
+        pass
 
 
 class FrequencyMediaMixin:
-    frequency_axis = 0
+    frequency_axis_index = 0
+    frequency_axis_class = FrequencyAxis
+    frequency_item_class = FrequencyItem
     window_class = windows.FrequencyWindow
 
-    def __init__(self, min_freq=0, max_freq=None, **kwargs):
-        self.max_freq = max_freq
-        self.min_freq = 0
+    def __init__(
+            self,
+            min_freq=0,
+            max_freq=None,
+            resolution=None,
+            frequency_axis=None,
+            **kwargs):
+
+        if frequency_axis is None:
+            frequency_axis = self.frequency_axis_class(
+                start=min_freq,
+                end=max_freq,
+                resolution=resolution,
+                **kwargs)
+
+        if not isinstance(frequency_axis, self.frequency_axis_class):
+            frequency_axis = self.frequency_axis_class.from_dict(frequency_axis) # noqa
+
+        self.frequency_axis = frequency_axis
 
         if 'window' not in kwargs:
             kwargs['window'] = windows.FrequencyWindow(
-                min=min_freq,
-                max=max_freq)
+                min=frequency_axis.start,
+                max=frequency_axis.end)
 
         super().__init__(**kwargs)
 
-    def _get_min(self):
-        if self.window.min is not None:
-            return self.window.min
+    def to_dict(self):
+        return {
+            'frequency_axis': self.frequency_axis.to_dict(),
+            **super().to_dict()
+        }
 
-        return self.min_freq
+    def _get_min(self):
+        return self.frequency_axis.get_start(window=self.window)
 
     def _get_max(self):
-        if self.window.max is not None:
-            return self.window.max
-
-        return self.max_freq
+        return self.frequency_axis.get_end(window=self.window)
 
     def _get_axis_info(self):
         return {
-            'max_freq': self.max_freq,
-            'min_freq': self.min_freq,
-            'resolution': self.resolution,
+            'frequency_axis': self.frequency_axis,
             **super()._get_axis_info()
         }
 
@@ -58,14 +90,13 @@ class FrequencyMediaMixin:
 
     @property
     def df(self):
-        return 1 / self.resolution
+        return 1 / self.frequency_axis.resolution
 
     @property
     def frequency_size(self):
         if self.is_empty():
-            freq_range = self._get_max() - self._get_min()
-            return int(freq_range / self.df)
-        return self.array.shape[self.frequency_axis]
+            return self.frequency_axis.get_size(window=self.window)
+        return self.array.shape[self.frequency_axis_index]
 
     def get_index_from_frequency(self, freq):
         """Get index of the media array corresponding to a given frequency."""
@@ -82,12 +113,26 @@ class FrequencyMediaMixin:
                 'was requested')
             raise ValueError(message)
 
-        index = int((freq - minimum) / self.df)
-        return index
+        return self.frequency_axis.get_index_from_value(
+            freq,
+            window=self.window)
 
     def get_value(self, freq):
         index = self.get_index_from_frequency(freq)
-        return self.array.take(index, axis=self.frequency_axis)
+        return self.array.take(index, axis=self.frequency_axis_index)
+
+    def get_freq_item_kwargs(self, freq):
+        return {'window': self.window.copy()}
+
+    def get_freq_item(self, freq):
+        index = self.get_index_from_frequency(freq)
+        array = self.array.take(index, axis=self.frequency_axis_index)
+        kwargs = self.get_freq_item_kwargs(freq)
+        return self.frequency_item_class(freq, array=array, **kwargs)
+
+    def iter_freq(self):
+        for freq in self.frequencies:
+            yield self.get_freq_item(freq)
 
     @property
     def frequencies(self):
@@ -97,9 +142,7 @@ class FrequencyMediaMixin:
         the frequency (in hertz) corresponding to each piece of the media
         array.
         """
-        minimum = self._get_min()
-        maximum = self._get_max()
-        return np.linspace(minimum, maximum, self.frequency_size)
+        return self.frequency_axis.get_bins(window=self.window)
 
     def resample(
             self,
@@ -109,12 +152,12 @@ class FrequencyMediaMixin:
         """Get a new FrequencyMedia object with the resampled data."""
         data = self._copy_dict()
         data['lazy'] = lazy
-        data['resolution'] = resolution
+        data['frequency_axis'] = self.frequency_axis.resample(resolution)
 
         if not self.path_exists():
             data = resample(
                 self.array,
-                self.resolution,
+                self.frequency_axis.resolution,
                 resolution,
                 **kwargs)
             data['array'] = data
@@ -166,9 +209,7 @@ class FrequencyMediaMixin:
         start_index = self.get_index_from_frequency(min_freq)
         end_index = self.get_index_from_frequency(max_freq)
 
-        slice_args = [None for _ in len(self.shape)]
-        slice_args[self.frequency_axis] = (start_index, end_index + 1)
-        return self.array[slice(*slice_args)]
+        return self.array[self._build_slices(start_index, end_index + 1)]
 
     def calculate_mask(self, geometry):
         """Return masked 1d array."""
@@ -178,9 +219,13 @@ class FrequencyMediaMixin:
         end_index = self.get_index_from_frequency(max_freq)
 
         mask = np.zeros(self.shape)
-        mask[start_index: end_index + 1] = 1
-
+        mask[self._build_slices(start_index, end_index + 1)] = 1
         return mask
+
+    def _build_slices(self, start, end):
+        slices = [slice(None, None) for _ in self.shape]
+        slices[self.frequency_axis_index] = slice(start, end)
+        return tuple(slices)
 
     def cut(
             self,
@@ -240,7 +285,8 @@ class FrequencyMediaMixin:
         if not self.is_empty():
             start = self.get_index_from_frequency(min_freq)
             end = self.get_index_from_frequency(max_freq)
-            kwargs_dict['array'] = kwargs_dict['array'][slice(start, end)]
+            slices = self._build_slices(start, end)
+            kwargs_dict['array'] = kwargs_dict['array'][slices]
 
         return type(self)(**kwargs_dict)
 

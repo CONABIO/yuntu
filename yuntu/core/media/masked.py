@@ -10,13 +10,7 @@ class MaskedMediaMixin:
         kwargs['window'] = self.media.window
         super().__init__(**kwargs)
 
-    def load_from_file(self):
-        pass
-
     def load(self):
-        if self.path_exists():
-            return self.load_from_file()
-
         return self.media.calculate_mask(self.geometry)
 
     def to_dict(self):
