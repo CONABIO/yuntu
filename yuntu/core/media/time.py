@@ -4,58 +4,80 @@ import numpy as np
 from yuntu.core.audio.utils import resample
 from yuntu.core.media.base import Media
 import yuntu.core.windows as windows
+from yuntu.core.axis import TimeAxis
+
+
+class TimeItem(Media):
+    def __init__(self, time, *args, **kwargs):
+        self.freq = time
+        super().__init__(*args, **kwargs)
+
+    def load(self, path):
+        pass
+
+    def write(self, path):
+        pass
+
+    def plot(self, ax=None, **kwargs):
+        pass
 
 
 class TimeMediaMixin:
-    time_axis = 0
+    time_axis_index = 0
+    time_axis_class = TimeAxis
+    time_item_class = TimeItem
     window_class = windows.TimeWindow
 
-    def __init__(self, start=0, duration=None, **kwargs):
-        self.start = start
-        self.duration = duration
+    def __init__(
+            self,
+            start=0,
+            duration=None,
+            resolution=None,
+            time_axis=None,
+            **kwargs):
+
+        if time_axis is None:
+            time_axis = self.time_axis_class(
+                start=start,
+                end=duration,
+                resolution=resolution,
+                **kwargs)
+
+        if not isinstance(time_axis, self.time_axis_class):
+            time_axis = self.time_axis_class.from_dict(time_axis)
+        self.time_axis = time_axis
 
         if 'window' not in kwargs:
-            kwargs['window'] = windows.TimeWindow(start=start, end=duration)
+            kwargs['window'] = windows.TimeWindow(
+                start=time_axis.start,
+                end=time_axis.end)
 
         super().__init__(**kwargs)
 
-    def _get_start(self):
-        if self.window.start is not None:
-            return self.window.start
-
-        return self.start
-
-    def _get_end(self):
-        if self.window.end is not None:
-            return self.window.end
-
-        return self.duration
-
-    def _get_axis_info(self):
-        return {
-            'start': self.start,
-            'duration': self.duration,
-            **super()._get_axis_info()
-        }
-
-    def _has_trivial_window(self):
-        if self.window.start is not None:
-            start = self._get_start()
-
-            if start != self.window.start:
-                return False
-
-        if self.window.end is not None:
-            end = self._get_end()
-
-            if end != self.window.end:
-                return False
-
-        return super()._has_trivial_window()
-
     @property
     def dt(self):
-        return 1 / self.resolution
+        return self.time_axis.period
+
+    @property
+    def time_size(self):
+        if self.is_empty():
+            return self.time_axis.get_size(window=self.window)
+        return self.array.shape[self.time_axis_index]
+
+    @property
+    def times(self):
+        """Get the time array.
+
+        This is an array of the same length as the wav data array and holds
+        the time (in seconds) corresponding to each piece of the wav array.
+        """
+        return self.time_axis.get_bins(window=self.window)
+
+    def to_dict(self):
+        return {
+            'time_axis': self.time_axis.to_dict(),
+            **super().to_dict()
+        }
 
     def get_index_from_time(self, time):
         """Get the index of the media array corresponding to the given time."""
@@ -72,12 +94,26 @@ class TimeMediaMixin:
                 'was requested')
             raise ValueError(message)
 
-        index = int((time - start) / self.dt)
-        return index
+        return self.time_axis.get_index_from_value(
+            time,
+            window=self.window)
 
     def get_value(self, time):
         index = self.get_index_from_time(time)
-        return self.array.take(index, axis=self.time_axis)
+        return self.array.take(index, axis=self.time_axis_index)
+
+    def get_time_item_kwargs(self, freq):
+        return {'window': self.window.copy()}
+
+    def get_time_item(self, freq):
+        index = self.get_index_from_time(freq)
+        array = self.array.take(index, axis=self.time_axis_index)
+        kwargs = self.get_time_item_kwargs(freq)
+        return self.time_item_class(freq, array=array, **kwargs)
+
+    def iter_time(self):
+        for time in self.times:
+            yield self.get_time_item(time)
 
     def resample(
             self,
@@ -95,7 +131,7 @@ class TimeMediaMixin:
 
         data = self._copy_dict()
         data['lazy'] = lazy
-        data['resolution'] = resolution
+        data['time_axis'] = self.time_axis.resample(resolution)
 
         if not self.path_exists():
             data = resample(
@@ -106,25 +142,6 @@ class TimeMediaMixin:
             data['array'] = data
 
         return type(self)(**data)
-
-    @property
-    def time_size(self):
-        if self.is_empty():
-            time_range = self._get_end() - self._get_start()
-            return int(time_range / self.dt)
-        return self.array.shape[self.time_axis]
-
-    @property
-    def times(self):
-        """Get the time array.
-
-        This is an array of the same length as the wav data array and holds
-        the time (in seconds) corresponding to each piece of the wav array.
-        """
-        start = self._get_start()
-        end = self._get_end()
-
-        return np.linspace(start, end, self.time_size)
 
     def read(self, start=None, end=None):
         """Read a section of the media array.
@@ -170,7 +187,7 @@ class TimeMediaMixin:
 
         start_index = self.get_index_from_time(start)
         end_index = self.get_index_from_time(end)
-        return self.array[start_index: end_index + 1]
+        return self.array[self._build_slices(start_index, end_index + 1)]
 
     def calculate_mask(self, geometry):
         """Return masked 1d array."""
@@ -180,8 +197,7 @@ class TimeMediaMixin:
         end_index = self.get_index_from_time(end)
 
         mask = np.zeros(self.shape)
-        mask[start_index: end_index + 1] = 1
-
+        mask[self._build_slices(start_index, end_index + 1)] = 1
         return mask
 
     def cut(
@@ -242,9 +258,42 @@ class TimeMediaMixin:
         if not self.is_empty():
             start = self.get_index_from_time(start_time)
             end = self.get_index_from_time(end_time)
-            kwargs_dict['array'] = kwargs_dict['array'][slice(start, end)]
+            slices = self._build_slices(start, end)
+            kwargs_dict['array'] = kwargs_dict['array'][slices]
 
         return type(self)(**kwargs_dict)
+
+    def _get_start(self):
+        return self.time_axis.get_start(window=self.window)
+
+    def _get_end(self):
+        return self.time_axis.get_end(window=self.window)
+
+    def _get_axis_info(self):
+        return {
+            'time_axis': self.time_axis,
+            **super()._get_axis_info()
+        }
+
+    def _has_trivial_window(self):
+        if self.window.start is not None:
+            start = self._get_start()
+
+            if start != self.window.start:
+                return False
+
+        if self.window.end is not None:
+            end = self._get_end()
+
+            if end != self.window.end:
+                return False
+
+        return super()._has_trivial_window()
+
+    def _build_slices(self, start, end):
+        slices = [slice(None, None) for _ in self.shape]
+        slices[self.time_axis_index] = slice(start, end)
+        return tuple(slices)
 
 
 class TimeMedia(TimeMediaMixin, Media):

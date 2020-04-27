@@ -1,7 +1,7 @@
 """Yuntu utilities."""
 import os
+import io
 import tempfile
-import sys
 import subprocess
 from contextlib import contextmanager
 
@@ -24,8 +24,10 @@ def tmp_file(basename):
         yield filename, tmpfile
 
 
-def download_file(url, file):
+def download_file(url):
+    buffer = io.BytesIO()
     r = requests.get(url, stream=True)
+
     file_size = int(r.headers['Content-Length'])
     chunk_size = 1024
     num_bars = int(file_size / chunk_size)
@@ -35,8 +37,11 @@ def download_file(url, file):
         desc=url,
         leave=True,
         unit='KB')
+
     for chunk in iterable:
-        file.write(chunk)
+        buffer.write(chunk)
+    buffer.seek(0)
+    return buffer
 
 
 def scp_file(src, dest):

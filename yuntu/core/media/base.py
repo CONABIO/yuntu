@@ -6,6 +6,7 @@ This could be the full wav array, the zero crossing rate or the spectrogram.
 These media objects can all be stored and read from the filesystem.
 """
 import os
+
 from abc import ABC
 from abc import abstractmethod
 from urllib.parse import urlparse
@@ -26,24 +27,7 @@ class Media(ABC, AnnotatedObject):
     """
 
     window_class = Window
-
-    # pylint: disable=no-self-use
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        """Use numpy universal functions on media array."""
-        modified_inputs = tuple([
-            inp.array
-            if isinstance(inp, Media) else inp
-            for inp in inputs
-        ])
-        modified_kwargs = {
-            key:
-                value.array
-                if isinstance(value, Media)
-                else value
-            for key, value in kwargs.items()
-        }
-
-        return getattr(ufunc, method)(*modified_inputs, **modified_kwargs)
+    mask_class = None
 
     # pylint: disable=super-init-not-called, unused-argument
     def __init__(
@@ -52,34 +36,60 @@ class Media(ABC, AnnotatedObject):
             lazy=False,
             array=None,
             window=None,
-            resolution=None,
             **kwargs):
         """Construct a media object."""
         self.path = path
-        self.lazy = lazy
-        self.resolution = resolution
 
         if window is None:
             # pylint: disable=abstract-class-instantiated
             window = self.window_class()
+
+        if not isinstance(window, Window):
+            window = Window.from_dict(window)
+
         self.window = window
 
         if array is not None:
             self._array = array
         elif not lazy:
             if self.is_remote():
-                self.path = self.remote_load()
-
-            self._array = self.load()
+                tmpfile = self.remote_load()
+                self._array = self.load(path=tmpfile)
+                tmpfile.close()
+            else:
+                self._array = self.load()
 
         super().__init__(**kwargs)
 
-    def _has_trivial_window(self):
-        return True
+    @property
+    def array(self):
+        """Get media contents."""
+        if self.is_empty():
+            if self.is_remote():
+                tmpfile = self.remote_load()
+                self._array = self.load(path=tmpfile)
+                tmpfile.close()
+            else:
+                self._array = self.load()
+        return self._array
 
-    def clean(self):
-        """Clear media contents and free memory."""
-        del self._array
+    @property
+    def path_ext(self):
+        """Get extension of media file."""
+        _, ext = os.path.splitext(self.path)
+        return ext
+
+    def to_dict(self):
+        """Return a dictionary holding all media metadata."""
+        data = {
+            'type': self.__class__.__name__,
+            'window': self.window.to_dict()
+        }
+
+        if self.path is not None:
+            data['path'] = self.path
+
+        return data
 
     def is_remote(self):
         if self.path is None:
@@ -102,25 +112,18 @@ class Media(ABC, AnnotatedObject):
         parsed = urlparse(self.path)
 
         if parsed.scheme in ['http', 'https']:
-            filename = os.path.basename(parsed.path)
-            with tmp_file(filename) as (name, tmpfile):
-                download_file(self.path, tmpfile)
-
-            return name
-
-        if parsed.scheme == 'scp':
-            filename = os.path.basename(parsed.path)
-            path = parsed.netloc+":"+parsed.path.replace("//", "/")
-            return scp_file(src=path, dest=filename)
+            return download_file(self.path)
+            # print(len(buffer.getvalue()), buffer)
+        #
+        # if parsed.scheme == 'scp':
+        #     filename = os.path.basename(parsed.path)
+        #     path = parsed.netloc+":"+parsed.path.replace("//", "/")
+        #     return scp_file(src=path, dest=filename)
 
         message = (
             'Remote loading is not implemented for '
             f'scheme {parsed.scheme}')
         raise NotImplementedError(message)
-
-    def is_empty(self):
-        """Check if array has not been loaded yet."""
-        return not hasattr(self, '_array') or self._array is None
 
     def path_exists(self):
         """Determine if the media file exists in the filesystem."""
@@ -129,14 +132,16 @@ class Media(ABC, AnnotatedObject):
 
         return os.path.exists(self.path)
 
-    @property
-    def path_ext(self):
-        """Get extension of media file."""
-        _, ext = os.path.splitext(self.path)
-        return ext
+    def clean(self):
+        """Clear media contents and free memory."""
+        del self._array
+
+    def is_empty(self):
+        """Check if array has not been loaded yet."""
+        return not hasattr(self, '_array') or self._array is None
 
     @abstractmethod
-    def load(self):
+    def load(self, path=None):
         """Read media object into memory."""
 
     @abstractmethod
@@ -144,19 +149,8 @@ class Media(ABC, AnnotatedObject):
         """Write media object into filesystem."""
 
     @abstractmethod
-    def to_dict(self):
-        """Return a dictionary holding all media metadata."""
-
-    @abstractmethod
     def plot(self, ax=None, **kwargs):  # pylint: disable=invalid-name
         """Plot a representation of the media object."""
-
-    def get_mask_class(self):
-        if hasattr(self, 'mask_class'):
-            return self.mask_class
-
-        message = 'No mask class was provided'
-        raise NotImplementedError(message)
 
     def to_mask(self, geometry, lazy=False):
         if isinstance(geometry, (annotations.Annotation, Window)):
@@ -167,14 +161,50 @@ class Media(ABC, AnnotatedObject):
 
         axis_info = self._get_axis_info()
         intersected = self.window.geometry.intersection(geometry.geometry)
-        return self.get_mask_class()(
+        return self.mask_class(
             media=self,
             geometry=intersected,
             lazy=lazy,
             **axis_info)
 
     def _get_axis_info(self):
-        return {'resolution': self.resolution}
+        return {}
+
+    def normalized(self, method='minmax', **kwargs):
+        if method == 'minmax':
+            array = self.array
+
+            minimum = kwargs.get('minimum', None)
+            if minimum is None:
+                minimum = array.min()
+
+            maximum = kwargs.get('maximum', None)
+            if maximum is None:
+                maximum = array.max()
+
+            return (array - minimum) / (maximum - minimum)
+
+        if method == 'z':
+            array = self.array
+
+            mean = kwargs.get('mean', None)
+            if mean is None:
+                mean = array.mean()
+
+            std = kwargs.get('std', None)
+            if std is None:
+                std = array.std()
+
+            return (array - mean) / std
+
+        message = f'Normalization method {method} is not implemented'
+        raise NotImplementedError(message)
+
+    def copy(self, **kwargs):
+        """Copy media element."""
+        data = self._copy_dict(**kwargs)
+        cls = type(self)
+        return cls(**data)
 
     def _copy_dict(self, **kwargs):
         data = {
@@ -189,28 +219,31 @@ class Media(ABC, AnnotatedObject):
 
         return data
 
-    def normalized(self):
-        array = self.array
-        minimum = array.min()
-        maximum = array.max()
-        return (array - minimum) / (maximum - minimum)
-
-    @property
-    def array(self):
-        """Get media contents."""
-        if self.is_empty():
-            self._array = self.load()
-        return self._array
-
-    def copy(self, **kwargs):
-        """Copy media element."""
-        data = self._copy_dict(**kwargs)
-        cls = type(self)
-        return cls(**data)
-
     def __copy__(self):
         """Copy media element."""
         return self.copy()
+
+    # pylint: disable=no-self-use
+    def _has_trivial_window(self):
+        return True
+
+    # pylint: disable=no-self-use
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        """Use numpy universal functions on media array."""
+        modified_inputs = tuple([
+            inp.array
+            if isinstance(inp, Media) else inp
+            for inp in inputs
+        ])
+        modified_kwargs = {
+            key:
+                value.array
+                if isinstance(value, Media)
+                else value
+            for key, value in kwargs.items()
+        }
+
+        return getattr(ufunc, method)(*modified_inputs, **modified_kwargs)
 
 
 NUMPY_METHODS = [

@@ -10,9 +10,6 @@ import os
 
 import numpy as np
 
-
-from yuntu.core.windows import TimeWindow
-from yuntu.logging import logger
 from yuntu.core.media.time import TimeMedia
 from yuntu.core.media.time import TimeMediaMixin
 import yuntu.core.media.masked as masked_media
@@ -146,7 +143,11 @@ class Audio(TimeMedia):
 
     @property
     def samplerate(self):
-        return self.resolution
+        return self.time_axis.resolution
+
+    @property
+    def duration(self):
+        return self.time_axis.end
 
     @classmethod
     def from_instance(
@@ -180,12 +181,7 @@ class Audio(TimeMedia):
             message = 'No path was provided in the dictionary argument'
             raise ValueError(message)
 
-        window = dictionary.pop('window', None)
-        if window is not None:
-            dictionary['window'] = TimeWindow.from_dict(window)
-
-        if lazy:
-            dictionary['lazy'] = True
+        dictionary['lazy'] = lazy
 
         if samplerate is not None:
             dictionary['samplerate'] = samplerate
@@ -238,23 +234,25 @@ class Audio(TimeMedia):
             **super()._copy_dict(**kwargs),
         }
 
-    def read_info(self):
-        if self.is_remote():
-            self.path = self.remote_load()
+    def read_info(self, path=None):
+        if path is None:
+            if self.is_remote():
+                path = self.remote_load()
+                info = read_info(path, self.timeexp)
+                path.close()
+                return info
 
-        return read_info(self.path, self.timeexp)
+            path = self.path
+        return read_info(path, self.timeexp)
 
-    def load(self):
+    def load(self, path=None):
         """Read signal from file."""
-        if self.is_remote():
-            self.path = self.remote_load()
-
         start = self._get_start()
         end = self._get_end()
         duration = end - start
 
         signal, _ = read_media(
-            self.path,
+            path,
             self.samplerate,
             offset=start,
             duration=duration)
@@ -337,29 +335,15 @@ class Audio(TimeMedia):
 
         return ax
 
-    def to_dict(self, absolute_path=True):
+    def to_dict(self):
         """Return a dictionary holding all audio metadata."""
-        data = {
+        return {
             'timeexp': self.timeexp,
             'media_info': dict(self.media_info._asdict()),
             'metadata': self.metadata.copy(),
             'id': self.id,
-            'window': self.window.to_dict(),
-            'samplerate': self.samplerate
+            **super().to_dict()
         }
-
-        if self.path_exists():
-            if absolute_path:
-                data['path'] = os.path.abspath(self.path)
-            else:
-                data['path'] = self.path
-        else:
-            message = (
-                'Audio instance does not have a path and its reconstruction '
-                'will not be possible from the dictionary information.')
-            logger.warning(message)
-
-        return data
 
     def __repr__(self):
         """Return a representation of the audio object."""

@@ -1,4 +1,5 @@
 """Feature class module."""
+import yuntu.core.audio.audio as audio_module
 from yuntu.core.media.base import Media
 from yuntu.core.media.time import TimeMediaMixin
 from yuntu.core.media.frequency import FrequencyMediaMixin
@@ -21,6 +22,9 @@ class Feature(Media):
             lazy: bool = False,
             **kwargs):
         """Construct a feature."""
+        if not isinstance(audio, audio_module.Audio):
+            audio = audio_module.Audio.from_dict(audio)
+
         self.audio = audio
         super().__init__(path=path, lazy=lazy, array=array, **kwargs)
 
@@ -29,6 +33,14 @@ class Feature(Media):
             'audio': self.audio,
             **super()._copy_dict(**kwargs),
         }
+
+    def to_dict(self):
+        data = super().to_dict()
+
+        if self.has_audio():
+            data['audio'] = self.audio.to_dict()
+
+        return data
 
     def has_audio(self):
         """Return if this feature is linked to an Audio instance."""
@@ -52,7 +64,7 @@ class TimeFeature(TimeMediaMixin, Feature):
             if audio is None:
                 start = 0
             else:
-                start = audio.start
+                start = audio.time_axis.start
 
         if duration is None:
             if audio is None:
@@ -65,7 +77,8 @@ class TimeFeature(TimeMediaMixin, Feature):
             if audio is not None:
                 samplerate = audio.samplerate
             elif array is not None:
-                samplerate = (duration - start) / array.shape[self.time_axis]
+                length = array.shape[self.time_axis_index]
+                samplerate = (duration - start) / length
             else:
                 message = (
                     'If no audio or array is provided a samplerate must '
@@ -100,8 +113,8 @@ class FrequencyFeature(FrequencyMediaMixin, Feature):
 
         if resolution is None:
             if array is not None:
-                freq_range = (max_freq - min_freq)
-                resolution = freq_range / array.shape[self.frequency_axis]
+                length = array.shape[self.frequency_axis_index]
+                resolution = (max_freq - min_freq) / length
             else:
                 message = (
                     'If no array is provided a resolution must be set')
@@ -133,7 +146,7 @@ class TimeFrequencyFeature(TimeFrequencyMediaMixin, Feature):
             if audio is None:
                 start = 0
             else:
-                start = audio.start
+                start = audio.time_axis.start
 
         if duration is None:
             if audio is None:
@@ -146,7 +159,8 @@ class TimeFrequencyFeature(TimeFrequencyMediaMixin, Feature):
             if audio is not None:
                 samplerate = audio.samplerate
             elif array is not None:
-                samplerate = (duration - start) / array.shape[self.time_axis]
+                length = array.shape[self.time_axis_index]
+                samplerate = (duration - start) / length
             else:
                 message = (
                     'If no audio or array is provided a samplerate must '
@@ -162,8 +176,8 @@ class TimeFrequencyFeature(TimeFrequencyMediaMixin, Feature):
 
         if resolution is None:
             if array is not None:
-                freq_range = (max_freq - min_freq)
-                resolution = freq_range / array.shape[self.frequency_axis]
+                length = array.shape[self.frequency_axis_index]
+                resolution = (max_freq - min_freq) / length
             else:
                 message = (
                     'If no array is provided a resolution must be set')

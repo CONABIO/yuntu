@@ -1,6 +1,7 @@
 """Auxiliar utilities for Audio classes and methods."""
 from typing import Optional
 import os
+import io
 import hashlib
 import wave
 import numpy as np
@@ -25,6 +26,9 @@ def binary_md5(path, blocksize=65536):
 
 def media_size(path):
     """Return media size or None."""
+    if isinstance(path, io.BytesIO):
+        return len(path.getvalue())
+
     if path is not None:
         if os.path.isfile(path):
             return os.path.getsize(path)

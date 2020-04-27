@@ -8,17 +8,29 @@ from scipy.interpolate import RectBivariateSpline
 import yuntu.core.windows as windows
 from yuntu.core.media.base import Media
 from yuntu.core.media.time import TimeMediaMixin
+from yuntu.core.media.time import TimeItem
 from yuntu.core.media.frequency import FrequencyMediaMixin
+from yuntu.core.media.frequency import FrequencyItem
 import yuntu.core.geometry.utils as geom_utils
 
 
 TimeFreqResolution = namedtuple('TimeFreqResolution', 'time freq')
 
 
+class TimeItemWithFrequencies(FrequencyMediaMixin, TimeItem):
+    pass
+
+
+class FrequencyItemWithTime(TimeMediaMixin, FrequencyItem):
+    pass
+
+
 class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
-    frequency_axis = 0
-    time_axis = 1
+    frequency_axis_index = 0
+    time_axis_index = 1
     window_class = windows.TimeFrequencyWindow
+    time_item_class = TimeItemWithFrequencies
+    frequency_item_class = FrequencyItemWithTime
 
     def __init__(
             self,
@@ -27,34 +39,44 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             min_freq=None,
             max_freq=None,
             resolution=None,
+            time_axis=None,
+            frequency_axis=None,
             **kwargs):
 
         if not isinstance(resolution, TimeFreqResolution):
             time, freq = resolution
             resolution = TimeFreqResolution(time, freq)
 
-        if 'window' not in kwargs:
-            kwargs['window'] = windows.TimeFrequencyWindow(
+        if time_axis is None:
+            time_axis = self.time_axis_class(
                 start=start,
                 end=duration,
-                min=min_freq,
-                max=max_freq)
+                resolution=resolution.time)
+
+        if not isinstance(time_axis, self.time_axis_class):
+            time_axis = self.time_axis_class.from_dict(time_axis)
+
+        if frequency_axis is None:
+            frequency_axis = self.frequency_axis_class(
+                start=min_freq,
+                end=max_freq,
+                resolution=resolution.freq)
+
+        if not isinstance(frequency_axis, self.frequency_axis_class):
+            frequency_axis = self.frequency_axis_class.from_dict(frequency_axis) # noqa
+
+        if 'window' not in kwargs:
+            kwargs['window'] = windows.TimeFrequencyWindow(
+                start=time_axis.start,
+                end=time_axis.end,
+                min=frequency_axis.start,
+                max=frequency_axis.end)
 
         super().__init__(
             start=start,
-            resolution=resolution,
-            duration=duration,
-            min_freq=min_freq,
-            max_freq=max_freq,
+            frequency_axis=frequency_axis,
+            time_axis=time_axis,
             **kwargs)
-
-    @property
-    def dt(self):
-        return 1 / self.resolution.time
-
-    @property
-    def df(self):
-        return 1 / self.resolution.freq
 
     def get_value(self, time: float, freq: float) -> float:
         """Get media value at a given time and frequency.
@@ -74,21 +96,28 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
         time_index = self.get_index_from_time(time)
         freq_index = self.get_index_from_frequency(freq)
 
-        if self.time_axis > self.frequency_axis:
-            first_axis = self.time_axis
+        if self.time_axis_index > self.frequency_axis_index:
+            first_axis = self.time_axis_index
             first_index = time_index
 
-            second_axis = self.frequency_axis
+            second_axis = self.frequency_axis_index
             second_index = freq_index
         else:
-            first_axis = self.time_axis
-            first_index = time_index
+            first_axis = self.frequency_axis_index
+            first_index = freq_index
 
-            second_axis = self.frequency_axis
-            second_index = freq_index
+            second_axis = self.time_axis_index
+            second_index = time_index
 
         result = self.array.take(first_index, axis=first_axis)
         return result.take(second_index, axis=second_axis)
+
+    # pylint: disable=arguments-differ
+    def _build_slices(self, start_time, end_time, min_freq, max_freq):
+        slice_args = [slice(None, None, None) for _ in len(self.shape)]
+        slice_args[self.frequency_axis_index] = slice(start_time, end_time)
+        slice_args[self.time_axis_index] = slice(min_freq, max_freq)
+        return tuple(slice_args)
 
     # pylint: disable=arguments-differ
     def read(
@@ -123,14 +152,12 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
         start_time_index = self.get_index_from_time(start_time)
         end_time_index = self.get_index_from_time(end_time)
 
-        slice_args = [slice(None, None, None) for _ in len(self.shape)]
-        slice_args[self.frequency_axis] = slice(
+        slices = self._build_slices(
+            start_time_index,
+            end_time_index + 1,
             start_freq_index,
             end_freq_index + 1)
-        slice_args[self.time_axis] = slice(
-            start_time_index,
-            end_time_index + 1)
-        return self.array[tuple(slice_args)]
+        return self.array[slices]
 
     def cut(
             self,
@@ -205,9 +232,12 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             else:
                 max_index = self.get_index_from_frequency(max_freq)
 
-            row_slice = slice(min_index, max_index)
-            col_slice = slice(start_index, end_index)
-            data = self.array[row_slice, col_slice]
+            slices = self._build_slices(
+                start_index,
+                end_index,
+                min_index,
+                max_index)
+            data = self.array[slices]
             kwargs['array'] = data.copy()
 
         return type(self)(**kwargs)
@@ -233,7 +263,11 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
         data = self._copy_dict()
         data['lazy'] = lazy
-        data['resolution'] = resolution
+        new_time_axis = self.time_axis.resample(resolution.time)
+        data['time_axis'] = new_time_axis
+
+        new_freq_axis = self.frequency_axis.resample(resolution.freq)
+        data['frequency_axis'] = new_freq_axis
 
         if not self.path_exists():
             if self.ndim != 2:
@@ -242,19 +276,10 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                     ' resampled')
                 raise ValueError(message)
 
-            start_time = self._get_start()
-            end_time = self._get_end()
+            new_times = new_time_axis.get_bins(window=self.window)
+            new_freqs = new_freq_axis.get_bins(window=self.window)
 
-            min_freq = self._get_min()
-            max_freq = self._get_max()
-
-            new_time_bins = int((end_time - start_time) * resolution.time)
-            new_times = np.linspace(start_time, end_time, new_time_bins)
-
-            new_freq_bins = int((max_freq - min_freq) * resolution.freq)
-            new_freqs = np.linspace(min_freq, max_freq, new_freq_bins)
-
-            if self.time_axis == 1:
+            if self.time_axis_index == 1:
                 xcoord = self.times
                 ycoord = self.frequencies
 
@@ -283,6 +308,18 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             data['array'] = interp(newxcoord, newycoord)
 
         return type(self)(**data)
+
+    def get_freq_item_kwargs(self, freq):
+        return {
+            'window': self.window.copy(),
+            'time_axis': self.time_axis
+        }
+
+    def get_time_item_kwargs(self, freq):
+        return {
+            'window': self.window.copy(),
+            'frequency_axis': self.frequency_axis
+        }
 
     def get_aggr_value(
             self,
