@@ -1354,6 +1354,7 @@ class Pipeline(MetaPipeline):
             retrieved = client.get(graph,
                                    nodes,
                                    sync=False)
+            retrieved = [x.result() for x in retrieved]
             if compute:
                 retrieved = group_compute(*retrieved, scheduler="distributed")
         else:
