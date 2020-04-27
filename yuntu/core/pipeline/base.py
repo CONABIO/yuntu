@@ -1353,7 +1353,7 @@ class Pipeline(MetaPipeline):
         if client is not None:
             retrieved = client.get(graph,
                                    nodes,
-                                   sync=False).result()
+                                   sync=False)
             if compute:
                 retrieved = group_compute(*retrieved, scheduler="distributed")
         else:
