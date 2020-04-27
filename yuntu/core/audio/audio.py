@@ -247,6 +247,9 @@ class Audio(TimeMedia):
 
     def load(self, path=None):
         """Read signal from file."""
+        if path is None:
+            path = self.path
+
         start = self._get_start()
         end = self._get_end()
         duration = end - start

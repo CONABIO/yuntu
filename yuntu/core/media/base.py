@@ -12,8 +12,6 @@ from abc import abstractmethod
 from urllib.parse import urlparse
 
 from yuntu.utils import download_file
-from yuntu.utils import scp_file
-from yuntu.utils import tmp_file
 import yuntu.core.geometry.base as geom
 from yuntu.core.windows import Window
 import yuntu.core.annotation.annotation as annotations
@@ -113,12 +111,6 @@ class Media(ABC, AnnotatedObject):
 
         if parsed.scheme in ['http', 'https']:
             return download_file(self.path)
-            # print(len(buffer.getvalue()), buffer)
-        #
-        # if parsed.scheme == 'scp':
-        #     filename = os.path.basename(parsed.path)
-        #     path = parsed.netloc+":"+parsed.path.replace("//", "/")
-        #     return scp_file(src=path, dest=filename)
 
         message = (
             'Remote loading is not implemented for '
