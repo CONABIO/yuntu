@@ -60,9 +60,9 @@ def feature_indices(row, indices):
 
 @transition(name='add_hash', outputs=["hashed_soundscape"],
             keep=True, persist=True, is_output=True,
-            signature=((DaskDataFramePlace, PickleablePlace),
-                       (DaskDataFramePlace,)))
-def add_hash(dataframe, hasher):
+            signature=((DaskDataFramePlace, PickleablePlace, ScalarPlace),
+                       (DaskDataFramePlace, )))
+def add_hash(dataframe, hasher, out_name="xhash"):
     if not isinstance(hasher, Hasher):
         raise ValueError("Argument 'hasher' must be of class Hasher.")
     if not hasher.validate(dataframe):
@@ -75,9 +75,8 @@ def add_hash(dataframe, hasher):
             for name, dtype in zip(dataframe.columns,
                                    dataframe.dtypes.values)]
 
-    meta.append(("hash", hasher.dtype))
-
-    return dataframe.apply(hasher, axis=1, meta=meta, out_name="hash")
+    meta.append((out_name, hasher.dtype))
+    return dataframe.apply(hasher, out_name=out_name, meta=meta, axis=1)
 
 
 @transition(name='slice_features', outputs=["feature_slices"], persist=True,

@@ -21,13 +21,11 @@ setup(
     url='https://github.com/CONABIO-audio/yuntu',
     author=(
         'CONABIO, '
-        'Dalia Camacho García Formentí, '
         'Santiago Martínez Balvanera, '
         'Everardo Gustavo Robredo Esquivelzeta'
 
     ),
     author_email=(
-        'dcamacho@conabio.gob.mx, '
         'smartinez@conabio.gob.mx, '
         'erobredo@conabio.gob.mx'
     ),

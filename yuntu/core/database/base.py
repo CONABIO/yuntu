@@ -5,6 +5,7 @@ from pony.orm import db_session
 
 from yuntu.core.database.annotations import build_base_annotation_model
 from yuntu.core.database.recordings import build_base_recording_model
+from yuntu.core.database.recordings import build_timed_recording_model
 from yuntu.core.database.datastores import build_base_datastore_model
 from yuntu.core.database.datastores import build_foreign_db_datastore_model
 from yuntu.core.database.datastores import build_storage_model
@@ -125,3 +126,10 @@ class DatabaseManager:
         """Directly insert new media entries without a datastore."""
         model_class = self.get_model_class(model)
         return [model_class(**meta) for meta in meta_arr]
+
+
+class TimedDatabaseManager(DatabaseManager):
+
+    def build_recording_model(self):
+        recording = super().build_recording_model()
+        return build_timed_recording_model(recording)

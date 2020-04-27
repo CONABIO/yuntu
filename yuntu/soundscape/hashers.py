@@ -8,12 +8,12 @@ import datetime
 
 TIME_ZONE = "America/Mexico_city"
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
-TIME_START = "2020-04-20 04:20:20"
+TIME_START = "2000-01-01 00:00:00"
 TIME_UNIT = 3600
 TIME_MODULE = 24
-TIME_COLUMN = "start"
-TIME_FORMAT_COLUMN = "format"
-TIME_ZONE_COLUMN = "timezone"
+TIME_COLUMN = "time_raw"
+TIME_FORMAT_COLUMN = "time_format"
+TIME_ZONE_COLUMN = "time_zone"
 AWARE_START = aware_time(TIME_START, TIME_ZONE, TIME_FORMAT)
 
 
@@ -158,8 +158,7 @@ class CronoHasher(Hasher):
         delta_from_start = self.start - atime
 
         remainder = delta_from_start % self.module
-        row[out_name] = int(round(remainder/self.unit))
-
+        row[out_name] = np.int64(int(round(remainder/self.unit)))
         return row
 
     def unhash(self, hashed):
@@ -170,7 +169,7 @@ class CronoHasher(Hasher):
 
     @property
     def dtype(self):
-        return np.dtype('int32')
+        return np.dtype('int64')
 
 
 def hasher(hash_type, hash_method=None, unhash_method=None, **kwargs):

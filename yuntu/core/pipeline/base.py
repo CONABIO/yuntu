@@ -15,6 +15,7 @@ from dask.optimization import cull
 from dask.optimization import inline as dask_inline
 from dask.optimization import inline_functions
 from dask.optimization import fuse
+from dask.base import compute as group_compute
 
 DASK_CONFIG = {'npartitions': 1}
 
@@ -1353,8 +1354,12 @@ class Pipeline(MetaPipeline):
             retrieved = client.get(graph,
                                    nodes,
                                    sync=False).result()
+            if compute:
+                retrieved = group_compute(*retrieved, scheduler="distributed")
         else:
             retrieved = get(graph, nodes)
+            if compute:
+                retrieved = group_compute(*retrieved, scheduler="threads")
 
         for ind, xnode in enumerate(retrieved):
             key = nodes[ind]
