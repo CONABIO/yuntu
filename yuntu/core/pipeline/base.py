@@ -1226,7 +1226,8 @@ class Pipeline(MetaPipeline):
                   compute=False,
                   force=False,
                   client=None,
-                  linearize=None):
+                  linearize=None,
+                  scheduler="threads"):
         if len(nodes) == 0:
             raise ValueError("At least one node must be specified.")
 
@@ -1360,7 +1361,7 @@ class Pipeline(MetaPipeline):
         else:
             retrieved = get(graph, nodes)
             if compute:
-                retrieved = group_compute(*retrieved, scheduler="threads")
+                retrieved = group_compute(*retrieved, scheduler=scheduler)
 
         for ind, xnode in enumerate(retrieved):
             key = nodes[ind]
