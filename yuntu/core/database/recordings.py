@@ -4,6 +4,7 @@ from pony.orm import Optional
 from pony.orm import PrimaryKey
 from pony.orm import Set
 from pony.orm import Json
+from datetime import datetime
 
 
 AUDIBLE_SPECTRUM = 'audible'
@@ -43,3 +44,14 @@ def build_base_recording_model(db):
                     raise ValueError("Not an ultrasonic recording.")
 
     return Recording
+
+
+def build_timed_recording_model(Recording):
+    class TimedRecording(Recording):
+        """Datastore that builds data from a foreign database."""
+        time_raw = Required(str)
+        time_format = Required(str)
+        time_zone = Required(str)
+        time_utc = Required(datetime, precision=6)
+
+    return TimedRecording

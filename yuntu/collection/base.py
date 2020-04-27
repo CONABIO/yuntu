@@ -2,6 +2,7 @@
 import pandas as pd
 
 from yuntu.core.database.base import DatabaseManager
+from yuntu.core.database.base import TimedDatabaseManager
 from yuntu.core.audio.audio import Audio
 from yuntu.core.annotation.annotation import Annotation
 
@@ -174,3 +175,8 @@ class Collection:
 
     def materialize(self, dir_path):
         """Persist collection in 'dir_path' including recordings."""
+
+
+class TimedCollection(Collection):
+    """Time aware collection."""
+    db_manager_class = TimedDatabaseManager
