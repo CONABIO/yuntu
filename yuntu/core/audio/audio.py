@@ -11,8 +11,6 @@ import os
 import numpy as np
 
 from yuntu.core.media.time import TimeMedia
-from yuntu.core.media.time import TimeMediaMixin
-import yuntu.core.media.masked as masked_media
 from yuntu.core.audio.utils import read_info
 from yuntu.core.audio.utils import read_media
 from yuntu.core.audio.utils import write_media
@@ -238,9 +236,8 @@ class Audio(TimeMedia):
         if path is None:
             if self.is_remote():
                 path = self.remote_load()
-                info = read_info(path, self.timeexp)
-                path.close()
-                return info
+                self._buffer = path
+                return read_info(path, self.timeexp)
 
             path = self.path
         return read_info(path, self.timeexp)
@@ -249,6 +246,9 @@ class Audio(TimeMedia):
         """Read signal from file."""
         if path is None:
             path = self.path
+
+        if hasattr(self, '_buffer'):
+            path = self._buffer
 
         start = self._get_start()
         end = self._get_end()
@@ -259,6 +259,11 @@ class Audio(TimeMedia):
             self.samplerate,
             offset=start,
             duration=duration)
+
+        if hasattr(self, '_buffer'):
+            self._buffer.close()
+            del self._buffer
+
         return signal
 
     # pylint: disable=arguments-differ
@@ -304,28 +309,30 @@ class Audio(TimeMedia):
         if 'offset' in kwargs:
             array += kwargs['offset']
 
+        times = self.times
         lineplot, = ax.plot(
-            self.times,
+            times,
             array,
             c=kwargs.get('color', None),
             linewidth=kwargs.get('linewidth', 1),
             linestyle=kwargs.get('linestyle', None),
             alpha=kwargs.get('alpha', 1))
+        ax.set_xlim(times[0], times[-1])
         color = lineplot.get_color()
 
-        xlabel = kwargs.get('xlabel', False)
+        xlabel = kwargs.get('xlabel', True)
         if xlabel:
             if not isinstance(xlabel, str):
                 xlabel = 'Time (s)'
             ax.set_xlabel(xlabel)
 
-        ylabel = kwargs.get('ylabel', False)
+        ylabel = kwargs.get('ylabel', True)
         if ylabel:
             if not isinstance(ylabel, str):
                 ylabel = 'Amplitude'
             ax.set_ylabel(ylabel)
 
-        title = kwargs.get('title', False)
+        title = kwargs.get('title', True)
         if title:
             if not isinstance(title, str):
                 title = 'Waveform'
@@ -369,40 +376,3 @@ class Audio(TimeMedia):
         args = [f'{key}={value}' for key, value in data.items()]
         args_string = ', '.join(args)
         return f'Audio({args_string})'
-
-
-@masked_media.masks(Audio)
-class MaskedAudio(TimeMediaMixin, masked_media.MaskedMedia):
-    def plot(self, ax=None, **kwargs):
-        # pylint: disable=import-outside-toplevel
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
-
-        ax.pcolormesh(
-            self.times,
-            [0, 1],
-            np.array([self.array]),
-            cmap=kwargs.get('cmap', 'gray'),
-            alpha=kwargs.get('alpha', 1))
-
-        xlabel = kwargs.get('xlabel', False)
-        if xlabel:
-            if not isinstance(xlabel, str):
-                xlabel = 'Time (s)'
-            ax.set_xlabel(xlabel)
-
-        title = kwargs.get('title', False)
-        if title:
-            if not isinstance(title, str):
-                title = 'Mask'
-            ax.set_title(title)
-
-        if kwargs.get('window', False):
-            linestyle = kwargs.get('window_linestyle', '--')
-            color = kwargs.get('window_color', 'red')
-            ax.axvline(self._get_start(), color=color, linestyle=linestyle)
-            ax.axvline(self._get_end(), color=color, linestyle=linestyle)
-
-        return ax

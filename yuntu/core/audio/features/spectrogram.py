@@ -9,10 +9,7 @@ from librosa.core import power_to_db
 
 import yuntu.core.audio.audio as audio_mod
 from yuntu.core.audio.features.base import TimeFrequencyFeature
-from yuntu.core.media.time_frequency import TimeFrequencyMediaMixin
-from yuntu.core.media.time_frequency import TimeFreqResolution
-from yuntu.core.audio.features.spectral import stft
-import yuntu.core.media.masked as masked_media
+from yuntu.core.audio.features.utils import stft
 
 
 BOXCAR = 'boxcar'
@@ -56,63 +53,64 @@ class Spectrogram(TimeFrequencyFeature):
 
     def __init__(
             self,
+            audio=None,
             n_fft=N_FFT,
             hop_length=HOP_LENGTH,
             window_function=WINDOW_FUNCTION,
-            audio=None,
             max_freq=None,
-            resolution=None,
-            array=None,
+            freq_resolution=None,
             duration=None,
+            time_resolution=None,
+            time_axis=None,
+            array=None,
             **kwargs):
         """Construct Spectrogram object."""
         self.n_fft = n_fft
         self.hop_length = hop_length
         self.window_function = window_function
 
-        if audio is not None and not isinstance(audio, audio_mod.Audio):
-            audio = audio_mod.Audio.from_dict(audio)
+        if time_axis is None:
+            if audio is not None and not isinstance(audio, audio_mod.Audio):
+                audio = audio_mod.Audio.from_dict(audio)
 
-        if duration is None:
-            if audio is None:
-                message = (
-                    'If no audio is provided a duration must be set')
-                raise ValueError(message)
-            duration = audio.duration
+            if duration is None:
+                if audio is None:
+                    message = (
+                        'If no audio is provided a duration must be set')
+                    raise ValueError(message)
+                duration = audio.duration
 
-        if resolution is None:
-            if array is not None:
-                columns = array.shape[self.frequency_axis_index]
+            if time_resolution is None:
+                if array is not None:
+                    columns = array.shape[self.frequency_axis_index]
+                elif audio is not None:
+                    columns = 1 + len(audio) // hop_length
+                else:
+                    message = (
+                        'If no audio or array is provided a samplerate must be '
+                        'set')
+                    raise ValueError(message)
+
                 time_resolution = columns / duration
-            elif audio is not None:
-                time_resolution = audio.samplerate / hop_length
-            else:
-                message = (
-                    'If no audio or array is provided a samplerate must be '
-                    'set')
-                raise ValueError(message)
 
-            rows = 1 + n_fft // 2
             if max_freq is None:
-                max_freq = time_resolution * hop_length // 2
+                if audio is not None:
+                    max_freq = audio.samplerate / 2
+                else:
+                    max_freq = time_resolution * hop_length // 2
 
-            freq_resolution = rows / max_freq
-            resolution = TimeFreqResolution(
-                time=time_resolution,
-                freq=freq_resolution)
-
-        if not isinstance(resolution, TimeFreqResolution):
-            resolution = TimeFreqResolution(*resolution)
-
-        if max_freq is None:
-            max_freq = resolution.time * hop_length // 2
+            if freq_resolution is None:
+                rows = 1 + n_fft // 2
+                freq_resolution = rows / max_freq
 
         super().__init__(
             audio=audio,
-            max_freq=max_freq,
-            array=array,
-            resolution=resolution,
             duration=duration,
+            time_resolution=time_resolution,
+            max_freq=max_freq,
+            freq_resolution=freq_resolution,
+            array=array,
+            time_axis=time_axis,
             **kwargs)
 
     def __repr__(self):
@@ -147,8 +145,8 @@ class Spectrogram(TimeFrequencyFeature):
 
         return f'{class_name}({args_string})'
 
-    def calculate(self):
-        """Calculate spectrogram from audio data.
+    def compute(self):
+        """Compute spectrogram from audio data.
 
         Uses the spectrogram instance configurations for stft
         calculation.
@@ -185,57 +183,6 @@ class Spectrogram(TimeFrequencyFeature):
             slice(min_index, max_index),
             slice(start_index, end_index))
         return result[slices]
-
-    def load(self):
-        """Load the spectrogram array.
-
-        Will try to load from file if no audio object was provided at
-        creation.
-
-        Returns
-        -------
-        np.array
-            The calculated spectrogram
-
-        Raises
-        ------
-        ValueError
-            - If no audio was given and the path provided does no exists.
-            - If the file at path is not a numpy file.
-            - If the numpy file at path is corrupted.
-        """
-        if not self.has_audio():
-            if not self.path_exists():
-                message = (
-                    'The provided path to spectrogram file does not exist.')
-                raise ValueError(message)
-
-            extension = self.path_ext
-            if extension == 'npy':
-                try:
-                    return np.load(self.path)
-                except IOError:
-                    message = (
-                        'The provided path for this spectrogram object could '
-                        f'not be read. (path={self.path})')
-                    raise ValueError(message)
-
-            if extension == 'npz':
-                try:
-                    with np.load(self.path) as data:
-                        return data['spectrogram']
-                except IOError:
-                    message = (
-                        'The provided path for this spectrogram object could '
-                        f'not be read. (path={self.path})')
-                    raise ValueError(message)
-
-            message = (
-                'The provided path does not have a numpy file extension. '
-                f'(extension={extension})')
-            raise ValueError(message)
-
-        return self.calculate()
 
     def write(self, path):  # pylint: disable=arguments-differ
         """Write the spectrogram matrix into the filesystem."""
@@ -334,19 +281,19 @@ class Spectrogram(TimeFrequencyFeature):
         if kwargs.get('colorbar', False):
             plt.colorbar(mesh, ax=ax)
 
-        xlabel = kwargs.get('xlabel', False)
+        xlabel = kwargs.get('xlabel', True)
         if xlabel:
             if not isinstance(xlabel, str):
                 xlabel = 'Time (s)'
             ax.set_xlabel(xlabel)
 
-        ylabel = kwargs.get('ylabel', False)
+        ylabel = kwargs.get('ylabel', True)
         if ylabel:
             if not isinstance(ylabel, str):
                 ylabel = 'Frequency (Hz)'
             ax.set_ylabel(ylabel)
 
-        title = kwargs.get('title', False)
+        title = kwargs.get('title', True)
         if title:
             if not isinstance(title, str):
                 title = f'Spectrogram ({self.units})'
@@ -443,9 +390,9 @@ class PowerSpectrogram(Spectrogram):
 
     units = 'power'
 
-    def calculate(self):
+    def compute(self):
         """Calculate spectrogram from audio data."""
-        spectrogram = super().calculate()
+        spectrogram = super().compute()
         return spectrogram**2
 
     def db(
@@ -498,66 +445,11 @@ class DecibelSpectrogram(Spectrogram):
 
         super().__init__(**kwargs)
 
-    def calculate(self):
+    def compute(self):
         """Calculate spectrogram from audio data."""
-        spectrogram = super().calculate()
+        spectrogram = super().compute()
         return amplitude_to_db(
             spectrogram,
             ref=self.ref,
             amin=self.amin,
             top_db=self.top_db)
-
-
-@masked_media.masks(Spectrogram)
-class MaskedSpectrogram(TimeFrequencyMediaMixin, masked_media.MaskedMedia):
-    def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
-
-        ax.pcolormesh(
-            self.times,
-            self.frequencies,
-            self.array,
-            cmap=kwargs.get('cmap', 'gray'),
-            alpha=kwargs.get('alpha', 1.0))
-
-        xlabel = kwargs.get('xlabel', False)
-        if xlabel:
-            if not isinstance(xlabel, str):
-                xlabel = 'Time (s)'
-            ax.set_xlabel(xlabel)
-
-        ylabel = kwargs.get('ylabel', False)
-        if ylabel:
-            if not isinstance(ylabel, str):
-                ylabel = 'Frequency (Hz)'
-            ax.set_ylabel(ylabel)
-
-        title = kwargs.get('title', False)
-        if title:
-            if not isinstance(title, str):
-                title = f'Spectrogram Mask'
-            ax.set_title(title)
-
-        if kwargs.get('window', False):
-            min_freq = self._get_min()
-            max_freq = self._get_max()
-            start_time = self._get_start()
-            end_time = self._get_end()
-            line_x, line_y = zip(*[
-                [start_time, min_freq],
-                [end_time, min_freq],
-                [end_time, max_freq],
-                [start_time, max_freq],
-                [start_time, min_freq],
-            ])
-            ax.plot(
-                line_x,
-                line_y,
-                color=kwargs.get('window_color', None),
-                linewidth=kwargs.get('window_linewidth', 3),
-                linestyle=kwargs.get('window_linestyle', '--'))
-
-        return ax

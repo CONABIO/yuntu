@@ -138,6 +138,13 @@ class Geometry(ABC):
 
         return self.geometry.intersects(other)
 
+    def intersection(self, other):
+        if isinstance(other, (windows.Window, Geometry)):
+            other = other.geometry
+
+        new_geometry = self.geometry.intersection(other)
+        return type(self)(geometry=new_geometry)
+
     @abstractmethod
     def plot(self, ax=None, **kwargs):
         pass
@@ -215,10 +222,11 @@ class Weak(Geometry):
     name = Geometry.Types.Weak
 
     def __init__(self, geometry=None):
-        geometry = geom_utils.bbox_to_polygon([
-            0, INFINITY,
-            0, INFINITY
-        ])
+        if geometry is None:
+            geometry = geom_utils.bbox_to_polygon([
+                0, INFINITY,
+                0, INFINITY
+            ])
         super().__init__(geometry=geometry)
 
     def buffer(self, buffer=None, **kwargs):

@@ -53,23 +53,22 @@ class Axis(abc.ABC):
         end = self.get_end(window=window)
         return int((end - start) * self.resolution)
 
-    def get_bins(self, window=None):
+    def get_bins(self, window=None, size=None):
         start = self.get_start(window=window)
         end = self.get_end(window=window)
-        size = int((end - start) * self.resolution)
-        return np.linspace(start, end, size)
 
-    def to_dict(self):
-        return {
-            'start': self.start,
-            'end': self.end,
-            'resolution': self.resolution
-        }
+        if size is None:
+            size = self.get_size(window=window)
+
+        return np.linspace(start, end, size)
 
     def resample(self, resolution):
         data = self.to_dict()
         data['resolution'] = resolution
         return type(self)(**data)
+
+    def copy(self):
+        return type(self)(**self.to_dict())
 
 
 class TimeAxis(Axis):

@@ -2,6 +2,7 @@
 from typing import Optional
 
 import yuntu.core.audio.features.spectrogram as spectrogram
+import yuntu.core.audio.features.zero_crossing_rate as zcr
 
 
 class AudioFeatures:
@@ -104,3 +105,21 @@ class AudioFeatures:
             kwargs['top_db'] = top_db
 
         return self.db_spectrogram_class(audio=self.audio, **kwargs)
+
+    def zcr(
+            self,
+            threshold=zcr.THRESHOLD,
+            ref_magnitude=None,
+            frame_length=zcr.FRAME_LENGTH,
+            hop_length=zcr.HOP_LENGTH,
+            **kwargs):
+        kwargs = {
+            'threshold': threshold,
+            'ref_magnitude': ref_magnitude,
+            'frame_length': frame_length,
+            'hop_length': hop_length,
+            **kwargs,
+            **self.get_base_kwargs()
+        }
+
+        return zcr.ZeroCrossingRate(audio=self.audio, **kwargs)

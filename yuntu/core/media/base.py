@@ -12,9 +12,7 @@ from abc import abstractmethod
 from urllib.parse import urlparse
 
 from yuntu.utils import download_file
-import yuntu.core.geometry.base as geom
 from yuntu.core.windows import Window
-import yuntu.core.annotation.annotation as annotations
 from yuntu.core.annotation.annotated_object import AnnotatedObject
 
 
@@ -117,12 +115,15 @@ class Media(ABC, AnnotatedObject):
             f'scheme {parsed.scheme}')
         raise NotImplementedError(message)
 
-    def path_exists(self):
+    def path_exists(self, path=None):
         """Determine if the media file exists in the filesystem."""
-        if self.path is None:
+        if path is None:
+            path = self.path
+
+        if path is None:
             return False
 
-        return os.path.exists(self.path)
+        return os.path.exists(path)
 
     def clean(self):
         """Clear media contents and free memory."""
@@ -132,7 +133,7 @@ class Media(ABC, AnnotatedObject):
         """Check if array has not been loaded yet."""
         return not hasattr(self, '_array') or self._array is None
 
-    @abstractmethod
+    # @abstractmethod
     def load(self, path=None):
         """Read media object into memory."""
 
@@ -143,24 +144,6 @@ class Media(ABC, AnnotatedObject):
     @abstractmethod
     def plot(self, ax=None, **kwargs):  # pylint: disable=invalid-name
         """Plot a representation of the media object."""
-
-    def to_mask(self, geometry, lazy=False):
-        if isinstance(geometry, (annotations.Annotation, Window)):
-            geometry = geometry.geometry
-
-        if not isinstance(geometry, geom.Geometry):
-            geometry = geom.Geometry.from_geometry(geometry)
-
-        axis_info = self._get_axis_info()
-        intersected = self.window.geometry.intersection(geometry.geometry)
-        return self.mask_class(
-            media=self,
-            geometry=intersected,
-            lazy=lazy,
-            **axis_info)
-
-    def _get_axis_info(self):
-        return {}
 
     def normalized(self, method='minmax', **kwargs):
         if method == 'minmax':
@@ -203,7 +186,6 @@ class Media(ABC, AnnotatedObject):
             'annotations': self.annotations.annotations,
             'window': self.window.copy(),
             'path': self.path,
-            **self._get_axis_info()
         }
 
         if not self.is_empty():

@@ -1,20 +1,19 @@
 from typing import Optional
-from collections import namedtuple
 
 import numpy as np
 from scipy.interpolate import interp2d
 from scipy.interpolate import RectBivariateSpline
 
 import yuntu.core.windows as windows
+from yuntu.core.geometry import base as geom
+from yuntu.core.annotation import annotation
 from yuntu.core.media.base import Media
 from yuntu.core.media.time import TimeMediaMixin
 from yuntu.core.media.time import TimeItem
 from yuntu.core.media.frequency import FrequencyMediaMixin
 from yuntu.core.media.frequency import FrequencyItem
+from yuntu.core.media import masked
 import yuntu.core.geometry.utils as geom_utils
-
-
-TimeFreqResolution = namedtuple('TimeFreqResolution', 'time freq')
 
 
 class TimeItemWithFrequencies(FrequencyMediaMixin, TimeItem):
@@ -28,30 +27,27 @@ class FrequencyItemWithTime(TimeMediaMixin, FrequencyItem):
 class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
     frequency_axis_index = 0
     time_axis_index = 1
+
     window_class = windows.TimeFrequencyWindow
     time_item_class = TimeItemWithFrequencies
     frequency_item_class = FrequencyItemWithTime
 
     def __init__(
             self,
-            start=None,
+            start=0,
             duration=None,
+            time_resolution=None,
+            time_axis=None,
             min_freq=None,
             max_freq=None,
-            resolution=None,
-            time_axis=None,
+            freq_resolution=None,
             frequency_axis=None,
             **kwargs):
-
-        if not isinstance(resolution, TimeFreqResolution):
-            time, freq = resolution
-            resolution = TimeFreqResolution(time, freq)
-
         if time_axis is None:
             time_axis = self.time_axis_class(
                 start=start,
                 end=duration,
-                resolution=resolution.time)
+                resolution=time_resolution)
 
         if not isinstance(time_axis, self.time_axis_class):
             time_axis = self.time_axis_class.from_dict(time_axis)
@@ -60,7 +56,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             frequency_axis = self.frequency_axis_class(
                 start=min_freq,
                 end=max_freq,
-                resolution=resolution.freq)
+                resolution=freq_resolution)
 
         if not isinstance(frequency_axis, self.frequency_axis_class):
             frequency_axis = self.frequency_axis_class.from_dict(frequency_axis) # noqa
@@ -111,13 +107,6 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
         result = self.array.take(first_index, axis=first_axis)
         return result.take(second_index, axis=second_axis)
-
-    # pylint: disable=arguments-differ
-    def _build_slices(self, start_time, end_time, min_freq, max_freq):
-        slice_args = [slice(None, None, None) for _ in len(self.shape)]
-        slice_args[self.frequency_axis_index] = slice(start_time, end_time)
-        slice_args[self.time_axis_index] = slice(min_freq, max_freq)
-        return tuple(slice_args)
 
     # pylint: disable=arguments-differ
     def read(
@@ -244,32 +233,27 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
     def resample(
             self,
-            samplerate=None,
-            resolution=None,
+            time_resolution=None,
+            freq_resolution=None,
             lazy: Optional[bool] = False,
             kind: str = 'linear',
             **kwargs):
         """Get a new FrequencyMedia object with the resampled data."""
-        if resolution is None:
-            resolution = self.resolution
+        if time_resolution is None:
+            time_resolution = self.time_axis.resolution
 
-        if not isinstance(resolution, TimeFreqResolution):
-            resolution = TimeFreqResolution(*resolution)
-
-        if samplerate is not None:
-            resolution = TimeFreqResolution(
-                time=samplerate,
-                freq=resolution.freq)
+        if freq_resolution is None:
+            freq_resolution = self.frequency_axis.resolution
 
         data = self._copy_dict()
         data['lazy'] = lazy
-        new_time_axis = self.time_axis.resample(resolution.time)
+        new_time_axis = self.time_axis.resample(time_resolution)
         data['time_axis'] = new_time_axis
 
-        new_freq_axis = self.frequency_axis.resample(resolution.freq)
+        new_freq_axis = self.frequency_axis.resample(freq_resolution)
         data['frequency_axis'] = new_freq_axis
 
-        if not self.path_exists():
+        if not lazy:
             if self.ndim != 2:
                 message = (
                     'Media elements with more than 2 dimensions cannot be'
@@ -326,35 +310,34 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             time=None,
             freq=None,
             buffer=None,
-            bins=0,
+            bins=None,
             window=None,
             geometry=None,
             aggr_func=np.mean):
-        if bins is None:
-            bins = 0
-
-        if bins != 0 and buffer is not None:
+        if bins is not None and buffer is not None:
             message = 'Bins and buffer arguments are mutually exclusive.'
             raise ValueError(message)
 
-        if time is not None and freq is not None:
-            if buffer is None:
-                values = geom_utils.point_neighbourhood(
-                    self.array,
-                    [time, freq],
-                    bins,
-                    self.get_index_from_time,
-                    self.get_index_from_frequency)
-                return aggr_func(values)
+        if buffer is None and bins is not None:
+            if not isinstance(bins, (list, tuple)):
+                bins = [bins, bins]
 
-            geometry = geom_utils.point_geometry(time, freq)
+            time_buffer = self.time_axis.resolution * bins[0]
+            freq_buffer = self.frequency_axis.resolution * bins[1]
+            buffer = [time_buffer, freq_buffer]
 
         if window is not None:
+            if not isinstance(window, windows.Window):
+                window = windows.Window.from_dict(window)
+
             if buffer is not None:
                 window = window.buffer(buffer)
 
             values = self.cut(window=window).array
             return aggr_func(values)
+
+        if time is not None and freq is not None:
+            geometry = geom.Point(time, freq)
 
         if geometry is None:
             message = (
@@ -363,22 +346,95 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             raise ValueError(message)
 
         if buffer is not None:
-            geometry = geom_utils.buffer_geometry(geometry, buffer)
+            geometry = geometry.buffer(buffer)
 
-        values = geom_utils.geometry_neighbourhood(
+        mask = self.to_mask(geometry)
+        return aggr_func(self.array[mask.array])
+
+    def to_mask(self, geometry, lazy=False):
+        if isinstance(geometry, (annotation.Annotation, windows.Window)):
+            geometry = geometry.geometry
+
+        if not isinstance(geometry, geom.Geometry):
+            geometry = geom.Geometry.from_geometry(geometry)
+
+        intersected = geometry.intersection(self.window)
+
+        return self.mask_class(
+            media=self,
+            geometry=intersected,
+            lazy=lazy,
+            time_axis=self.time_axis,
+            frequency_axis=self.frequency_axis)
+
+    # pylint: disable=arguments-differ
+    def _build_slices(self, start_time, end_time, min_freq, max_freq):
+        slice_args = [slice(None, None, None) for _ in self.shape]
+        slice_args[self.frequency_axis_index] = slice(start_time, end_time)
+        slice_args[self.time_axis_index] = slice(min_freq, max_freq)
+        return tuple(slice_args)
+
+
+@masked.masks(TimeFrequencyMediaMixin)
+class TimeFrequencyMaskedMedia(TimeFrequencyMediaMixin, masked.MaskedMedia):
+    def plot(self, ax=None, **kwargs):
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+
+        ax.pcolormesh(
+            self.times,
+            self.frequencies,
             self.array,
-            geometry,
-            bins,
-            self.get_index_from_time,
-            self.get_index_from_frequency)
-        return aggr_func(values)
+            cmap=kwargs.get('cmap', 'gray'),
+            alpha=kwargs.get('alpha', 1.0))
 
-    def calculate_mask(self, geometry):
+        xlabel = kwargs.get('xlabel', False)
+        if xlabel:
+            if not isinstance(xlabel, str):
+                xlabel = 'Time (s)'
+            ax.set_xlabel(xlabel)
+
+        ylabel = kwargs.get('ylabel', False)
+        if ylabel:
+            if not isinstance(ylabel, str):
+                ylabel = 'Frequency (Hz)'
+            ax.set_ylabel(ylabel)
+
+        title = kwargs.get('title', False)
+        if title:
+            if not isinstance(title, str):
+                title = f'Mask'
+            ax.set_title(title)
+
+        if kwargs.get('window', False):
+            min_freq = self._get_min()
+            max_freq = self._get_max()
+            start_time = self._get_start()
+            end_time = self._get_end()
+            line_x, line_y = zip(*[
+                [start_time, min_freq],
+                [end_time, min_freq],
+                [end_time, max_freq],
+                [start_time, max_freq],
+                [start_time, min_freq],
+            ])
+            ax.plot(
+                line_x,
+                line_y,
+                color=kwargs.get('window_color', None),
+                linewidth=kwargs.get('window_linewidth', 3),
+                linestyle=kwargs.get('window_linestyle', '--'))
+
+        return ax
+
+    def load(self, path=None):
         return geom_utils.geometry_to_mask(
-            geometry,
-            self.array.shape,
-            transformX=self.get_index_from_time,
-            transformY=self.get_index_from_frequency)
+            self.geometry.geometry,
+            self.media.array.shape,
+            transformX=self.media.get_index_from_time,
+            transformY=self.media.get_index_from_frequency)
 
 
 class TimeFrequencyMedia(TimeFrequencyMediaMixin, Media):

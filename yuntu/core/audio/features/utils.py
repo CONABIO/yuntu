@@ -9,7 +9,7 @@ def stft(signal,
          win_length=None,
          window='hann',
          center=True):
-    """Shor Time Fourier Transform."""
+    """Short Time Fourier Transform."""
     return librosa.stft(signal,
                         n_fft,
                         hop_length,

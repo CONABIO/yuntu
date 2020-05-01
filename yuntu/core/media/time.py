@@ -2,8 +2,11 @@ from typing import Optional
 import numpy as np
 
 from yuntu.core.audio.utils import resample
+from yuntu.core.geometry import base as geom
+from yuntu.core.annotation import annotation
+from yuntu.core import windows
+from yuntu.core.media import masked
 from yuntu.core.media.base import Media
-import yuntu.core.windows as windows
 from yuntu.core.axis import TimeAxis
 
 
@@ -71,7 +74,11 @@ class TimeMediaMixin:
         This is an array of the same length as the wav data array and holds
         the time (in seconds) corresponding to each piece of the wav array.
         """
-        return self.time_axis.get_bins(window=self.window)
+        if not self.is_empty():
+            size = self.array.shape[self.time_axis_index]
+        else:
+            size = None
+        return self.time_axis.get_bins(window=self.window, size=size)
 
     def to_dict(self):
         return {
@@ -231,16 +238,22 @@ class TimeMediaMixin:
         current_end = self._get_end()
 
         if start_time is None:
-            start_time = (
-                window.start
-                if window.start is not None
-                else current_start)
+            if window is None:
+                start_time = current_start
+            else:
+                start_time = (
+                    window.start
+                    if window.start is not None
+                    else current_start)
 
         if end_time is None:
-            end_time = (
-                window.end
-                if window.end is not None
-                else current_end)
+            if window is None:
+                end_time = current_end
+            else:
+                end_time = (
+                    window.end
+                    if window.end is not None
+                    else current_end)
 
         start_time = max(min(start_time, current_end), current_start)
         end_time = max(min(end_time, current_end), current_start)
@@ -262,6 +275,59 @@ class TimeMediaMixin:
             kwargs_dict['array'] = kwargs_dict['array'][slices]
 
         return type(self)(**kwargs_dict)
+
+    def get_aggr_value(
+            self,
+            time=None,
+            buffer=None,
+            bins=None,
+            window=None,
+            geometry=None,
+            aggr_func=np.mean):
+        if bins is not None and buffer is not None:
+            message = 'Bins and buffer arguments are mutually exclusive.'
+            raise ValueError(message)
+
+        if buffer is None and bins is not None:
+            buffer = self.time_axis.resolution * bins
+
+        if window is None:
+            if time is not None:
+                geometry = geom.TimeLine(time)
+
+            if geometry is None:
+                message = (
+                    'Either time, a window, or a geometry '
+                    'should be supplied.')
+                raise ValueError(message)
+
+            start_time, _, end_time, _ = geometry.bounds
+            window = windows.TimeWindow(start=start_time, end=end_time)
+
+        if not isinstance(window, windows.Window):
+            window = windows.Window.from_dict(window)
+
+        if buffer is not None:
+            window = window.buffer(buffer)
+
+        values = self.cut(window=window).array
+        return aggr_func(values)
+
+    def to_mask(self, geometry, lazy=False):
+        if isinstance(geometry, (annotation.Annotation, windows.Window)):
+            geometry = geometry.geometry
+
+        if not isinstance(geometry, geom.Geometry):
+            geometry = geom.Geometry.from_geometry(geometry)
+
+        intersected = geometry.intersection(self.window)
+
+        return self.mask_class(
+            media=self,
+            geometry=intersected,
+            lazy=lazy,
+            time_axis=self.time_axis,
+            frequency_axis=self.frequency_axis)
 
     def _get_start(self):
         return self.time_axis.get_start(window=self.window)
@@ -294,6 +360,53 @@ class TimeMediaMixin:
         slices = [slice(None, None) for _ in self.shape]
         slices[self.time_axis_index] = slice(start, end)
         return tuple(slices)
+
+    def _copy_dict(self):
+        return {
+            'time_axis': self.time_axis.copy(),
+            **super()._copy_dict()
+        }
+
+
+@masked.masks(TimeMediaMixin)
+class TimeMaskedMedia(TimeMediaMixin):
+    def load(self, path=None):
+        mask = np.zeros_like(self.array)
+        return mask
+
+    def plot(self, ax=None, **kwargs):
+        # pylint: disable=import-outside-toplevel
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+
+        ax.pcolormesh(
+            self.times,
+            [0, 1],
+            np.array([self.array]),
+            cmap=kwargs.get('cmap', 'gray'),
+            alpha=kwargs.get('alpha', 1))
+
+        xlabel = kwargs.get('xlabel', False)
+        if xlabel:
+            if not isinstance(xlabel, str):
+                xlabel = 'Time (s)'
+            ax.set_xlabel(xlabel)
+
+        title = kwargs.get('title', False)
+        if title:
+            if not isinstance(title, str):
+                title = 'Mask'
+            ax.set_title(title)
+
+        if kwargs.get('window', False):
+            linestyle = kwargs.get('window_linestyle', '--')
+            color = kwargs.get('window_color', 'red')
+            ax.axvline(self._get_start(), color=color, linestyle=linestyle)
+            ax.axvline(self._get_end(), color=color, linestyle=linestyle)
+
+        return ax
 
 
 class TimeMedia(TimeMediaMixin, Media):

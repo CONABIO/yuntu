@@ -61,33 +61,6 @@ class FrequencyMediaMixin:
             **super().to_dict()
         }
 
-    def _get_min(self):
-        return self.frequency_axis.get_start(window=self.window)
-
-    def _get_max(self):
-        return self.frequency_axis.get_end(window=self.window)
-
-    def _get_axis_info(self):
-        return {
-            'frequency_axis': self.frequency_axis,
-            **super()._get_axis_info()
-        }
-
-    def _has_trivial_window(self):
-        if self.window.min is not None:
-            min_freq = self._get_min()
-
-            if min_freq != self.window.min:
-                return False
-
-        if self.window.max is not None:
-            max_freq = self._get_max()
-
-            if max_freq != self.window.max:
-                return False
-
-        return super()._has_trivial_window()
-
     @property
     def df(self):
         return 1 / self.frequency_axis.resolution
@@ -142,7 +115,11 @@ class FrequencyMediaMixin:
         the frequency (in hertz) corresponding to each piece of the media
         array.
         """
-        return self.frequency_axis.get_bins(window=self.window)
+        if not self.is_empty():
+            size = self.array.shape[self.frequency_axis_index]
+        else:
+            size = None
+        return self.frequency_axis.get_bins(window=self.window, size=size)
 
     def resample(
             self,
@@ -222,11 +199,6 @@ class FrequencyMediaMixin:
         mask[self._build_slices(start_index, end_index + 1)] = 1
         return mask
 
-    def _build_slices(self, start, end):
-        slices = [slice(None, None) for _ in self.shape]
-        slices[self.frequency_axis_index] = slice(start, end)
-        return tuple(slices)
-
     def cut(
             self,
             min_freq: float = None,
@@ -289,6 +261,44 @@ class FrequencyMediaMixin:
             kwargs_dict['array'] = kwargs_dict['array'][slices]
 
         return type(self)(**kwargs_dict)
+
+    def _build_slices(self, start, end):
+        slices = [slice(None, None) for _ in self.shape]
+        slices[self.frequency_axis_index] = slice(start, end)
+        return tuple(slices)
+
+    def _copy_dict(self):
+        return {
+            'frequency_axis': self.frequency_axis.copy(),
+            **super()._copy_dict()
+        }
+
+    def _get_min(self):
+        return self.frequency_axis.get_start(window=self.window)
+
+    def _get_max(self):
+        return self.frequency_axis.get_end(window=self.window)
+
+    def _get_axis_info(self):
+        return {
+            'frequency_axis': self.frequency_axis.copy(),
+            **super()._get_axis_info()
+        }
+
+    def _has_trivial_window(self):
+        if self.window.min is not None:
+            min_freq = self._get_min()
+
+            if min_freq != self.window.min:
+                return False
+
+        if self.window.max is not None:
+            max_freq = self._get_max()
+
+            if max_freq != self.window.max:
+                return False
+
+        return super()._has_trivial_window()
 
 
 class FrequencyMedia(FrequencyMediaMixin, Media):

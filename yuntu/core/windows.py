@@ -33,6 +33,14 @@ class Window(ABC):
         """Copy window object."""
         return self.from_dict(self.to_dict())
 
+    def to_dict(self):
+        return {
+            'type': type(self).__name__
+        }
+
+    def is_trivial(self):
+        return True
+
     @classmethod
     def from_dict(cls, data):
         """Rebuild the window from dictionary data."""
@@ -53,6 +61,12 @@ class Window(ABC):
             f'Window type {window_type} is incorrect. Valid options: '
             'TimeWindow, FrequencyWindow, TimeFrequencyWindow')
         raise ValueError(message)
+
+    def __repr__(self):
+        data = self.to_dict()
+        window_type = data.pop('type')
+        args = ', '.join([f'{key}={value}' for key, value in data.items()])
+        return f'{window_type}({args})'
 
 
 class TimeWindow(Window):
@@ -132,9 +146,9 @@ class TimeWindow(Window):
     def to_dict(self):
         """Get dictionary representation of window."""
         return {
-            'type': 'TimeWindow',
             'start': self.start,
-            'end': self.end
+            'end': self.end,
+            **super().to_dict()
         }
 
     def is_trivial(self):
@@ -145,11 +159,7 @@ class TimeWindow(Window):
         if self.end is not None:
             return False
 
-        return True
-
-    def __repr__(self):
-        """Get string representation of window."""
-        return f'TimeWindow(start={self.start}, end={self.end})'
+        return super().is_trivial()
 
 
 class FrequencyWindow(Window):
@@ -230,9 +240,9 @@ class FrequencyWindow(Window):
     def to_dict(self):
         """Get dictionary representation of window."""
         return {
-            'type': 'FrequencyWindow',
             'min': self.min,
-            'max': self.max
+            'max': self.max,
+            **super().to_dict()
         }
 
     def is_trivial(self):
@@ -243,11 +253,7 @@ class FrequencyWindow(Window):
         if self.max is not None:
             return False
 
-        return True
-
-    def __repr__(self):
-        """Get string representation of window."""
-        return f'FrequencyWindow(min={self.min}, max={self.max})'
+        return super().is_trivial()
 
 
 class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
@@ -289,15 +295,11 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
 
         super().__init__(start=start, end=end, min=min, max=max, **kwargs)
 
-    def to_dict(self):
-        """Get dictionary representation of window."""
-        return {
-            'type': 'TimeFrequencyWindow',
-            'start': self.start,
-            'end': self.end,
-            'min': self.min,
-            'max': self.max
-        }
+    def to_time(self):
+        return TimeWindow(start=self.start, end=self.end)
+
+    def to_frequency(self):
+        return FrequencyWindow(min=self.min, max=self.max)
 
     def buffer(self, buffer):
         """Get a buffer window."""
@@ -309,22 +311,6 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
         start = self.start - buffer[0]
         end = self.end + buffer[0]
         return TimeFrequencyWindow(min=min, max=max, start=start, end=end)
-
-    def is_trivial(self):
-        """Return if window is trivial."""
-        if self.start is not None:
-            return False
-
-        if self.end is not None:
-            return False
-
-        if self.min is not None:
-            return False
-
-        if self.max is not None:
-            return False
-
-        return True
 
     def plot(self, ax=None, **kwargs):
         """Plot frequency window."""
@@ -352,10 +338,3 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
                 color=kwargs.get('color', 'blue'))
 
         return ax
-
-    def __repr__(self):
-        """Get string representation of window."""
-        return (
-            'TimeFrequencyWindow('
-            f'start={self.start}, end={self.end}, '
-            f'min={self.min}, max={self.max})')

@@ -1,4 +1,8 @@
 """Feature class module."""
+from abc import abstractmethod
+import os
+
+import numpy as np
 import yuntu.core.audio.audio as audio_module
 from yuntu.core.media.base import Media
 from yuntu.core.media.time import TimeMediaMixin
@@ -22,7 +26,7 @@ class Feature(Media):
             lazy: bool = False,
             **kwargs):
         """Construct a feature."""
-        if not isinstance(audio, audio_module.Audio):
+        if audio is not None and not isinstance(audio, audio_module.Audio):
             audio = audio_module.Audio.from_dict(audio)
 
         self.audio = audio
@@ -49,6 +53,50 @@ class Feature(Media):
 
         return self.audio is not None
 
+    def load_from_path(self, path=None):
+        if path is None:
+            path = self.path
+
+        extension = os.path.splitext(path)[1]
+        if extension == 'npy':
+            try:
+                return np.load(self.path)
+            except IOError:
+                message = (
+                    'The provided path for this feature object could '
+                    f'not be read. (path={self.path})')
+                raise ValueError(message)
+
+        if extension == 'npz':
+            try:
+                with np.load(self.path) as data:
+                    return data[type(self).__name__]
+            except IOError:
+                message = (
+                    'The provided path for this feature object could '
+                    f'not be read. (path={self.path})')
+                raise ValueError(message)
+
+        message = (
+            'The provided path does not have a numpy file extension. '
+            f'(extension={extension})')
+        raise ValueError(message)
+
+    @abstractmethod
+    def compute(self):
+        pass
+
+    def load(self, path=None):
+        if not self.has_audio():
+            if not self.path_exists(path):
+                message = (
+                    'The provided path to feature file does not exist.')
+                raise ValueError(message)
+
+            return self.load_from_path(path)
+
+        return self.compute()
+
 
 class TimeFeature(TimeMediaMixin, Feature):
     def __init__(
@@ -57,7 +105,7 @@ class TimeFeature(TimeMediaMixin, Feature):
             start=None,
             array=None,
             duration=None,
-            samplerate=None,
+            time_frequency=None,
             **kwargs):
 
         if start is None:
@@ -73,15 +121,15 @@ class TimeFeature(TimeMediaMixin, Feature):
                 raise ValueError(message)
             duration = audio.duration
 
-        if samplerate is None:
+        if time_frequency is None:
             if audio is not None:
-                samplerate = audio.samplerate
+                time_frequency = audio.samplerate
             elif array is not None:
                 length = array.shape[self.time_axis_index]
-                samplerate = (duration - start) / length
+                time_frequency = (duration - start) / length
             else:
                 message = (
-                    'If no audio or array is provided a samplerate must '
+                    'If no audio or array is provided a time_frequency must '
                     'be set')
                 raise ValueError(message)
 
@@ -89,7 +137,7 @@ class TimeFeature(TimeMediaMixin, Feature):
             audio=audio,
             start=start,
             duration=duration,
-            samplerate=samplerate,
+            time_frequency=time_frequency,
             array=array,
             **kwargs)
 
@@ -100,7 +148,7 @@ class FrequencyFeature(FrequencyMediaMixin, Feature):
             audio=None,
             min_freq=0,
             max_freq=None,
-            resolution=None,
+            freq_resolution=None,
             array=None,
             **kwargs):
 
@@ -111,20 +159,20 @@ class FrequencyFeature(FrequencyMediaMixin, Feature):
                 raise ValueError(message)
             max_freq = audio.samplerate // 2
 
-        if resolution is None:
+        if freq_resolution is None:
             if array is not None:
                 length = array.shape[self.frequency_axis_index]
-                resolution = (max_freq - min_freq) / length
+                freq_resolution = (max_freq - min_freq) / length
             else:
                 message = (
-                    'If no array is provided a resolution must be set')
+                    'If no array is provided a freq_resolution must be set')
                 raise ValueError(message)
 
         super().__init__(
             audio=audio,
             min_freq=min_freq,
             max_freq=max_freq,
-            resolution=resolution,
+            freq_resolution=freq_resolution,
             array=array,
             **kwargs)
 
@@ -135,10 +183,10 @@ class TimeFrequencyFeature(TimeFrequencyMediaMixin, Feature):
             audio=None,
             min_freq=0,
             max_freq=None,
-            resolution=None,
+            freq_resolution=None,
             start=None,
             duration=None,
-            samplerate=None,
+            time_resolution=None,
             array=None,
             **kwargs):
 
@@ -155,15 +203,15 @@ class TimeFrequencyFeature(TimeFrequencyMediaMixin, Feature):
                 raise ValueError(message)
             duration = audio.duration
 
-        if samplerate is None:
+        if time_resolution is None:
             if audio is not None:
-                samplerate = audio.samplerate
+                time_resolution = audio.samplerate
             elif array is not None:
                 length = array.shape[self.time_axis_index]
-                samplerate = (duration - start) / length
+                time_resolution = (duration - start) / length
             else:
                 message = (
-                    'If no audio or array is provided a samplerate must '
+                    'If no audio or array is provided a time_resolution must '
                     'be set')
                 raise ValueError(message)
 
@@ -174,22 +222,22 @@ class TimeFrequencyFeature(TimeFrequencyMediaMixin, Feature):
                 raise ValueError(message)
             max_freq = audio.samplerate // 2
 
-        if resolution is None:
+        if freq_resolution is None:
             if array is not None:
                 length = array.shape[self.frequency_axis_index]
-                resolution = (max_freq - min_freq) / length
+                freq_resolution = (max_freq - min_freq) / length
             else:
                 message = (
-                    'If no array is provided a resolution must be set')
+                    'If no array is provided a freq_resolution must be set')
                 raise ValueError(message)
 
         super().__init__(
             audio=audio,
             min_freq=min_freq,
             max_freq=max_freq,
-            resolution=resolution,
+            freq_resolution=freq_resolution,
             start=start,
             duration=duration,
-            samplerate=samplerate,
+            time_resolution=time_resolution,
             array=array,
             **kwargs)
