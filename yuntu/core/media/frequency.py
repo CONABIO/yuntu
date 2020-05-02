@@ -1,9 +1,12 @@
 from typing import Optional
 import numpy as np
 
+import yuntu.core.windows as windows
+from yuntu.core.geometry import base as geom
+from yuntu.core.annotation import annotation
+from yuntu.core.media import masked
 from yuntu.core.audio.utils import resample
 from yuntu.core.media.base import Media
-import yuntu.core.windows as windows
 from yuntu.core.axis import FrequencyAxis
 
 
@@ -27,6 +30,8 @@ class FrequencyMediaMixin:
     frequency_axis_class = FrequencyAxis
     frequency_item_class = FrequencyItem
     window_class = windows.FrequencyWindow
+
+    plot_ylabel = 'Frequency (Hz)'
 
     def __init__(
             self,
@@ -70,6 +75,10 @@ class FrequencyMediaMixin:
         if self.is_empty():
             return self.frequency_axis.get_size(window=self.window)
         return self.array.shape[self.frequency_axis_index]
+
+    @property
+    def resolution(self):
+        return self.frequency_axis.resolution
 
     def get_index_from_frequency(self, freq):
         """Get index of the media array corresponding to a given frequency."""
@@ -127,9 +136,9 @@ class FrequencyMediaMixin:
             lazy: Optional[bool] = False,
             **kwargs):
         """Get a new FrequencyMedia object with the resampled data."""
-        data = self._copy_dict()
-        data['lazy'] = lazy
-        data['frequency_axis'] = self.frequency_axis.resample(resolution)
+        data_kwargs = self._copy_dict()
+        data_kwargs['lazy'] = lazy
+        data_kwargs['frequency_axis'] = self.frequency_axis.resample(resolution)
 
         if not self.path_exists():
             data = resample(
@@ -137,9 +146,9 @@ class FrequencyMediaMixin:
                 self.frequency_axis.resolution,
                 resolution,
                 **kwargs)
-            data['array'] = data
+            data_kwargs['array'] = data
 
-        return type(self)(**data)
+        return type(self)(**data_kwargs)
 
     def read(self, min_freq=None, max_freq=None):
         """Read a section of the media array.
@@ -188,23 +197,12 @@ class FrequencyMediaMixin:
 
         return self.array[self._build_slices(start_index, end_index + 1)]
 
-    def calculate_mask(self, geometry):
-        """Return masked 1d array."""
-        _, min_freq, _, max_freq = geometry.bounds
-
-        start_index = self.get_index_from_frequency(min_freq)
-        end_index = self.get_index_from_frequency(max_freq)
-
-        mask = np.zeros(self.shape)
-        mask[self._build_slices(start_index, end_index + 1)] = 1
-        return mask
-
     def cut(
             self,
             min_freq: float = None,
             max_freq: float = None,
             window: windows.TimeWindow = None,
-            lazy=True):
+            lazy=False):
         """Get a window to the media data.
 
         Parameters
@@ -254,13 +252,65 @@ class FrequencyMediaMixin:
             max=max_freq)
         kwargs_dict['lazy'] = lazy
 
-        if not self.is_empty():
+        if not lazy and 'array' in kwargs_dict:
             start = self.get_index_from_frequency(min_freq)
             end = self.get_index_from_frequency(max_freq)
             slices = self._build_slices(start, end)
-            kwargs_dict['array'] = kwargs_dict['array'][slices]
+            kwargs_dict['array'] = self.array[slices]
 
         return type(self)(**kwargs_dict)
+
+    def get_aggr_value(
+            self,
+            freq=None,
+            buffer=None,
+            bins=None,
+            window=None,
+            geometry=None,
+            aggr_func=np.mean):
+        if bins is not None and buffer is not None:
+            message = 'Bins and buffer arguments are mutually exclusive.'
+            raise ValueError(message)
+
+        if buffer is None and bins is not None:
+            buffer = self.frequency_axis.resolution * bins
+
+        if window is None:
+            if freq is not None:
+                geometry = geom.FrequencyLine(freq)
+
+            if geometry is None:
+                message = (
+                    'Either freq, a window, or a geometry '
+                    'should be supplied.')
+                raise ValueError(message)
+
+            _, min_freq, _, max_freq = geometry.bounds
+            window = windows.FrequencyWindow(min=min_freq, max=max_freq)
+
+        if not isinstance(window, windows.Window):
+            window = windows.Window.from_dict(window)
+
+        if buffer is not None:
+            window = window.buffer(buffer)
+
+        values = self.cut(window=window).array
+        return aggr_func(values)
+
+    def to_mask(self, geometry, lazy=False):
+        if isinstance(geometry, (annotation.Annotation, windows.Window)):
+            geometry = geometry.geometry
+
+        if not isinstance(geometry, geom.Geometry):
+            geometry = geom.Geometry.from_geometry(geometry)
+
+        intersected = geometry.intersection(self.window)
+
+        return self.mask_class(
+            media=self,
+            geometry=intersected,
+            lazy=lazy,
+            frequency_axis=self.frequency_axis)
 
     def _build_slices(self, start, end):
         slices = [slice(None, None) for _ in self.shape]
@@ -299,6 +349,78 @@ class FrequencyMediaMixin:
                 return False
 
         return super()._has_trivial_window()
+
+
+@masked.masks(FrequencyMediaMixin)
+class FrequencyMaskedMedia(FrequencyMediaMixin, masked.MaskedMedia):
+    def load(self, path=None):
+        mask = np.zeros(self.media.shape)
+        _, min_freq, _, max_freq = self.geometry.bounds
+        start_index = self.get_index_from_frequency(min_freq)
+        end_index = self.get_index_from_frequency(max_freq)
+        slices = self._build_slices(start_index, end_index)
+        mask[slices] = 1
+        return mask
+
+    def plot(self, ax=None, **kwargs):
+        ax = super().plot(ax=ax, **kwargs)
+
+        if kwargs.get('mask', True):
+            intervals = self._get_active_intervals()
+            for (start, end) in intervals:
+                ax.axhline(
+                    start,
+                    linewidth=kwargs.get('linewidth', 1),
+                    linestyle=kwargs.get('linestyle', '--'),
+                    color=kwargs.get('color', 'blue'))
+
+                ax.axhline(
+                    end,
+                    linewidth=kwargs.get('linewidth', 1),
+                    linestyle=kwargs.get('linestyle', '--'),
+                    color=kwargs.get('color', 'blue'))
+
+                if kwargs.get('fill', True):
+                    ax.axhspan(
+                        start,
+                        end,
+                        alpha=kwargs.get('alpha', 0.2),
+                        color=kwargs.get('color', 'blue'))
+
+        return ax
+
+    def _get_active_intervals(self):
+        init_slices = self._build_slices(0, -1)
+        end_slices = self._build_slices(1, None)
+        first_slice = self._get_first_slice()
+
+        mask_slice = self.array[first_slice]
+        changes = mask_slice[init_slices] * (1 - mask_slice[end_slices])
+        change_indices = (np.nonzero(changes)[0] + 1).tolist()
+
+        if mask_slice[0] == 1:
+            change_indices.insert(0, 0)
+
+        if mask_slice[-1] == 1:
+            change_indices.append(len(mask_slice) - 1)
+
+        assert len(change_indices) % 2 == 0
+
+        frequencies = self.frequencies
+        return [
+            [frequencies[start], frequencies[end]]
+            for start, end in zip(change_indices[::2], change_indices[1::2])
+        ]
+
+    def _build_slices(self, start, end):
+        slices = [slice(None, None) for _ in self.media.shape]
+        slices[self.frequency_axis_index] = slice(start, end)
+        return tuple(slices)
+
+    def _get_first_slice(self):
+        slices = [0 for _ in self.media.shape]
+        slices[self.frequency_axis_index] = slice(None, None)
+        return tuple(slices)
 
 
 class FrequencyMedia(FrequencyMediaMixin, Media):

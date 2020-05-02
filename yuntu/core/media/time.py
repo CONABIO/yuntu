@@ -31,6 +31,8 @@ class TimeMediaMixin:
     time_item_class = TimeItem
     window_class = windows.TimeWindow
 
+    plot_xlabel = 'Time (s)'
+
     def __init__(
             self,
             start=0,
@@ -326,8 +328,7 @@ class TimeMediaMixin:
             media=self,
             geometry=intersected,
             lazy=lazy,
-            time_axis=self.time_axis,
-            frequency_axis=self.frequency_axis)
+            time_axis=self.time_axis)
 
     def _get_start(self):
         return self.time_axis.get_start(window=self.window)
@@ -369,44 +370,75 @@ class TimeMediaMixin:
 
 
 @masked.masks(TimeMediaMixin)
-class TimeMaskedMedia(TimeMediaMixin):
+class TimeMaskedMedia(TimeMediaMixin, masked.MaskedMedia):
     def load(self, path=None):
-        mask = np.zeros_like(self.array)
+        mask = np.zeros(self.media.shape)
+        start_time, _, end_time, _ = self.geometry.bounds
+        start_index = self.get_index_from_time(start_time)
+        end_index = self.get_index_from_time(end_time)
+        slices = self._build_slices(start_index, end_index)
+        mask[slices] = 1
         return mask
 
     def plot(self, ax=None, **kwargs):
-        # pylint: disable=import-outside-toplevel
-        import matplotlib.pyplot as plt
+        ax = super().plot(ax=ax, **kwargs)
 
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+        if kwargs.get('mask', True):
+            intervals = self._get_active_intervals()
+            for (start, end) in intervals:
+                ax.axvline(
+                    start,
+                    linewidth=kwargs.get('linewidth', 1),
+                    linestyle=kwargs.get('linestyle', '--'),
+                    color=kwargs.get('color', 'blue'))
 
-        ax.pcolormesh(
-            self.times,
-            [0, 1],
-            np.array([self.array]),
-            cmap=kwargs.get('cmap', 'gray'),
-            alpha=kwargs.get('alpha', 1))
+                ax.axvline(
+                    end,
+                    linewidth=kwargs.get('linewidth', 1),
+                    linestyle=kwargs.get('linestyle', '--'),
+                    color=kwargs.get('color', 'blue'))
 
-        xlabel = kwargs.get('xlabel', False)
-        if xlabel:
-            if not isinstance(xlabel, str):
-                xlabel = 'Time (s)'
-            ax.set_xlabel(xlabel)
-
-        title = kwargs.get('title', False)
-        if title:
-            if not isinstance(title, str):
-                title = 'Mask'
-            ax.set_title(title)
-
-        if kwargs.get('window', False):
-            linestyle = kwargs.get('window_linestyle', '--')
-            color = kwargs.get('window_color', 'red')
-            ax.axvline(self._get_start(), color=color, linestyle=linestyle)
-            ax.axvline(self._get_end(), color=color, linestyle=linestyle)
+                if kwargs.get('fill', True):
+                    ax.axvspan(
+                        start,
+                        end,
+                        alpha=kwargs.get('alpha', 0.2),
+                        color=kwargs.get('color', 'blue'))            
 
         return ax
+
+    def _get_active_intervals(self):
+        init_slices = self._build_slices(0, -1)
+        end_slices = self._build_slices(1, None)
+        first_slice = self._get_first_slice()
+
+        mask_slice = self.array[first_slice]
+        changes = mask_slice[init_slices] * (1 - mask_slice[end_slices])
+        change_indices = (np.nonzero(changes)[0] + 1).tolist()
+
+        if mask_slice[0] == 1:
+            change_indices.insert(0, 0)
+
+        if mask_slice[-1] == 1:
+            change_indices.append(len(mask_slice) - 1)
+
+        assert len(change_indices) % 2 == 0
+
+        times = self.times
+        return [
+            [times[start], times[end]]
+            for start, end in zip(change_indices[::2], change_indices[1::2])
+        ]
+
+    def _build_slices(self, start, end):
+        slices = [slice(None, None) for _ in self.media.shape]
+        slices[self.time_axis_index] = slice(start, end)
+        return tuple(slices)
+
+    def _get_first_slice(self):
+        slices = [0 for _ in self.media.shape]
+        slices[self.time_axis_index] = slice(None, None)
+        return tuple(slices)
 
 
 class TimeMedia(TimeMediaMixin, Media):

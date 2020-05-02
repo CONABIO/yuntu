@@ -53,6 +53,15 @@ class Feature(Media):
 
         return self.audio is not None
 
+    def plot(self, ax=None, **kwargs):
+        ax = super().plot(ax=ax, **kwargs)
+
+        if kwargs.get('audio', False):
+            audio_kwargs = kwargs.get('audio_kwargs', {})
+            self.audio.plot(ax=ax, **audio_kwargs)
+
+        return ax
+
     def load_from_path(self, path=None):
         if path is None:
             path = self.path
@@ -99,145 +108,12 @@ class Feature(Media):
 
 
 class TimeFeature(TimeMediaMixin, Feature):
-    def __init__(
-            self,
-            audio=None,
-            start=None,
-            array=None,
-            duration=None,
-            time_frequency=None,
-            **kwargs):
-
-        if start is None:
-            if audio is None:
-                start = 0
-            else:
-                start = audio.time_axis.start
-
-        if duration is None:
-            if audio is None:
-                message = (
-                    'If no audio is provided a duration must be set')
-                raise ValueError(message)
-            duration = audio.duration
-
-        if time_frequency is None:
-            if audio is not None:
-                time_frequency = audio.samplerate
-            elif array is not None:
-                length = array.shape[self.time_axis_index]
-                time_frequency = (duration - start) / length
-            else:
-                message = (
-                    'If no audio or array is provided a time_frequency must '
-                    'be set')
-                raise ValueError(message)
-
-        super().__init__(
-            audio=audio,
-            start=start,
-            duration=duration,
-            time_frequency=time_frequency,
-            array=array,
-            **kwargs)
+    pass
 
 
 class FrequencyFeature(FrequencyMediaMixin, Feature):
-    def __init__(
-            self,
-            audio=None,
-            min_freq=0,
-            max_freq=None,
-            freq_resolution=None,
-            array=None,
-            **kwargs):
-
-        if max_freq is None:
-            if audio is None:
-                message = (
-                    'If no audio is provided a maximum frequency must be set')
-                raise ValueError(message)
-            max_freq = audio.samplerate // 2
-
-        if freq_resolution is None:
-            if array is not None:
-                length = array.shape[self.frequency_axis_index]
-                freq_resolution = (max_freq - min_freq) / length
-            else:
-                message = (
-                    'If no array is provided a freq_resolution must be set')
-                raise ValueError(message)
-
-        super().__init__(
-            audio=audio,
-            min_freq=min_freq,
-            max_freq=max_freq,
-            freq_resolution=freq_resolution,
-            array=array,
-            **kwargs)
+    pass
 
 
 class TimeFrequencyFeature(TimeFrequencyMediaMixin, Feature):
-    def __init__(
-            self,
-            audio=None,
-            min_freq=0,
-            max_freq=None,
-            freq_resolution=None,
-            start=None,
-            duration=None,
-            time_resolution=None,
-            array=None,
-            **kwargs):
-
-        if start is None:
-            if audio is None:
-                start = 0
-            else:
-                start = audio.time_axis.start
-
-        if duration is None:
-            if audio is None:
-                message = (
-                    'If no audio is provided a duration must be set')
-                raise ValueError(message)
-            duration = audio.duration
-
-        if time_resolution is None:
-            if audio is not None:
-                time_resolution = audio.samplerate
-            elif array is not None:
-                length = array.shape[self.time_axis_index]
-                time_resolution = (duration - start) / length
-            else:
-                message = (
-                    'If no audio or array is provided a time_resolution must '
-                    'be set')
-                raise ValueError(message)
-
-        if max_freq is None:
-            if audio is None:
-                message = (
-                    'If no audio is provided a maximum frequency must be set')
-                raise ValueError(message)
-            max_freq = audio.samplerate // 2
-
-        if freq_resolution is None:
-            if array is not None:
-                length = array.shape[self.frequency_axis_index]
-                freq_resolution = (max_freq - min_freq) / length
-            else:
-                message = (
-                    'If no array is provided a freq_resolution must be set')
-                raise ValueError(message)
-
-        super().__init__(
-            audio=audio,
-            min_freq=min_freq,
-            max_freq=max_freq,
-            freq_resolution=freq_resolution,
-            start=start,
-            duration=duration,
-            time_resolution=time_resolution,
-            array=array,
-            **kwargs)
+    pass

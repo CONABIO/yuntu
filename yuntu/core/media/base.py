@@ -25,6 +25,11 @@ class Media(ABC, AnnotatedObject):
     window_class = Window
     mask_class = None
 
+    # Plotting variables
+    plot_title = 'Media Object'
+    plot_xlabel = ''
+    plot_ylabel = ''
+
     # pylint: disable=super-init-not-called, unused-argument
     def __init__(
             self,
@@ -141,9 +146,47 @@ class Media(ABC, AnnotatedObject):
     def write(self, path=None, **kwargs):
         """Write media object into filesystem."""
 
+    def get_plot_title(self):
+        return self.plot_title
+
+    def get_plot_xlabel(self):
+        return self.plot_xlabel
+
+    def get_plot_ylabel(self):
+        return self.plot_ylabel
+
     @abstractmethod
     def plot(self, ax=None, **kwargs):  # pylint: disable=invalid-name
         """Plot a representation of the media object."""
+        # pylint: disable=import-outside-toplevel
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+
+        title = kwargs.get('title', False)
+        if title:
+            if not isinstance(title, str):
+                title = self.get_plot_title()
+            ax.set_title(title)
+
+        xlabel = kwargs.get('xlabel', False)
+        if xlabel:
+            if not isinstance(xlabel, str):
+                xlabel = self.get_plot_xlabel()
+            ax.set_xlabel(xlabel)
+
+        ylabel = kwargs.get('ylabel', False)
+        if ylabel:
+            if not isinstance(ylabel, str):
+                ylabel = self.get_plot_ylabel()
+            ax.set_ylabel(ylabel)
+
+        if kwargs.get('window', False):
+            window_kwargs = kwargs.get('window_kwargs', {})
+            ax = self.window.plot(ax=ax, **window_kwargs)
+
+        return ax
 
     def normalized(self, method='minmax', **kwargs):
         if method == 'minmax':

@@ -3,6 +3,7 @@ from typing import Optional
 
 import yuntu.core.audio.features.spectrogram as spectrogram
 import yuntu.core.audio.features.zero_crossing_rate as zcr
+import yuntu.core.audio.features.spectrum as spectrum
 
 
 class AudioFeatures:
@@ -32,6 +33,11 @@ class AudioFeatures:
         return {
             'annotations': self.audio.annotations.annotations
         }
+
+    def spectrum(self, lazy=False):
+        kwargs = self.get_base_kwargs()
+        kwargs['lazy'] = lazy
+        return spectrum.Spectrum(audio=self.audio, **kwargs)
 
     def spectrogram(
             self,

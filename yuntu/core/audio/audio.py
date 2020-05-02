@@ -294,11 +294,7 @@ class Audio(TimeMedia):
 
     def plot(self, ax=None, **kwargs):
         """Plot soundwave in the given axis."""
-        # pylint: disable=import-outside-toplevel
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+        ax = super().plot(ax=ax, **kwargs)
 
         array = self.array.copy()
         if 'vmax' in kwargs:
@@ -309,39 +305,13 @@ class Audio(TimeMedia):
         if 'offset' in kwargs:
             array += kwargs['offset']
 
-        times = self.times
-        lineplot, = ax.plot(
-            times,
+        ax.plot(
+            self.times,
             array,
             c=kwargs.get('color', None),
             linewidth=kwargs.get('linewidth', 1),
             linestyle=kwargs.get('linestyle', None),
             alpha=kwargs.get('alpha', 1))
-        ax.set_xlim(times[0], times[-1])
-        color = lineplot.get_color()
-
-        xlabel = kwargs.get('xlabel', True)
-        if xlabel:
-            if not isinstance(xlabel, str):
-                xlabel = 'Time (s)'
-            ax.set_xlabel(xlabel)
-
-        ylabel = kwargs.get('ylabel', True)
-        if ylabel:
-            if not isinstance(ylabel, str):
-                ylabel = 'Amplitude'
-            ax.set_ylabel(ylabel)
-
-        title = kwargs.get('title', True)
-        if title:
-            if not isinstance(title, str):
-                title = 'Waveform'
-            ax.set_title(title)
-
-        if kwargs.get('window', False):
-            linestyle = kwargs.get('window_linestyle', '--')
-            ax.axvline(self._get_start(), color=color, linestyle=linestyle)
-            ax.axvline(self._get_end(), color=color, linestyle=linestyle)
 
         return ax
 

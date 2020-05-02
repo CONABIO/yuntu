@@ -17,6 +17,19 @@ class MaskedMediaMixin:
             **super().to_dict()
         }
 
+    def plot(self, ax=None, **kwargs):
+        ax = super().plot(ax=ax, **kwargs)
+
+        if kwargs.get('media', False):
+            media_kwargs = kwargs.get('media_kwargs', {})
+            media = self.media.copy()
+            media._array = np.ma.masked_array(
+                media.array,
+                mask=1 - self.array)
+            ax = media.plot(ax=ax, **media_kwargs)
+
+        return ax
+
     def write(self, path=None, **kwargs):
         if path is None:
             path = self.path

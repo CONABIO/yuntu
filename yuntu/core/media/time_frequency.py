@@ -7,12 +7,12 @@ from scipy.interpolate import RectBivariateSpline
 import yuntu.core.windows as windows
 from yuntu.core.geometry import base as geom
 from yuntu.core.annotation import annotation
+from yuntu.core.media import masked
 from yuntu.core.media.base import Media
 from yuntu.core.media.time import TimeMediaMixin
 from yuntu.core.media.time import TimeItem
 from yuntu.core.media.frequency import FrequencyMediaMixin
 from yuntu.core.media.frequency import FrequencyItem
-from yuntu.core.media import masked
 import yuntu.core.geometry.utils as geom_utils
 
 
@@ -31,6 +31,9 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
     window_class = windows.TimeFrequencyWindow
     time_item_class = TimeItemWithFrequencies
     frequency_item_class = FrequencyItemWithTime
+
+    plot_xlabel = 'Time (s)'
+    plot_ylabel = 'Frequency (Hz)'
 
     def __init__(
             self,
@@ -377,55 +380,18 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
 @masked.masks(TimeFrequencyMediaMixin)
 class TimeFrequencyMaskedMedia(TimeFrequencyMediaMixin, masked.MaskedMedia):
+    plot_title = 'Time Frequency Masked Object'
+
     def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
+        ax = super().plot(ax=ax, **kwargs)
 
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
-
-        ax.pcolormesh(
-            self.times,
-            self.frequencies,
-            self.array,
-            cmap=kwargs.get('cmap', 'gray'),
-            alpha=kwargs.get('alpha', 1.0))
-
-        xlabel = kwargs.get('xlabel', False)
-        if xlabel:
-            if not isinstance(xlabel, str):
-                xlabel = 'Time (s)'
-            ax.set_xlabel(xlabel)
-
-        ylabel = kwargs.get('ylabel', False)
-        if ylabel:
-            if not isinstance(ylabel, str):
-                ylabel = 'Frequency (Hz)'
-            ax.set_ylabel(ylabel)
-
-        title = kwargs.get('title', False)
-        if title:
-            if not isinstance(title, str):
-                title = f'Mask'
-            ax.set_title(title)
-
-        if kwargs.get('window', False):
-            min_freq = self._get_min()
-            max_freq = self._get_max()
-            start_time = self._get_start()
-            end_time = self._get_end()
-            line_x, line_y = zip(*[
-                [start_time, min_freq],
-                [end_time, min_freq],
-                [end_time, max_freq],
-                [start_time, max_freq],
-                [start_time, min_freq],
-            ])
-            ax.plot(
-                line_x,
-                line_y,
-                color=kwargs.get('window_color', None),
-                linewidth=kwargs.get('window_linewidth', 3),
-                linestyle=kwargs.get('window_linestyle', '--'))
+        if kwargs.get('mask', True):
+            ax.pcolormesh(
+                self.times,
+                self.frequencies,
+                self.array,
+                cmap=kwargs.get('cmap', 'gray'),
+                alpha=kwargs.get('alpha', 1.0))
 
         return ax
 

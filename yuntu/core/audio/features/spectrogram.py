@@ -48,8 +48,7 @@ Shape = namedtuple('Shape', ['rows', 'columns'])
 
 class Spectrogram(TimeFrequencyFeature):
     """Spectrogram class."""
-
-    units = 'amplitude'
+    plot_title = 'Amplitude Spectrogram'
 
     def __init__(
             self,
@@ -186,26 +185,7 @@ class Spectrogram(TimeFrequencyFeature):
 
     def write(self, path):  # pylint: disable=arguments-differ
         """Write the spectrogram matrix into the filesystem."""
-        self.path = path
-        data = {
-            'spectrogram': self.array,
-            'duration': self.duration,
-            'samplerate': self.samplerate,
-        }
-
-        if self.has_audio():
-            if self.audio.path_exists():
-                data['audio_path'] = self.audio.path
-
-        if not self._has_trivial_window():
-            window_data = {
-                f'window_{key}': value
-                for key, value in self.window.to_dict()
-                if value is not None
-            }
-            data.update(window_data)
-
-        np.savez(self.path, **data)
+        # TODO
 
     @property
     def shape(self) -> Shape:
@@ -248,11 +228,7 @@ class Spectrogram(TimeFrequencyFeature):
         matplotlib.Axes
             The axis into which the spectrogram was plotted.
         """
-        # pylint: disable=import-outside-toplevel
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+        ax = super().plot(ax=ax, **kwargs)
 
         spectrogram = self.array
         minimum = spectrogram.min()
@@ -279,44 +255,8 @@ class Spectrogram(TimeFrequencyFeature):
             alpha=kwargs.get('alpha', 1.0))
 
         if kwargs.get('colorbar', False):
+            import matplotlib.pyplot as plt
             plt.colorbar(mesh, ax=ax)
-
-        xlabel = kwargs.get('xlabel', True)
-        if xlabel:
-            if not isinstance(xlabel, str):
-                xlabel = 'Time (s)'
-            ax.set_xlabel(xlabel)
-
-        ylabel = kwargs.get('ylabel', True)
-        if ylabel:
-            if not isinstance(ylabel, str):
-                ylabel = 'Frequency (Hz)'
-            ax.set_ylabel(ylabel)
-
-        title = kwargs.get('title', True)
-        if title:
-            if not isinstance(title, str):
-                title = f'Spectrogram ({self.units})'
-            ax.set_title(title)
-
-        if kwargs.get('window', False):
-            min_freq = self._get_min()
-            max_freq = self._get_max()
-            start_time = self._get_start()
-            end_time = self._get_end()
-            line_x, line_y = zip(*[
-                [start_time, min_freq],
-                [end_time, min_freq],
-                [end_time, max_freq],
-                [start_time, max_freq],
-                [start_time, min_freq],
-            ])
-            ax.plot(
-                line_x,
-                line_y,
-                color=kwargs.get('window_color', None),
-                linewidth=kwargs.get('window_linewidth', 3),
-                linestyle=kwargs.get('window_linestyle', '--'))
 
         return ax
 
@@ -362,7 +302,6 @@ class Spectrogram(TimeFrequencyFeature):
     def to_dict(self):
         """Return spectrogram metadata."""
         return {
-            'units': self.units,
             'n_fft': self.n_fft,
             'hop_length': self.hop_length,
             'window_function': self.window_function,
@@ -371,15 +310,15 @@ class Spectrogram(TimeFrequencyFeature):
 
     @classmethod
     def from_dict(cls, data):
-        units = data.pop('units', None)
+        spec_type = data.pop('type', None)
 
-        if units == 'amplitude':
+        if spec_type == 'Spectrogram':
             return Spectrogram(**data)
 
-        if units == 'power':
+        if spec_type == 'PowerSpectrogram':
             return PowerSpectrogram(**data)
 
-        if units == 'db':
+        if spec_type == 'DecibelSpectrogram':
             return DecibelSpectrogram(**data)
 
         raise ValueError('Unknown or missing units')
@@ -387,8 +326,7 @@ class Spectrogram(TimeFrequencyFeature):
 
 class PowerSpectrogram(Spectrogram):
     """Power spectrogram class."""
-
-    units = 'power'
+    plot_title = 'Power Spectrogram'
 
     def compute(self):
         """Calculate spectrogram from audio data."""
@@ -426,8 +364,8 @@ class PowerSpectrogram(Spectrogram):
 
 class DecibelSpectrogram(Spectrogram):
     """Decibel spectrogram class."""
+    plot_title = 'Decibel Spectrogram'
 
-    units = 'db'
     ref = 1.0
     amin = 1e-05
     top_db = 80.0

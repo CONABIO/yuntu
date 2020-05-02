@@ -12,6 +12,8 @@ HOP_LENGTH = 512
 
 
 class ZeroCrossingRate(TimeFeature):
+    plot_title = 'Zero Crossing Rate'
+
     def __init__(
             self,
             audio=None,
@@ -86,55 +88,26 @@ class ZeroCrossingRate(TimeFeature):
         }
 
     def write(self, path=None):
+        # TODO
         pass
 
     def plot(self, ax=None, **kwargs):
-        # pylint: disable=import-outside-toplevel
-        import matplotlib.pyplot as plt
+        ax = super().plot(ax=ax, **kwargs)
 
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+        masked = np.ma.masked_less_equal(
+            self.array,
+            kwargs.get('min_freq', 0))
 
-        masked = np.ma.masked_less_equal(self.array, kwargs.get('min_freq', 0))
         if kwargs.get('max_freq', 0):
-            masked = np.ma.masked_greater_equal(self.array, kwargs.get('max_freq'))
+            masked = np.ma.masked_greater_equal(
+                self.array,
+                kwargs.get('max_freq'))
 
-        times = self.times
         ax.plot(
-            times,
+            self.times,
             masked,
             color=kwargs.get('color', 'black'),
             linestyle=kwargs.get('linestyle', 'dotted'),
             linewidth=kwargs.get('linewidth', 1))
-        ax.set_xlim(times[0], times[-1])
-
-        ylim_bottom = kwargs.get('ylim_bottom', 0)
-        ax.set_ylim(bottom=ylim_bottom)
-
-        ylim_top = kwargs.get('ylim_top', None)
-        if ylim_top is None:
-            if self.has_audio():
-                ylim_top = self.audio.samplerate / 2
-            else:
-                ylim_top = self.array.max()
-        ax.set_ylim(top=ylim_top)
-
-        xlabel = kwargs.get('xlabel', True)
-        if xlabel:
-            if not isinstance(xlabel, str):
-                xlabel = 'Time (s)'
-            ax.set_xlabel(xlabel)
-
-        ylabel = kwargs.get('ylabel', True)
-        if ylabel:
-            if not isinstance(ylabel, str):
-                ylabel = 'Frequency (Hz)'
-            ax.set_ylabel(ylabel)
-
-        title = kwargs.get('title', True)
-        if title:
-            if not isinstance(title, str):
-                title = 'Zero Crossing Rate'
-            ax.set_title(title)
 
         return ax
