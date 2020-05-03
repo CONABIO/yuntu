@@ -330,6 +330,16 @@ class TimeMediaMixin:
             lazy=lazy,
             time_axis=self.time_axis)
 
+    def grid(self, frame_length, hop_length=None, lazy=False):
+        from yuntu.core.media.grided import TimeGridedMedia
+
+        return TimeGridedMedia(
+            self,
+            frame_length=frame_length,
+            hop_length=hop_length,
+            lazy=lazy,
+            window=self.window)
+
     def _get_start(self):
         return self.time_axis.get_start(window=self.window)
 
