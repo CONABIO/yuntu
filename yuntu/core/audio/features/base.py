@@ -1,5 +1,4 @@
 """Feature class module."""
-from abc import abstractmethod
 import os
 
 import numpy as np
@@ -90,21 +89,6 @@ class Feature(Media):
             'The provided path does not have a numpy file extension. '
             f'(extension={extension})')
         raise ValueError(message)
-
-    @abstractmethod
-    def compute(self):
-        pass
-
-    def load(self, path=None):
-        if not self.has_audio():
-            if not self.path_exists(path):
-                message = (
-                    'The provided path to feature file does not exist.')
-                raise ValueError(message)
-
-            return self.load_from_path(path)
-
-        return self.compute()
 
 
 class TimeFeature(TimeMediaMixin, Feature):

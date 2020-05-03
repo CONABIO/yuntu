@@ -138,9 +138,22 @@ class Media(ABC, AnnotatedObject):
         """Check if array has not been loaded yet."""
         return not hasattr(self, '_array') or self._array is None
 
-    # @abstractmethod
     def load(self, path=None):
-        """Read media object into memory."""
+        if self.path_exists(path):
+            return self.load_from_path(path)
+
+        return self.compute()
+
+    def compute(self):
+        message = 'This class does not implement a compute method'
+        raise NotImplementedError(message)
+
+    def load_from_path(self, path=None):
+        if path is None:
+            path = self.path
+
+        message = 'This class does not implement a load from path method'
+        raise NotImplementedError(message)
 
     @abstractmethod
     def write(self, path=None, **kwargs):

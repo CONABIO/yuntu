@@ -353,7 +353,7 @@ class FrequencyMediaMixin:
 
 @masked.masks(FrequencyMediaMixin)
 class FrequencyMaskedMedia(FrequencyMediaMixin, masked.MaskedMedia):
-    def load(self, path=None):
+    def compute(self, path=None):
         mask = np.zeros(self.media.shape)
         _, min_freq, _, max_freq = self.geometry.bounds
         start_index = self.get_index_from_frequency(min_freq)

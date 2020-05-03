@@ -371,7 +371,7 @@ class TimeMediaMixin:
 
 @masked.masks(TimeMediaMixin)
 class TimeMaskedMedia(TimeMediaMixin, masked.MaskedMedia):
-    def load(self, path=None):
+    def compute(self):
         mask = np.zeros(self.media.shape)
         start_time, _, end_time, _ = self.geometry.bounds
         start_index = self.get_index_from_time(start_time)
@@ -403,7 +403,7 @@ class TimeMaskedMedia(TimeMediaMixin, masked.MaskedMedia):
                         start,
                         end,
                         alpha=kwargs.get('alpha', 0.2),
-                        color=kwargs.get('color', 'blue'))            
+                        color=kwargs.get('color', 'blue'))
 
         return ax
 

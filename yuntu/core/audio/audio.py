@@ -242,7 +242,7 @@ class Audio(TimeMedia):
             path = self.path
         return read_info(path, self.timeexp)
 
-    def load(self, path=None):
+    def load_from_path(self, path=None):
         """Read signal from file."""
         if path is None:
             path = self.path

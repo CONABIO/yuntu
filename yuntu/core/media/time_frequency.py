@@ -395,7 +395,7 @@ class TimeFrequencyMaskedMedia(TimeFrequencyMediaMixin, masked.MaskedMedia):
 
         return ax
 
-    def load(self, path=None):
+    def compute(self):
         return geom_utils.geometry_to_mask(
             self.geometry.geometry,
             self.media.array.shape,
