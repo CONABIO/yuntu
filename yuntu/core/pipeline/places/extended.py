@@ -266,7 +266,7 @@ class DaskSeriesPlace(Place, DaskSeriesMixin):
             if not self.validate(data):
                 message = "Data is invalid."
                 raise ValueError(message)
-        return data.to_csv(self.get_persist_path())
+        return data.to_csv(path)
 
     def read(self, path=None):
         if path is None:
@@ -274,7 +274,7 @@ class DaskSeriesPlace(Place, DaskSeriesMixin):
         if not os.path.exists(path):
             message = "No persisted data at path."
             raise ValueError(message)
-        return dd.read_csv(self.get_persist_path())
+        return dd.read_csv(path)
 
     def get_persist_path(self):
         if self.key is None:
@@ -331,7 +331,7 @@ class DaskDataFramePlace(Place, DaskDataFrameMixin):
             if not self.validate(data):
                 message = "Data is invalid."
                 raise ValueError(message)
-        return data.to_parquet(self.get_persist_path(), compression="GZIP")
+        return data.to_parquet(path, compression="GZIP")
 
     def read(self, path=None):
         if path is None:
@@ -339,7 +339,7 @@ class DaskDataFramePlace(Place, DaskDataFrameMixin):
         if not os.path.exists(path):
             message = "No persisted data at path."
             raise ValueError(message)
-        return dd.read_parquet(self.get_persist_path())
+        return dd.read_parquet(path)
 
     def get_persist_path(self):
         if self.key is None:
