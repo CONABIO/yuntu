@@ -41,11 +41,12 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             duration=None,
             time_resolution=None,
             time_axis=None,
-            min_freq=None,
+            min_freq=0,
             max_freq=None,
             freq_resolution=None,
             frequency_axis=None,
             **kwargs):
+
         if time_axis is None:
             time_axis = self.time_axis_class(
                 start=start,

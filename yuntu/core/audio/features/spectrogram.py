@@ -58,6 +58,7 @@ class Spectrogram(TimeFrequencyFeature):
             window_function=WINDOW_FUNCTION,
             max_freq=None,
             freq_resolution=None,
+            frequency_axis=None,
             duration=None,
             time_resolution=None,
             time_axis=None,
@@ -92,6 +93,7 @@ class Spectrogram(TimeFrequencyFeature):
 
                 time_resolution = columns / duration
 
+        if frequency_axis is None:
             if max_freq is None:
                 if audio is not None:
                     max_freq = audio.samplerate / 2
@@ -108,6 +110,7 @@ class Spectrogram(TimeFrequencyFeature):
             time_resolution=time_resolution,
             max_freq=max_freq,
             freq_resolution=freq_resolution,
+            frequency_axis=frequency_axis,
             array=array,
             time_axis=time_axis,
             **kwargs)

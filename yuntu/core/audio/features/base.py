@@ -20,16 +20,13 @@ class Feature(Media):
     def __init__(
             self,
             audio=None,
-            array=None,
-            path: str = None,
-            lazy: bool = False,
             **kwargs):
         """Construct a feature."""
         if audio is not None and not isinstance(audio, audio_module.Audio):
             audio = audio_module.Audio.from_dict(audio)
 
         self.audio = audio
-        super().__init__(path=path, lazy=lazy, array=array, **kwargs)
+        super().__init__(**kwargs)
 
     def _copy_dict(self, **kwargs):
         return {
