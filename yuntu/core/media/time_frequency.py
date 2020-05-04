@@ -45,6 +45,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             max_freq=None,
             freq_resolution=None,
             frequency_axis=None,
+            window=None,
             **kwargs):
 
         if time_axis is None:
@@ -65,17 +66,34 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
         if not isinstance(frequency_axis, self.frequency_axis_class):
             frequency_axis = self.frequency_axis_class.from_dict(frequency_axis) # noqa
 
-        if 'window' not in kwargs:
-            kwargs['window'] = windows.TimeFrequencyWindow(
+        if window is None:
+            window = windows.TimeFrequencyWindow(
                 start=time_axis.start,
                 end=time_axis.end,
                 min=frequency_axis.start,
                 max=frequency_axis.end)
 
+        if not isinstance(window, windows.TimeFrequencyWindow):
+
+            if isinstance(window, windows.TimeWindow):
+                window = windows.TimeFrequencyWindow(
+                    start=window.start,
+                    end=window.end,
+                    min=frequency_axis.start,
+                    max=frequency_axis.end)
+
+            elif isinstance(window, windows.FrequencyWindow):
+                window = windows.TimeFrequencyWindow(
+                    start=time_axis.start,
+                    end=time_axis.end,
+                    min=window.min,
+                    max=window.max)
+
         super().__init__(
             start=start,
             frequency_axis=frequency_axis,
             time_axis=time_axis,
+            window=window,
             **kwargs)
 
     def get_value(self, time: float, freq: float) -> float:
@@ -374,8 +392,8 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
     # pylint: disable=arguments-differ
     def _build_slices(self, start_time, end_time, min_freq, max_freq):
         slice_args = [slice(None, None, None) for _ in self.shape]
-        slice_args[self.frequency_axis_index] = slice(start_time, end_time)
-        slice_args[self.time_axis_index] = slice(min_freq, max_freq)
+        slice_args[self.time_axis_index] = slice(start_time, end_time)
+        slice_args[self.frequency_axis_index] = slice(min_freq, max_freq)
         return tuple(slice_args)
 
 
