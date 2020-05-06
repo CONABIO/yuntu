@@ -256,6 +256,9 @@ class DynamicPlace(Place):
     def is_output(self):
         return False
 
+    def is_persisted(self):
+        return False
+
     def write(self, path=None, data=None):
         return None
 
