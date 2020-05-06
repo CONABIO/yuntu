@@ -188,25 +188,25 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             try:
                 start_time = max(min(window.start, current_end), current_start)
             except (AttributeError, TypeError):
-                pass
+                start_time = current_start
 
         if end_time is None:
             try:
                 end_time = max(min(window.end, current_end), current_start)
             except (AttributeError, TypeError):
-                pass
+                end_time = current_end
 
         if min_freq is None:
             try:
                 min_freq = max(min(window.min, current_max), current_min)
             except (AttributeError, TypeError):
-                pass
+                min_freq = current_min
 
         if max_freq is None:
             try:
                 max_freq = max(min(window.max, current_max), current_min)
             except (AttributeError, TypeError):
-                pass
+                max_freq = current_max
 
         try:
             if start_time > end_time or min_freq > max_freq:
