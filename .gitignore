@@ -7,4 +7,6 @@ dist/
 *.ipynb
 *.sqlite
 
+!tutorials/*.ipynb
+
 labelling_structure.json
