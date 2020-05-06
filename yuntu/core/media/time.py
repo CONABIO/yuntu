@@ -103,9 +103,12 @@ class TimeMediaMixin:
                 'was requested')
             raise ValueError(message)
 
-        return self.time_axis.get_index_from_value(
+        index = self.time_axis.get_index_from_value(
             time,
             window=self.window)
+        size = self.time_size
+
+        return min(max(0, index), size - 1)
 
     def get_value(self, time):
         index = self.get_index_from_time(time)

@@ -95,9 +95,12 @@ class FrequencyMediaMixin:
                 'was requested')
             raise ValueError(message)
 
-        return self.frequency_axis.get_index_from_value(
+        index = self.frequency_axis.get_index_from_value(
             freq,
             window=self.window)
+        size = self.frequency_size
+
+        return min(max(0, index), size - 1)
 
     def get_value(self, freq):
         index = self.get_index_from_frequency(freq)
