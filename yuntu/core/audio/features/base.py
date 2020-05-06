@@ -22,15 +22,27 @@ class Feature(Media):
             audio=None,
             **kwargs):
         """Construct a feature."""
-        if audio is not None and not isinstance(audio, audio_module.Audio):
-            audio = audio_module.Audio.from_dict(audio)
+        if isinstance(audio, audio_module.Audio):
+            self._audio = audio
+        else:
+            self._audio_data = audio
 
-        self.audio = audio
         super().__init__(**kwargs)
+
+    @property
+    def audio(self):
+        if not hasattr(self, '_audio'):
+            self._audio = audio_module.Audio.from_dict(
+                self._audio_data,
+                lazy=True)
+        return self._audio
+
+    def clean_audio(self):
+        del self._audio
 
     def _copy_dict(self, **kwargs):
         return {
-            'audio': self.audio,
+            'audio': self._audio_data,
             **super()._copy_dict(**kwargs),
         }
 
@@ -44,10 +56,10 @@ class Feature(Media):
 
     def has_audio(self):
         """Return if this feature is linked to an Audio instance."""
-        if not hasattr(self, 'audio'):
+        if not hasattr(self, '_audio_data'):
             return False
 
-        return self.audio is not None
+        return self._audio_data is not None
 
     def plot(self, ax=None, **kwargs):
         ax = super().plot(ax=ax, **kwargs)
@@ -57,6 +69,11 @@ class Feature(Media):
             self.audio.plot(ax=ax, **audio_kwargs)
 
         return ax
+
+    def load(self, path=None):
+        result = super().load(path=path)
+        self.clean_audio()
+        return result
 
     def load_from_path(self, path=None):
         if path is None:
