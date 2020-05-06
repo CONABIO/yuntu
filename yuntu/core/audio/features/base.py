@@ -24,6 +24,7 @@ class Feature(Media):
         """Construct a feature."""
         if isinstance(audio, audio_module.Audio):
             self._audio = audio
+            self._audio_data = audio.to_dict()
         else:
             self._audio_data = audio
 
