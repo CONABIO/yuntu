@@ -383,6 +383,40 @@ def polygon_to_mask(geom,
     return mask
 
 
+def multilinestring_to_mask(geom,
+                            shape,
+                            transformX=None,
+                            transformY=None):
+    """Rasterize linestring to binary mask of shape 'shape'.
+
+    Parameters
+    ----------
+    geom: hapely.geometry.multilinestring.MultiLineString
+        MultiLineString to rasterize.
+    shape: tuple(int, int)
+        Shape of output mask.
+    transformX: function
+        Transformation to apply on 'x' coordinates.
+    transformY: function
+        Transformation to apply on 'y' coordinates.
+
+    Returns
+    -------
+    mask: np.array
+        Resulting mask.
+    """
+
+    mask = np.zeros(shape, dtype=bool)
+    for sgeom in geom.geoms:
+        smask = linestring_to_mask(geom=sgeom,
+                                   shape=shape,
+                                   transformX=transformX,
+                                   transformY=transformY)
+        mask = np.logical_or(mask, smask)
+
+    return mask
+
+
 def geometry_to_mask(geom,
                      shape,
                      transformX=None,
@@ -418,6 +452,11 @@ def geometry_to_mask(geom,
                                   shape=shape,
                                   transformX=transformX,
                                   transformY=transformY)
+    if isinstance(geom, MultiLineString):
+        return multilinestring_to_mask(geom=geom,
+                                       shape=shape,
+                                       transformX=transformX,
+                                       transformY=transformY)
 
     message = (
         "Method not implemented for this kind of geometry "
