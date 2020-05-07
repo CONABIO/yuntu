@@ -65,7 +65,7 @@ def read_media(path,
                         sr=samplerate,
                         offset=offset,
                         duration=duration,
-                        mono=False)
+                        mono=True)
 
 
 def write_media(path,
