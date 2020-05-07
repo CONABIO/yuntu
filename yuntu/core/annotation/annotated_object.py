@@ -101,7 +101,7 @@ class AnnotatedObjectMixin:
 
         self.annotations = AnnotationList(annotations)
 
-        super().__init__(**kwargs)
+        super().__init__()
 
     def to_dict(self):
         return {
