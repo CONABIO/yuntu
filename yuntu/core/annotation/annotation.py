@@ -427,7 +427,9 @@ class PointAnnotation(Annotation):
         super().__init__(**kwargs)
 
 
-class Annotation2DMixin:
+class Annotation2DMixin(
+        TimeIntervalAnnotationMixin,
+        FrequencyIntervalAnnotationMixin):
     def to_bbox(self):
         data = self._copy_dict()
         data['geometry'] = self.geometry.to_bbox()
