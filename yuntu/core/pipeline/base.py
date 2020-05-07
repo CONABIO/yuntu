@@ -1339,6 +1339,9 @@ class Pipeline(MetaPipeline):
                 if self.nodes[key].can_persist:
                     write[key] = self.nodes[key].persist
 
+        if len(write) > 0:
+            self.init_dirs()
+
         for key in read:
             if isinstance(read[key], bool):
                 if read[key]:
