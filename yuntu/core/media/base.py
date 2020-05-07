@@ -13,10 +13,10 @@ from urllib.parse import urlparse
 
 from yuntu.utils import download_file
 from yuntu.core.windows import Window
-from yuntu.core.annotation.annotated_object import AnnotatedObject
+from yuntu.core.annotation.annotated_object import AnnotatedObjectMixin
 
 
-class Media(ABC, AnnotatedObject):
+class Media(ABC, AnnotatedObjectMixin):
     """Media class.
 
     This is the base class for all media objects in yuntu.
@@ -53,25 +53,24 @@ class Media(ABC, AnnotatedObject):
         if array is not None:
             self._array = array
         elif not lazy:
-            if self.is_remote():
-                tmpfile = self.remote_load()
-                self._array = self.load(path=tmpfile)
-                tmpfile.close()
-            else:
-                self._array = self.load()
+            self._array = self._load_array()
 
         super().__init__(**kwargs)
+
+    def _load_array(self):
+        if self.is_remote():
+            tmpfile = self.remote_load()
+            array = self.load(path=tmpfile)
+            tmpfile.close()
+            return array
+
+        return self.load()
 
     @property
     def array(self):
         """Get media contents."""
         if self.is_empty():
-            if self.is_remote():
-                tmpfile = self.remote_load()
-                self._array = self.load(path=tmpfile)
-                tmpfile.close()
-            else:
-                self._array = self.load()
+            self._array = self._load_array()
         return self._array
 
     @property
@@ -84,7 +83,8 @@ class Media(ABC, AnnotatedObject):
         """Return a dictionary holding all media metadata."""
         data = {
             'type': self.__class__.__name__,
-            'window': self.window.to_dict()
+            'window': self.window.to_dict(),
+            **super().to_dict()
         }
 
         if self.path is not None:
@@ -171,11 +171,7 @@ class Media(ABC, AnnotatedObject):
     @abstractmethod
     def plot(self, ax=None, **kwargs):  # pylint: disable=invalid-name
         """Plot a representation of the media object."""
-        # pylint: disable=import-outside-toplevel
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+        ax = super().plot(ax=ax, **kwargs)
 
         title = kwargs.get('title', False)
         if title:
@@ -239,7 +235,7 @@ class Media(ABC, AnnotatedObject):
 
     def _copy_dict(self, **kwargs):
         data = {
-            'annotations': self.annotations.annotations,
+            'annotations': self.annotations,
             'window': self.window.copy(),
             'path': self.path,
         }

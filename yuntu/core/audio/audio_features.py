@@ -32,7 +32,7 @@ class AudioFeatures:
     def get_base_kwargs(self):
         return {
             'window': self.audio.window,
-            'annotations': self.audio.annotations.annotations
+            'annotations': self.audio.annotations
         }
 
     def spectrum(self, lazy=False):

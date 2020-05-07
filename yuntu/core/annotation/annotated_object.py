@@ -5,26 +5,36 @@ This module defines a Mixin that can be given to all
 objects that posses annotations.
 """
 import pandas as pd
+from yuntu.core.annotation.annotation import Annotation
 
 
-class AnnotationList:
-    def __init__(self, media, annotations):
-        self.media = media
+class AnnotationList(list):
+    def to_dict(self):
+        return [
+            annotation.to_dict() for annotation in self
+        ]
 
-        if annotations is None:
-            annotations = []
-
-        self.annotations = annotations
-
-    def add_annotation(self, annotation):
+    def add(
+            self,
+            annotation=None,
+            geometry=None,
+            labels=None,
+            metadata=None,
+            id=None):
         """Append annotation to AnnotationList."""
-        annotation.target = self
-        self.annotations.append(annotation)
+        if annotation is None:
+            annotation = Annotation(
+                geometry=geometry,
+                labels=labels,
+                metadata=metadata,
+                id=id)
+
+        self.append(annotation)
 
     def to_dataframe(self):
         """Produce pandas DataFrame from AnnotationList."""
         data = []
-        for annotation in self.annotations:
+        for annotation in self:
             row = {
                 'id': annotation.id,
                 'type': type(annotation).__name__,
@@ -47,7 +57,7 @@ class AnnotationList:
             _, ax = plt.subplots(figsize=kwargs.get('figsize', (15, 5)))
 
         key = kwargs.get('key', None)
-        for annotation in self.annotations:
+        for annotation in self:
             if not annotation.has_label(key, mode=kwargs.get('filter', 'all')):
                 continue
             annotation.plot(ax=ax, **kwargs)
@@ -60,44 +70,43 @@ class AnnotationList:
     def buffer(self, buffer=None, **kwargs):
         annotations = [
             annotation.buffer(buffer=buffer, **kwargs)
-            for annotation in self.annotations]
-        return AnnotationList(self.media, annotations)
+            for annotation in self]
+        return AnnotationList(annotations)
 
     def apply(self, func):
         annotations = [
             func(annotation) for annotation
-            in self.annotations]
-        return AnnotationList(self.media, annotations)
+            in self]
+        return AnnotationList(annotations)
 
     def filter(self, func):
         """Return new AnnotationList with filtered annotations."""
         annotations = [
-            annotation for annotation in self.annotations
+            annotation for annotation in self
             if func(annotation)]
-        return AnnotationList(self.media, annotations)
-
-    def __getitem__(self, key):
-        return self.annotations[key]
-
-    def __len__(self):
-        return len(self.annotations)
-
-    def __iter__(self):
-        for annotation in self.annotations:
-            yield annotation
+        return AnnotationList(annotations)
 
 
-class AnnotatedObject:
-    annotation_list_class = AnnotationList
-
-    def __init__(self, annotations=None, **kwargs):
+class AnnotatedObjectMixin:
+    def __init__(
+            self,
+            annotations=None,
+            filter_annotations=True,
+            **kwargs):
         if annotations is None:
             annotations = []
 
-        filtered_annotations = self.filter_annotations(annotations)
-        self.annotations = self.annotation_list_class(
-            self,
-            filtered_annotations)
+        if filter_annotations:
+            annotations = self.filter_annotations(annotations)
+
+        self.annotations = AnnotationList(annotations)
+
+        super().__init__(**kwargs)
+
+    def to_dict(self):
+        return {
+            'annotations': self.annotations.to_dict()
+        }
 
     def filter_annotations(self, annotation_list):
         if not hasattr(self, 'window'):
@@ -116,5 +125,28 @@ class AnnotatedObject:
 
         return filtered
 
-    def annotate(self, annotation):
-        self.annotations.add_annotation(annotation)
+    def annotate(
+            self,
+            annotations_kwargs=None,
+            geometry=None,
+            labels=None,
+            metadata=None,
+            id=None):
+        self.annotations.add(
+            annotation=annotations_kwargs,
+            geometry=geometry,
+            labels=labels,
+            metadata=metadata,
+            id=id)
+
+    def plot(self, ax=None, **kwargs):
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+
+        if kwargs.get('annotations', False):
+            annotations_kwargs = kwargs.get('annotation_kwargs', {})
+            ax = self.annotations.plot(ax=ax, **annotations_kwargs)
+
+        return ax

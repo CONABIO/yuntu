@@ -173,6 +173,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
     def cut(
             self,
             window: Optional[windows.TimeFrequencyWindow] = None,
+            geometry: Optional[geom.Geometry] = None,
             start_time: Optional[float] = None,
             end_time: Optional[float] = None,
             max_freq: Optional[float] = None,
@@ -184,35 +185,58 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
         current_min = self._get_min()
         current_max = self._get_max()
 
+        if window is not None:
+            assert isinstance(window, windows.Window)
+
+        if geometry is not None:
+            assert isinstance(geometry, geom.Geometry)
+
         if start_time is None:
-            try:
-                start_time = max(min(window.start, current_end), current_start)
-            except (AttributeError, TypeError):
+            if window is not None and hasattr(window, 'start'):
+                start_time = window.start
+            elif geometry is not None:
+                start_time, _, _, _ = geometry.bounds
+
+            if start_time is None:
                 start_time = current_start
 
+        start_time = max(min(start_time, current_end), current_start)
+
         if end_time is None:
-            try:
-                end_time = max(min(window.end, current_end), current_start)
-            except (AttributeError, TypeError):
+            if window is not None and hasattr(window, 'end'):
+                end_time = window.end
+            elif geometry is not None:
+                _, _, end_time, _ = geometry.bounds
+
+            if end_time is None:
                 end_time = current_end
 
+        end_time = max(min(end_time, current_end), current_start)
+
         if min_freq is None:
-            try:
-                min_freq = max(min(window.min, current_max), current_min)
-            except (AttributeError, TypeError):
+            if window is not None and hasattr(window, 'min'):
+                min_freq = window.min
+            elif geometry is not None:
+                _, min_freq, _, _ = geometry.bounds
+
+            if min_freq is None:
                 min_freq = current_min
 
+        min_freq = max(min(min_freq, current_max), current_min)
+
         if max_freq is None:
-            try:
-                max_freq = max(min(window.max, current_max), current_min)
-            except (AttributeError, TypeError):
+            if window is not None and hasattr(window, 'max'):
+                max_freq = window.max
+            elif geometry is not None:
+                _, _, _, max_freq = geometry.bounds
+
+            if max_freq is None:
                 max_freq = current_max
 
-        try:
-            if start_time > end_time or min_freq > max_freq:
-                raise ValueError('Cut is empty')
-        except TypeError:
-            pass
+        max_freq = max(min(max_freq, current_max), current_min)
+
+        if start_time > end_time or min_freq > max_freq:
+            raise ValueError('Cut is empty')
 
         kwargs = self._copy_dict()
         kwargs['lazy'] = lazy
@@ -222,26 +246,11 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             min=min_freq,
             max=max_freq)
 
-        if not self.is_empty():
-            if start_time is None:
-                start_index = None
-            else:
-                start_index = self.get_index_from_time(start_time)
-
-            if end_time is None:
-                end_index = None
-            else:
-                end_index = self.get_index_from_time(end_time)
-
-            if min_freq is None:
-                min_index = None
-            else:
-                min_index = self.get_index_from_frequency(min_freq)
-
-            if max_freq is None:
-                max_index = None
-            else:
-                max_index = self.get_index_from_frequency(max_freq)
+        if not lazy:
+            start_index = self.get_index_from_time(start_time)
+            end_index = self.get_index_from_time(end_time)
+            min_index = self.get_index_from_frequency(min_freq)
+            max_index = self.get_index_from_frequency(max_freq)
 
             slices = self._build_slices(
                 start_index,

@@ -31,6 +31,10 @@ MEDIA_INFO_FIELDS = [
     FILE_SIZE,
     DURATION,
 ]
+REQUIRED_MEDIA_INFO_FIELDS = [
+    DURATION,
+    SAMPLE_RATE
+]
 
 MediaInfo = namedtuple('MediaInfo', MEDIA_INFO_FIELDS)
 MediaInfoType = Dict[str, Union[int, float]]
@@ -38,7 +42,7 @@ MediaInfoType = Dict[str, Union[int, float]]
 
 def media_info_is_complete(media_info: MediaInfoType) -> bool:
     """Check if media info has all required fields."""
-    for field in MEDIA_INFO_FIELDS:
+    for field in REQUIRED_MEDIA_INFO_FIELDS:
         if field not in media_info:
             return False
 
@@ -108,10 +112,13 @@ class Audio(TimeMedia):
             metadata = {}
         self.metadata = metadata
 
-        if media_info is None:
+        if samplerate is None:
+            samplerate = resolution
+
+        if ((samplerate is None) or (duration is None)) and media_info is None:
             media_info = self.read_info()
 
-        if not isinstance(media_info, MediaInfo):
+        if media_info is not None and isinstance(media_info, dict):
             if not media_info_is_complete(media_info):
                 message = (
                     f'Media info is not complete. Provided media info'
@@ -124,11 +131,11 @@ class Audio(TimeMedia):
         if samplerate is None:
             samplerate = self.media_info.samplerate
 
-        if resolution is None:
-            resolution = samplerate
-
         if duration is None:
             duration = self.media_info.duration
+
+        if resolution is None:
+            resolution = samplerate
 
         self.features = self.features_class(self)
 
@@ -332,15 +339,14 @@ class Audio(TimeMedia):
             data['path'] = repr(self.path)
         else:
             data['array'] = repr(self.array)
-            data['media_info'] = repr(self.media_info)
+
+        data['duration'] = self.duration
+        data['samplerate'] = self.samplerate
 
         if self.timeexp != 1:
             data['timeexp'] = 1
 
-        if self.metadata:
-            data['metadata'] = repr(self.metadata)
-
-        if self.window.start or self.window.end:
+        if not self._has_trivial_window():
             data['window'] = repr(self.window)
 
         args = [f'{key}={value}' for key, value in data.items()]

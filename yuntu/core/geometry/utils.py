@@ -405,6 +405,9 @@ def geometry_to_mask(geom,
     mask: np.array
         Resulting mask.
     """
+    if geom.is_empty:
+        return np.zeros(shape, dtype=bool)
+
     if isinstance(geom, Polygon):
         return polygon_to_mask(geom=geom,
                                shape=shape,
@@ -415,8 +418,12 @@ def geometry_to_mask(geom,
                                   shape=shape,
                                   transformX=transformX,
                                   transformY=transformY)
-    raise NotImplementedError("Method not implemented for this kind of" +
-                              "geometry")
+
+    message = (
+        "Method not implemented for this kind of geometry "
+        f"({type(geom)})"
+    )
+    raise NotImplementedError(message)
 
 
 def point_neighbourhood(array,

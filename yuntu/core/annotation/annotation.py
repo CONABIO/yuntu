@@ -19,15 +19,15 @@ class Annotation(ABC):
         BBOX = 'BBoxAnnotation'
         LINESTRING = 'LineStringAnnotation'
         POLYGON = 'PolygonAnnotation'
+        POINT = 'Point'
 
+    # pylint: disable=redefined-builtin
     def __init__(
             self,
-            target=None,
             labels=None,
             id=None,
             metadata=None,
-            geometry=None,
-            **kwargs):
+            geometry=None):
 
         if not isinstance(geometry, self.geometry_class):
             message = (
@@ -46,7 +46,6 @@ class Annotation(ABC):
         if not isinstance(labels, Labels):
             labels = Labels(labels)
 
-        self.target = target
         self.labels = labels
         self.metadata = metadata
         self.geometry = geometry
@@ -56,9 +55,6 @@ class Annotation(ABC):
             'labels': repr(self.labels),
             'geometry': repr(self.geometry)
         }
-
-        if self.target is not None:
-            args['target'] = self.target
 
         args_string = ', '.join([
             '{}={}'.format(key, value)
@@ -109,9 +105,6 @@ class Annotation(ABC):
         data = self.to_dict()
         data['labels'] = self.labels
         data['geometry'] = self.geometry
-
-        if self.target is not None:
-            data['target'] = self.target
         return data
 
     def _get_buffer_class(self):
@@ -178,9 +171,6 @@ class Annotation(ABC):
             'geometry': self.geometry.to_dict()
         }
 
-        if self.target is not None:
-            data['target'] = repr(self.target)
-
         if self.metadata is not None:
             data['metadata'] = self.metadata
 
@@ -216,19 +206,16 @@ class Annotation(ABC):
         raise ValueError(message)
 
     @staticmethod
-    def from_dict(data, target=None):
+    def from_dict(data):
         data = data.copy()
         annotation_type = data.pop('type')
         data['labels'] = Labels.from_dict(data['labels'])
         data['geometry'] = geom.Geometry.from_dict(data['geometry'])
 
-        if target is not None:
-            data['target'] = target
-
         return Annotation._type_to_class(annotation_type)(**data)
 
     @staticmethod
-    def from_record(record, target=None):
+    def from_record(record):
         data = record.copy()
 
         annotation_type = data['type']
@@ -240,18 +227,13 @@ class Annotation(ABC):
                 'wkt': data['geometry']
             }
 
-        return Annotation.from_dict(data, target=target)
+        return Annotation.from_dict(data)
 
     def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
-
         ax = self.geometry.plot(ax=ax, **kwargs)
 
         if kwargs.get('label', False):
-            self.plot_labels(ax, **kwargs)
+            ax = self.plot_labels(ax, **kwargs)
 
         return ax
 
@@ -325,12 +307,13 @@ class Annotation(ABC):
             transform=trans,
             ha=kwargs.get('label_ha', 'center'))
 
+        return ax
+
     def cut(self, other):
         return other.cut(self.get_window())
 
     def to_weak(self):
         return WeakAnnotation(
-            target=self.target,
             labels=self.labels,
             id=self.id,
             metadata=self.metadata)
@@ -358,7 +341,24 @@ class TimeLineAnnotation(Annotation):
         super().__init__(**kwargs)
 
 
-class TimeIntervalAnnotation(Annotation):
+class TimeIntervalAnnotationMixin:
+    def to_start_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.to_start_line()
+        return TimeLineAnnotation(**data)
+
+    def to_end_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.to_end_line()
+        return TimeLineAnnotation(**data)
+
+    def to_time_center_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.to_time_center_line()
+        return TimeLineAnnotation(**data)
+
+
+class TimeIntervalAnnotation(TimeIntervalAnnotationMixin, Annotation):
     name = Annotation.Types.TIME_INTERVAL
     geometry_class = geom.TimeInterval
 
@@ -369,21 +369,6 @@ class TimeIntervalAnnotation(Annotation):
                 end_time=end_time)
 
         super().__init__(**kwargs)
-
-    def to_start_line(self):
-        data = self._copy_dict()
-        data['geometry'] = self.geometry.start_line
-        return TimeLineAnnotation(**data)
-
-    def to_end_line(self):
-        data = self._copy_dict()
-        data['geometry'] = self.geometry.end_line
-        return TimeLineAnnotation(**data)
-
-    def to_center_line(self):
-        data = self._copy_dict()
-        data['geometry'] = self.geometry.center_line
-        return TimeLineAnnotation(**data)
 
 
 class FrequencyLineAnnotation(Annotation):
@@ -397,7 +382,26 @@ class FrequencyLineAnnotation(Annotation):
         super().__init__(**kwargs)
 
 
-class FrequencyIntervalAnnotation(Annotation):
+class FrequencyIntervalAnnotationMixin:
+    def to_min_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.min_line
+        return FrequencyLineAnnotation(**data)
+
+    def to_max_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.to_max_line()
+        return FrequencyLineAnnotation(**data)
+
+    def to_center_line(self):
+        data = self._copy_dict()
+        data['geometry'] = self.geometry.to_center_line()
+        return FrequencyLineAnnotation(**data)
+
+
+class FrequencyIntervalAnnotation(
+        FrequencyIntervalAnnotationMixin,
+        Annotation):
     name = Annotation.Types.FREQUENCY_INTERVAL
     geometry_class = geom.FrequencyInterval
 
@@ -409,45 +413,31 @@ class FrequencyIntervalAnnotation(Annotation):
 
         super().__init__(**kwargs)
 
-    def to_min_line(self):
+
+class PointAnnotation(Annotation):
+    name = Annotation.Types.POINT
+    geometry_class = geom.Point
+
+    def __init__(self, time=None, freq=None, **kwargs):
+        if 'geometry' not in kwargs:
+            kwargs['geometry'] = geom.Point(time=time, freq=freq)
+
+        super().__init__(**kwargs)
+
+
+class Annotation2DMixin:
+    def to_bbox(self):
         data = self._copy_dict()
-        data['geometry'] = self.geometry.min_line
-        return FrequencyLineAnnotation(**data)
+        data['geometry'] = self.geometry.to_bbox()
+        return BBoxAnnotation(**data)
 
-    def to_max_line(self):
+    def to_center(self):
         data = self._copy_dict()
-        data['geometry'] = self.geometry.max_line
-        return FrequencyLineAnnotation(**data)
-
-    def to_center_line(self):
-        data = self._copy_dict()
-        data['geometry'] = self.geometry.center_line
-        return FrequencyLineAnnotation(**data)
+        data['geometry'] = self.geometry.to_center()
+        return PointAnnotation(**data)
 
 
-class IntervalsMixin:
-    def to_time_interval(self):
-        start_time, _, end_time, _ = self.geometry.bounds
-        return TimeIntervalAnnotation(
-            target=self.target,
-            start_time=start_time,
-            end_time=end_time,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-    def to_frequency_interval(self):
-        _, min_freq, _, max_freq = self.geometry.bounds
-        return FrequencyIntervalAnnotation(
-            target=self.target,
-            min_freq=min_freq,
-            max_freq=max_freq,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-
-class BBoxAnnotation(Annotation, IntervalsMixin):
+class BBoxAnnotation(Annotation2DMixin, Annotation):
     name = Annotation.Types.BBOX
     geometry_class = geom.BBox
 
@@ -468,21 +458,7 @@ class BBoxAnnotation(Annotation, IntervalsMixin):
         super().__init__(**kwargs)
 
 
-class BBoxMixin:
-    def to_bbox(self):
-        start_time, min_freq, end_time, max_freq = self.geometry.bounds
-        return BBoxAnnotation(
-            target=self.target,
-            start_time=start_time,
-            end_time=end_time,
-            min_freq=min_freq,
-            max_freq=max_freq,
-            labels=self.labels,
-            id=self.id,
-            metadata=self.metadata)
-
-
-class LineStringAnnotation(Annotation, IntervalsMixin, BBoxMixin):
+class LineStringAnnotation(Annotation2DMixin, Annotation):
     name = Annotation.Types.LINESTRING
     geometry_class = geom.LineString
 
@@ -499,7 +475,7 @@ class LineStringAnnotation(Annotation, IntervalsMixin, BBoxMixin):
         super().__init__(**kwargs)
 
 
-class PolygonAnnotation(Annotation, IntervalsMixin, BBoxMixin):
+class PolygonAnnotation(Annotation2DMixin, Annotation):
     name = Annotation.Types.POLYGON
     geometry_class = geom.Polygon
 

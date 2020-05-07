@@ -147,7 +147,12 @@ class Geometry(ABC):
 
     @abstractmethod
     def plot(self, ax=None, **kwargs):
-        pass
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+
+        return ax
 
     @property
     def bounds(self):
@@ -242,7 +247,7 @@ class Weak(Geometry):
         return self
 
     def plot(self, ax=None, **kwargs):
-        return ax
+        return super().plot(ax=ax, **kwargs)
 
     @property
     def bounds(self):
@@ -291,10 +296,7 @@ class TimeLine(Geometry):
         return TimeLine(time=time)
 
     def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
+        ax = super().plot(ax=ax, **kwargs)
 
         ax.axvline(
             self.time,
@@ -306,7 +308,22 @@ class TimeLine(Geometry):
         return ax
 
 
-class TimeInterval(Geometry):
+class TimeIntervalMixin:
+    def to_start_line(self):
+        start_time, _, _, _ = self.bounds
+        return TimeLine(time=start_time)
+
+    def to_end_line(self):
+        _, _, end_time, _ = self.bounds
+        return TimeLine(time=end_time)
+
+    def to_time_center_line(self):
+        start_time, _, end_time, _ = self.bounds
+        center = (start_time + end_time) / 2
+        return TimeLine(time=center)
+
+
+class TimeInterval(TimeIntervalMixin, Geometry):
     name = Geometry.Types.TimeInterval
 
     def __init__(self, start_time=None, end_time=None, geometry=None):
@@ -330,19 +347,6 @@ class TimeInterval(Geometry):
     @property
     def bounds(self):
         return self.start_time, None, self.end_time, None
-
-    @property
-    def start_line(self):
-        return TimeLine(time=self.start_time)
-
-    @property
-    def end_line(self):
-        return TimeLine(time=self.end_time)
-
-    @property
-    def center_line(self):
-        center = (self.start_time + self.end_time) / 2
-        return TimeLine(time=center)
 
     def buffer(self, buffer=None, **kwargs):
         time = _parse_args(buffer, 'buffer', 'time', **kwargs)
@@ -374,10 +378,7 @@ class TimeInterval(Geometry):
         return TimeInterval(start_time=start_time, end_time=end_time)
 
     def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
+        ax = super().plot(ax=ax, **kwargs)
 
         color = kwargs.get('color', None)
         if color is None:
@@ -448,10 +449,7 @@ class FrequencyLine(Geometry):
         return FrequencyLine(freq=freq)
 
     def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
+        ax = super().plot(ax=ax, **kwargs)
 
         ax.axhline(
             self.freq,
@@ -463,7 +461,22 @@ class FrequencyLine(Geometry):
         return ax
 
 
-class FrequencyInterval(Geometry):
+class FrequencyIntervalMixin:
+    def to_min_line(self):
+        _, min_freq, _, _ = self.bounds
+        return FrequencyLine(freq=min_freq)
+
+    def to_max_line(self):
+        _, _, _, max_freq = self.bounds
+        return FrequencyLine(freq=max_freq)
+
+    def to_freq_center_line(self):
+        _, min_freq, _, max_freq = self.bounds
+        center = (min_freq + max_freq) / 2
+        return FrequencyLine(freq=center)
+
+
+class FrequencyInterval(FrequencyIntervalMixin, Geometry):
     name = Geometry.Types.FrequencyInterval
 
     def __init__(self, min_freq=None, max_freq=None, geometry=None):
@@ -488,19 +501,6 @@ class FrequencyInterval(Geometry):
     @property
     def bounds(self):
         return None, self.min_freq, None, self.max_freq
-
-    @property
-    def min_line(self):
-        return FrequencyLine(freq=self.min_freq)
-
-    @property
-    def max_line(self):
-        return FrequencyLine(freq=self.max_freq)
-
-    @property
-    def center_line(self):
-        center = (self.min_freq + self.max_freq) / 2
-        return FrequencyLine(freq=center)
 
     def buffer(self, buffer=None, **kwargs):
         freq = _parse_args(buffer, 'buffer', 'freq', index=1, **kwargs)
@@ -532,10 +532,7 @@ class FrequencyInterval(Geometry):
         return FrequencyInterval(min_freq=min_freq, max_freq=max_freq)
 
     def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
+        ax = super().plot(ax=ax, **kwargs)
 
         color = kwargs.get('color', None)
         if color is None:
@@ -596,10 +593,7 @@ class Point(Geometry):
         return data
 
     def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
+        ax = super().plot(ax=ax, **kwargs)
 
         ax.scatter(
             [self.time],
@@ -612,7 +606,31 @@ class Point(Geometry):
         return ax
 
 
-class BBox(Geometry):
+class Geometry2DMixin(TimeIntervalMixin, FrequencyIntervalMixin):
+    def to_time_interval(self):
+        start_time, _, end_time, _ = self.bounds
+        return TimeInterval(start_time=start_time, end_time=end_time)
+
+    def to_freq_interval(self):
+        _, min_freq, _, max_freq = self.bounds
+        return FrequencyInterval(min_freq=min_freq, max_freq=max_freq)
+
+    def to_center(self):
+        start_time, min_freq, end_time, max_freq = self.bounds
+        time = (start_time + end_time) / 2
+        freq = (min_freq + max_freq) / 2
+        return Point(time=time, freq=freq)
+
+    def to_bbox(self):
+        start_time, min_freq, end_time, max_freq = self.bounds
+        return BBox(
+            start_time=start_time,
+            min_freq=min_freq,
+            end_time=end_time,
+            max_freq=max_freq)
+
+
+class BBox(Geometry2DMixin, Geometry):
     name = Geometry.Types.BBox
 
     def __init__(
@@ -659,24 +677,6 @@ class BBox(Geometry):
         data['max_freq'] = self.max_freq
         return data
 
-    @property
-    def center(self):
-        time = (self.start_time + self.end_time) / 2
-        freq = (self.min_freq + self.max_freq) / 2
-        return Point(time=time, freq=freq)
-
-    @property
-    def time_range(self):
-        return TimeInterval(
-            start_time=self.start_time,
-            end_time=self.end_time)
-
-    @property
-    def frequency_range(self):
-        return FrequencyInterval(
-            min_freq=self.min_freq,
-            max_freq=self.max_freq)
-
     def buffer(self, buffer=None, **kwargs):
         time, freq = _parse_tf(buffer, 'buffer', default=0, **kwargs)
         start_time = self.start_time - time
@@ -690,10 +690,7 @@ class BBox(Geometry):
             max_freq=max_freq)
 
     def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
+        ax = super().plot(ax=ax, **kwargs)
 
         xcoords, ycoords = self.geometry.exterior.xy
         lineplot, = ax.plot(
@@ -718,7 +715,7 @@ class BBox(Geometry):
         return ax
 
 
-class LineString(Geometry):
+class LineString(Geometry2DMixin, Geometry):
     name = Geometry.Types.LineString
 
     def __init__(self, wkt=None, vertices=None, geometry=None):
@@ -803,10 +800,7 @@ class LineString(Geometry):
         return LineString(vertices=vertices)
 
     def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
+        ax = super().plot(ax=ax, **kwargs)
 
         xcoords, ycoords = self.geometry.xy
         lineplot, = ax.plot(
@@ -828,17 +822,8 @@ class LineString(Geometry):
 
         return ax
 
-    @property
-    def bbox(self):
-        start_time, min_freq, end_time, max_freq = self.bounds
-        return BBox(
-            start_time=start_time,
-            end_time=end_time,
-            min_freq=min_freq,
-            max_freq=max_freq)
 
-
-class Polygon(Geometry):
+class Polygon(Geometry2DMixin, Geometry):
     name = Geometry.Types.Polygon
 
     def __init__(self, wkt=None, shell=None, holes=None, geometry=None):
@@ -871,10 +856,7 @@ class Polygon(Geometry):
         return data
 
     def plot(self, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
+        ax = super().plot(ax=ax, **kwargs)
 
         lineplot, = ax.plot(
             *self.geometry.exterior.xy,
