@@ -76,7 +76,7 @@ class TimeAxis(Axis):
         if window is None:
             return self.start
 
-        if window.start is None:
+        if getattr(window, 'start', None) is None:
             return self.start
 
         return window.start
@@ -85,7 +85,7 @@ class TimeAxis(Axis):
         if window is None:
             return self.end
 
-        if window.end is None:
+        if getattr(window, 'end', None) is None:
             return self.end
 
         return window.end
@@ -96,7 +96,7 @@ class FrequencyAxis(Axis):
         if window is None:
             return self.start
 
-        if window.min is None:
+        if getattr(window, 'min', None) is None:
             return self.start
 
         return window.min
@@ -105,7 +105,7 @@ class FrequencyAxis(Axis):
         if window is None:
             return self.end
 
-        if window.max is None:
+        if getattr(window, 'max', None) is None:
             return self.end
 
         return window.max

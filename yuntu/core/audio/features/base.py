@@ -51,7 +51,7 @@ class Feature(Media):
         data = super().to_dict()
 
         if self.has_audio():
-            data['audio'] = self.audio.to_dict()
+            data['audio'] = self._audio_data
 
         return data
 

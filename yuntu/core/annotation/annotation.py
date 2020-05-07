@@ -105,6 +105,8 @@ class Annotation(ABC):
         data = self.to_dict()
         data['labels'] = self.labels
         data['geometry'] = self.geometry
+
+        data.pop('type')
         return data
 
     def _get_buffer_class(self):
@@ -393,9 +395,9 @@ class FrequencyIntervalAnnotationMixin:
         data['geometry'] = self.geometry.to_max_line()
         return FrequencyLineAnnotation(**data)
 
-    def to_center_line(self):
+    def to_freq_center_line(self):
         data = self._copy_dict()
-        data['geometry'] = self.geometry.to_center_line()
+        data['geometry'] = self.geometry.to_freq_center_line()
         return FrequencyLineAnnotation(**data)
 
 
