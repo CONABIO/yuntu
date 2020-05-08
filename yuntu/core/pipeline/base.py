@@ -1339,6 +1339,9 @@ class Pipeline(MetaPipeline):
                 if self.nodes[key].can_persist:
                     write[key] = self.nodes[key].persist
 
+        if len(write) > 0:
+            self.init_dirs()
+
         for key in read:
             if isinstance(read[key], bool):
                 if read[key]:
@@ -1402,6 +1405,14 @@ class Pipeline(MetaPipeline):
                     results[key] = xnode
             else:
                 results[key] = xnode
+                if compute and self.nodes[key].can_persist:
+                    if key in self.places:
+                        if key in write:
+                            if isinstance(write[key], str):
+                                path = write[key]
+                                self.nodes[key].write(path=path, data=xnode)
+                            elif write[key]:
+                                self.nodes[key].write(data=xnode)
 
         return results
 
