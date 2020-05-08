@@ -193,8 +193,8 @@ class TimedCollection(Collection):
 
 
 def collection(col_type="simple", **kwargs):
-    if type == "simple":
+    if col_type == "simple":
         return Collection(**kwargs)
-    elif type == "timed":
+    elif col_type == "timed":
         return TimedCollection(**kwargs)
     raise NotImplementedError(f"Collection type {col_type} unknown")
