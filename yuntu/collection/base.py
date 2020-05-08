@@ -64,7 +64,7 @@ class Collection:
             limit=None,
             offset=None,
             with_annotations=False):
-        query_slice = slice(offset, limit)
+        query_slice = slice(offset, offset + limit)
         recordings = self.recordings(query=query)[query_slice]
 
         records = []
@@ -83,7 +83,7 @@ class Collection:
         return pd.DataFrame(records)
 
     def get_annotation_dataframe(self, query=None, limit=None, offset=None):
-        query_slice = slice(offset, limit)
+        query_slice = slice(offset, offset + limit)
         annotations = self.annotations(query=query)[query_slice]
 
         records = []
