@@ -135,7 +135,12 @@ def geom_from_wkt(wkt):
     geometry: shapely.geometry
         Parsed geometry.
     """
-    return shapely.wkt.loads(wkt)
+    try:
+        geom = shapely.wkt.loads(wkt)
+    except Exception as e:
+        geom = None
+        raise ValueError("Wrong wkt", wkt)
+    return geom
 
 
 def bbox_geometry(minx, miny, maxx, maxy, ccw=True):
