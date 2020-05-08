@@ -102,7 +102,7 @@ class AudioAccessor:
 
     def apply(self, func):
         return self._obj.apply(
-            lambda row: func(self._build_audio(row)),
+            lambda row: func(row, self._build_audio(row)),
             axis=1)
 
     def __getitem__(self, key):
@@ -193,11 +193,17 @@ class DaskAudioAccesor(AudioAccessor):
     def __getitem__(self, key):
         super().__getitem__(key)
 
-    def apply(self, func, meta='__no_default__'):
+    def apply(self, func, args=(), meta='__no_default__', **kwargs):
+        def wrapper(row, *nargs, **kwargs):
+            audio = self._build_audio(row)
+            return func(row, audio, *nargs, **kwargs)
+
         return self._obj.apply(
-            lambda row: func(self._build_audio(row)),
+            wrapper,
             axis=1,
-            meta=meta)
+            args=args,
+            meta=meta,
+            **kwargs)
 
     # pylint: disable=redefined-builtin, too-many-arguments
     @dask_wrapper
