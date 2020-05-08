@@ -105,7 +105,6 @@ class Annotation(ABC):
         data = self.to_dict()
         data['labels'] = self.labels
         data['geometry'] = self.geometry
-
         data.pop('type')
         return data
 
@@ -211,10 +210,17 @@ class Annotation(ABC):
     def from_dict(data):
         data = data.copy()
         annotation_type = data.pop('type')
-        data['labels'] = Labels.from_dict(data['labels'])
-        data['geometry'] = geom.Geometry.from_dict(data['geometry'])
+        annotation_class = Annotation._type_to_class(annotation_type)
 
-        return Annotation._type_to_class(annotation_type)(**data)
+        data['labels'] = Labels.from_dict(data['labels'])
+
+        geometry_data = data['geometry']
+        if 'type' not in geometry_data:
+            geometry_data['type'] = annotation_class.geometry_class.name.name
+
+        data['geometry'] = geom.Geometry.from_dict(geometry_data)
+
+        return annotation_class(**data)
 
     @staticmethod
     def from_record(record):

@@ -1,6 +1,9 @@
 """Main yuntu modules."""
 from yuntu.core.audio.audio import Audio
-from yuntu.dataframe.base import AudioAccessor
+
+from yuntu.dataframe.audio import AudioAccessor
+from yuntu.dataframe.annotation import AnnotationAccessor
+
 from .core import audio, database
 from . import collection
 
@@ -10,5 +13,6 @@ __all__ = [
     'database',
     'datastore',
     'collection',
-    'AudioAccessor'
+    'AudioAccessor',
+    'AnnotationAccessor',
 ]

@@ -29,7 +29,18 @@ class AnnotationList(list):
                 metadata=metadata,
                 id=id)
 
+        if not isinstance(annotation, Annotation):
+            annotation = Annotation.from_dict(annotation)
+
         self.append(annotation)
+
+    def add_multiple(self, annotations):
+        """Append annotations to AnnotationList."""
+        for annotation in annotations:
+            if not isinstance(annotation, Annotation):
+                annotation = Annotation.from_dict(annotation)
+
+            self.append(annotation)
 
     def to_dataframe(self):
         """Produce pandas DataFrame from AnnotationList."""
@@ -96,8 +107,10 @@ class AnnotatedObjectMixin:
         if annotations is None:
             annotations = []
 
+        annotations = self._cast_annotations(annotations)
+
         if filter_annotations:
-            annotations = self.filter_annotations(annotations)
+            annotations = self._filter_annotations(annotations)
 
         self.annotations = AnnotationList(annotations)
 
@@ -108,7 +121,18 @@ class AnnotatedObjectMixin:
             'annotations': self.annotations.to_dict()
         }
 
-    def filter_annotations(self, annotation_list):
+    @staticmethod
+    def _cast_annotations(annotations):
+        new_annotations = []
+        for annotation in annotations:
+            if not isinstance(annotation, Annotation):
+                annotation = Annotation.from_dict(annotation)
+
+            new_annotations.append(annotation)
+
+        return new_annotations
+
+    def _filter_annotations(self, annotation_list):
         if not hasattr(self, 'window'):
             return annotation_list
 
@@ -127,17 +151,20 @@ class AnnotatedObjectMixin:
 
     def annotate(
             self,
-            annotations_kwargs=None,
+            annotation=None,
             geometry=None,
             labels=None,
             metadata=None,
             id=None):
         self.annotations.add(
-            annotation=annotations_kwargs,
+            annotation=annotation,
             geometry=geometry,
             labels=labels,
             metadata=metadata,
             id=id)
+
+    def add_annotations(self, annotations):
+        self.annotations.add_multiple(annotations)
 
     def plot(self, ax=None, **kwargs):
         import matplotlib.pyplot as plt

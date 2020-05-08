@@ -7,6 +7,18 @@ from yuntu.core.audio.audio import Audio
 from yuntu.core.annotation.annotation import Annotation
 
 
+def _parse_annotation(annotation):
+    return {
+        'type': annotation.type,
+        'id': annotation.id,
+        'labels': annotation.labels,
+        'metadata': annotation.metadata,
+        'geometry': {
+            'wkt': annotation.geometry
+        }
+    }
+
+
 class Collection:
     """Base class for all collections."""
 
@@ -46,7 +58,12 @@ class Collection:
         record = self.recordings(lambda rec: rec.id == key).get()
         return self.build_audio(record)
 
-    def get_recording_dataframe(self, query=None, limit=None, offset=None):
+    def get_recording_dataframe(
+            self,
+            query=None,
+            limit=None,
+            offset=None,
+            with_annotations=False):
         query_slice = slice(offset, limit)
         recordings = self.recordings(query=query)[query_slice]
 
@@ -55,6 +72,12 @@ class Collection:
             data = recording.to_dict()
             media_info = data.pop('media_info')
             data.update(media_info)
+
+            if with_annotations:
+                data['annotations'] = [
+                    _parse_annotation(annotation)
+                    for annotation in recording.annotations]
+
             records.append(data)
 
         return pd.DataFrame(records)

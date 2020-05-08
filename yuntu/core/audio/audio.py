@@ -324,9 +324,14 @@ class Audio(TimeMedia):
 
     def to_dict(self):
         """Return a dictionary holding all audio metadata."""
+        if self.media_info is None:
+            media_info = None
+        else:
+            media_info = dict(self.media_info._asdict())
+
         return {
             'timeexp': self.timeexp,
-            'media_info': dict(self.media_info._asdict()),
+            'media_info': media_info,
             'metadata': self.metadata.copy(),
             'id': self.id,
             **super().to_dict()
