@@ -190,3 +190,11 @@ class Collection:
 class TimedCollection(Collection):
     """Time aware collection."""
     db_manager_class = TimedDatabaseManager
+
+
+def collection(col_type="simple", **kwargs):
+    if type == "simple":
+        return Collection(**kwargs)
+    elif type == "timed":
+        return TimedCollection(**kwargs)
+    raise NotImplementedError(f"Collection type {col_type} unknown")
