@@ -30,6 +30,7 @@ setup(
         'erobredo@conabio.gob.mx'
     ),
     install_requires=['numpy',
+                      'psycopg2',
                       'pony',
                       'dill',
                       'pickle-mixin',
