@@ -164,9 +164,13 @@ class AudioMothDatastore(Datastore):
     def __init__(self, path):
         self.path = path
 
-    def iter(self):
-        for fname in glob.glob(os.path.join(self.path, '*.WAV')):
-            yield fname
+    def iter(self, tqdm=None):
+        if tqdm is not None:
+            for fname in tqdm(glob.glob(os.path.join(self.path, '*.WAV'))):
+                yield fname
+        else:
+            for fname in glob.glob(os.path.join(self.path, '*.WAV')):
+                yield fname
 
     def iter_annotations(self, datum):
         return []
