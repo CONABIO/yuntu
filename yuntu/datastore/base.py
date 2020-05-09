@@ -20,7 +20,7 @@ class Datastore(ABC):
         return os.path.join(self.base_dir, path)
 
     @abstractmethod
-    def iter(self, tqdm=None):
+    def iter(self):
         """Return an iterator of the datums to import."""
 
     @abstractmethod

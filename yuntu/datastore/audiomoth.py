@@ -161,12 +161,14 @@ def get_am_battery_state(comment):
 
 
 class AudioMothDatastore(Datastore):
-    def __init__(self, path):
+    def __init__(self, path, tqdm=None):
         self.path = path
+        self.tqdm = tqdm
 
-    def iter(self, tqdm=None):
-        if tqdm is not None:
-            for fname in tqdm(glob.glob(os.path.join(self.path, '*.WAV'))):
+    def iter(self):
+        if self.tqdm is not None:
+            for fname in self.tqdm(glob.glob(os.path.join(self.path,
+                                                          '*.WAV'))):
                 yield fname
         else:
             for fname in glob.glob(os.path.join(self.path, '*.WAV')):
