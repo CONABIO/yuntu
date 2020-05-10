@@ -20,14 +20,15 @@ class Probe(ABC):
         """Apply probe and return matches."""
 
     def __call__(self, target, **kwargs):
+        """Call apply method."""
         return self.apply(target, **kwargs)
 
 
 class TemplateProbe(Probe, ABC):
     """A probe that uses a template to find similar matches."""
 
-    @abstractmethod
     @property
+    @abstractmethod
     def template(self):
         """Return probe's template."""
 
@@ -40,24 +41,29 @@ class CrossCorrelationProbe(TemplateProbe):
     """A probe that uses cross correaltion to match inputs with templates."""
     name = "Correlation probe"
 
-    def __init__(self, mold):
-        if not isinstance(mold, (tuple, list)):
+    def __init__(self, molds):
+        if not isinstance(molds, (tuple, list)):
             raise ValueError("Argument 'mold' must be a list of "
                              "time/frequency media.")
         self._template = []
         self._frequency_interval = None
-        self.set_template(mold)
+        self.set_template(molds)
 
     @property
     def template(self):
         """Return probe's template."""
         return self._template
 
-    def set_template(self, mold):
-        for m in mold:
-            self.add_template(m)
+    def set_template(self, molds):
+        """Set probe's template."""
+        for m in molds:
+            self.add_mold(m)
 
-    def add_template(self, mold):
+    def add_mold(self, mold):
+        """Append a new mold to template.
+
+        Molds are example spectra to cross-correlate with input samples.
+        """
         if self._template is None:
             self._template = []
         self._template.append(mold.array)
@@ -103,19 +109,19 @@ class CrossCorrelationProbe(TemplateProbe):
 
         boxes = []
         for x, y in all_peaks:
-            l1 = max(0, x - int(round(min_distancex/2)))
-            l2 = min(l1 + min_distancex, corr.shape[0])-1
-            if l2 - l1 > 1:
-                min_freq = target.frequencies[l1]
-                max_freq = target.frequencies[l2]
+            xind1 = max(0, x - int(round(min_distancex/2)))
+            xind2 = min(xind1 + min_distancex, corr.shape[0])-1
+            if xind2 - xind1 > 1:
+                min_freq = target.frequencies[xind1]
+                max_freq = target.frequencies[xind2]
                 if limit_freqs:
                     min_freq = max(min_freq, limit_freqs.min_freq)
                     max_freq = min(max_freq, limit_freqs.max_freq)
-                m1 = max(0, y - int(round(min_distancey/2)))
-                m2 = min(m1 + min_distancey, corr.shape[1]-1)
-                if m2 - m1 > 1:
-                    start_time = target.times[m1]
-                    end_time = target.times[m2]
+                yind1 = max(0, y - int(round(min_distancey/2)))
+                yind2 = min(yind1 + min_distancey, corr.shape[1]-1)
+                if yind2 - yind1 > 1:
+                    start_time = target.times[yind1]
+                    end_time = target.times[yind2]
                     new_box = BBox(start_time, end_time,
                                    min_freq, max_freq)
                     found = False
