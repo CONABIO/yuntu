@@ -27,8 +27,7 @@ class Annotation(ABC):
             labels=None,
             id=None,
             metadata=None,
-            geometry=None,
-            recording=None):
+            geometry=None):
 
         if not isinstance(geometry, self.geometry_class):
             message = (
@@ -220,6 +219,11 @@ class Annotation(ABC):
             geometry_data['type'] = annotation_class.geometry_class.name.name
 
         data['geometry'] = geom.Geometry.from_dict(geometry_data)
+
+        datakeys = list(data.keys())
+        for key in datakeys:
+            if key not in ["labels", "id", "metadata", "geometry"]:
+                del data[key]
 
         return annotation_class(**data)
 
