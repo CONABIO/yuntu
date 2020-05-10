@@ -27,7 +27,8 @@ class Annotation(ABC):
             labels=None,
             id=None,
             metadata=None,
-            geometry=None):
+            geometry=None,
+            recording=None):
 
         if not isinstance(geometry, self.geometry_class):
             message = (
