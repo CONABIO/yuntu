@@ -41,7 +41,7 @@ class CrossCorrelationProbe(TemplateProbe):
     """A probe that uses cross correaltion to match inputs with templates."""
     name = "Correlation probe"
 
-    def __init__(self, molds, tag):
+    def __init__(self, molds, tag="target"):
         if not isinstance(molds, (tuple, list)):
             raise ValueError("Argument 'mold' must be a list of "
                              "time/frequency media.")
