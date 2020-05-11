@@ -41,10 +41,13 @@ class CrossCorrelationProbe(TemplateProbe):
     """A probe that uses cross correaltion to match inputs with templates."""
     name = "Correlation probe"
 
-    def __init__(self, molds):
+    def __init__(self, molds, tag):
         if not isinstance(molds, (tuple, list)):
             raise ValueError("Argument 'mold' must be a list of "
                              "time/frequency media.")
+        if not isinstance(tag, str):
+            raise ValueError("Argument 'tag' must be a string.")
+        self.tag = tag
         self._template = []
         self._frequency_interval = None
         self.set_template(molds)
@@ -99,10 +102,14 @@ class CrossCorrelationProbe(TemplateProbe):
         min_distancey = self.shape[1]
 
         corr = self.compare(target)
-        if method == 'max':
-            corr = np.amax(corr, axis=0)
-        else:
-            corr = np.mean(corr, axis=0)
+        if len(self.template) > 0:
+            if method == 'max':
+                corr = np.amax(corr, axis=0)
+            elif method == 'median':
+                corr = np.median(corr, axis=0)
+            else:
+                corr = np.mean(corr, axis=0)
+
         all_peaks = peak_local_max(corr,
                                    min_distance=peak_distance,
                                    threshold_abs=thresh)
@@ -138,14 +145,28 @@ class CrossCorrelationProbe(TemplateProbe):
 
         output = []
         for box in boxes:
-            corr_values = corr[target.to_mask(geometry=box)]
-            peak_corr = np.amax(corr_values)
-            result = {
-                "peak_corr": peak_corr,
-                "geometry": box
-            }
-            output.append(result)
+            if box.geometry.geom_type == 'MultiPolygon':
+                for poly in box.geometry:
+                    new_box = Polygon(geometry=poly)
+                    corr_values = corr[target.to_mask(geometry=new_box)]
+                    peak_corr = np.amax(corr_values)
+                    result = {
+                        "tag": self.tag,
+                        "peak_corr": peak_corr,
+                        "geometry": new_box
+                    }
+                    output.append(result)
+            else:
+                corr_values = corr[target.to_mask(geometry=box)]
+                peak_corr = np.amax(corr_values)
+                result = {
+                    "tag": self.tag,
+                    "peak_corr": peak_corr,
+                    "geometry": box
+                }
+                output.append(result)
         return output
+
 
     @property
     def shape(self):
