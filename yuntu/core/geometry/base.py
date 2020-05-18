@@ -933,15 +933,16 @@ class MultiPolygon(MultiGeometryMixin, Geometry, Geometry2DMixin):
     def __init__(self, geometry=None, polygons=None):
         if geometry is None:
             geoms = []
-            for geom in polygons:
-                if isinstance(geom, Polygon):
-                    geoms.append(geom.geometry)
-                elif isinstance(geom, shapely_geometry.polygon.Polygon):
-                    geoms.append(geom)
-                else:
-                    raise ValueError("All elements of input polygon list"
-                                     " must be polygons.")
-            geometry = shapely_geometry.multipolygon.MultiPolygon(geoms)
+            if polygons is not None:
+                for geom in polygons:
+                    if isinstance(geom, Polygon):
+                        geoms.append(geom.geometry)
+                    elif isinstance(geom, shapely_geometry.polygon.Polygon):
+                        geoms.append(geom)
+                    else:
+                        raise ValueError("All elements of input polygon list"
+                                         " must be polygons.")
+                geometry = shapely_geometry.multipolygon.MultiPolygon(geoms)
         super().__init__(geometry)
 
 
@@ -953,15 +954,18 @@ class MultiLineString(MultiGeometryMixin, Geometry, Geometry2DMixin):
     def __init__(self, geometry=None, linestrings=None):
         if geometry is None:
             geoms = []
-            for geom in linestrings:
-                if isinstance(geom, LineString):
-                    geoms.append(geom.geometry)
-                elif isinstance(geom, shapely_geometry.linestring.LineString):
-                    geoms.append(geom)
-                else:
-                    raise ValueError("All elements of input linestring list"
-                                     " must be linestrings.")
-            geometry = shapely_geometry.multilinestring.MultiLineString(geoms)
+            if linestrings is not None:
+                for geom in linestrings:
+                    if isinstance(geom, LineString):
+                        geoms.append(geom.geometry)
+                    elif isinstance(geom,
+                                    shapely_geometry.linestring.LineString):
+                        geoms.append(geom)
+                    else:
+                        raise ValueError("All elements of input linestring "
+                                         "list must be linestrings.")
+                mlinestring = shapely_geometry.multilinestring.MultiLineString
+                geometry = mlinestring(geoms)
         super().__init__(geometry)
 
 
@@ -973,13 +977,14 @@ class MultiPoint(MultiGeometryMixin, Geometry, Geometry2DMixin):
     def __init__(self, geometry=None, points=None):
         if geometry is None:
             geoms = []
-            for geom in points:
-                if isinstance(geom, Point):
-                    geoms.append(geom.geometry)
-                elif isinstance(geom, shapely_geometry.point.Point):
-                    geoms.append(geom)
-                else:
-                    raise ValueError("All elements of input points list"
-                                     " must be points.")
-            geometry = shapely_geometry.multipoint.MultiPoint(geoms)
+            if points is not None:
+                for geom in points:
+                    if isinstance(geom, Point):
+                        geoms.append(geom.geometry)
+                    elif isinstance(geom, shapely_geometry.point.Point):
+                        geoms.append(geom)
+                    else:
+                        raise ValueError("All elements of input points list"
+                                         " must be points.")
+                geometry = shapely_geometry.multipoint.MultiPoint(geoms)
         super().__init__(geometry)
