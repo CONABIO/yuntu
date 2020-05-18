@@ -220,6 +220,11 @@ class Annotation(ABC):
 
         data['geometry'] = geom.Geometry.from_dict(geometry_data)
 
+        datakeys = list(data.keys())
+        for key in datakeys:
+            if key not in ["labels", "id", "metadata", "geometry"]:
+                del data[key]
+
         return annotation_class(**data)
 
     @staticmethod

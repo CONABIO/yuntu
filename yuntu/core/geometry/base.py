@@ -9,6 +9,7 @@ from abc import abstractmethod
 from enum import Enum
 
 import numpy as np
+import shapely.geometry as shapely_geometry
 
 import yuntu.core.windows as windows
 import yuntu.core.geometry.utils as geom_utils
@@ -906,3 +907,84 @@ class Polygon(Geometry2DMixin, Geometry):
                 label=kwargs.get('label', None))
 
         return ax
+
+
+class MultiGeometryMixin:
+    """Mixin that adds multi geometry behaviour to geometry classes."""
+
+    @property
+    def geoms(self):
+        """Return iterator of geometries."""
+        for geom in self.geometry.geoms:
+            yield Geometry.from_geometry(geom)
+
+    def plot(self, ax=None, **kwargs):
+        ax = super().plot(ax=ax, **kwargs)
+        for geom in self.geoms:
+            ax = geom.plot(ax, **kwargs)
+        return ax
+
+
+class MultiPolygon(MultiGeometryMixin, Geometry, Geometry2DMixin):
+    """Polygon collection geometry."""
+
+    name = Geometry.Types.MultiPolygon
+
+    def __init__(self, geometry=None, polygons=None):
+        if geometry is None:
+            geoms = []
+            if polygons is not None:
+                for geom in polygons:
+                    if isinstance(geom, Polygon):
+                        geoms.append(geom.geometry)
+                    elif isinstance(geom, shapely_geometry.polygon.Polygon):
+                        geoms.append(geom)
+                    else:
+                        raise ValueError("All elements of input polygon list"
+                                         " must be polygons.")
+                geometry = shapely_geometry.multipolygon.MultiPolygon(geoms)
+        super().__init__(geometry)
+
+
+class MultiLineString(MultiGeometryMixin, Geometry, Geometry2DMixin):
+    """Linestring collection geometry."""
+
+    name = Geometry.Types.MultiLineString
+
+    def __init__(self, geometry=None, linestrings=None):
+        if geometry is None:
+            geoms = []
+            if linestrings is not None:
+                for geom in linestrings:
+                    if isinstance(geom, LineString):
+                        geoms.append(geom.geometry)
+                    elif isinstance(geom,
+                                    shapely_geometry.linestring.LineString):
+                        geoms.append(geom)
+                    else:
+                        raise ValueError("All elements of input linestring "
+                                         "list must be linestrings.")
+                mlinestring = shapely_geometry.multilinestring.MultiLineString
+                geometry = mlinestring(geoms)
+        super().__init__(geometry)
+
+
+class MultiPoint(MultiGeometryMixin, Geometry, Geometry2DMixin):
+    """Point collection geometry."""
+
+    name = Geometry.Types.MultiPoint
+
+    def __init__(self, geometry=None, points=None):
+        if geometry is None:
+            geoms = []
+            if points is not None:
+                for geom in points:
+                    if isinstance(geom, Point):
+                        geoms.append(geom.geometry)
+                    elif isinstance(geom, shapely_geometry.point.Point):
+                        geoms.append(geom)
+                    else:
+                        raise ValueError("All elements of input points list"
+                                         " must be points.")
+                geometry = shapely_geometry.multipoint.MultiPoint(geoms)
+        super().__init__(geometry)
