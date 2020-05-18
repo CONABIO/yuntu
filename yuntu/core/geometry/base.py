@@ -186,6 +186,15 @@ class Geometry(ABC):
         if geom_type == Geometry.Types.Polygon:
             return Polygon(geometry=geometry)
 
+        if geom_type == Geometry.Types.MultiPoint:
+            return MultiPoint(geometry=geometry)
+
+        if geom_type == Geometry.Types.MultiLineString:
+            return MultiLineString(geometry=geometry)
+
+        if geom_type == Geometry.Types.MultiPolygon:
+            return MultiPolygon(geometry=geometry)
+
         message = f'Geometry Type {geom_type} has not been implemented'
         raise NotImplementedError(message)
 
