@@ -17,6 +17,13 @@ class MaskedMediaMixin:
             **super().to_dict()
         }
 
+    def _copy_dict(self):
+        return {
+            'geometry': self.geometry,
+            'media': self.media,
+            **super()._copy_dict(),
+        }
+
     def plot(self, ax=None, **kwargs):
         ax = super().plot(ax=ax, **kwargs)
 
@@ -29,6 +36,26 @@ class MaskedMediaMixin:
             ax = media.plot(ax=ax, **media_kwargs)
 
         return ax
+
+    def union(self, other, lazy=False):
+        # TODO
+        pass
+
+    def intersection(self, other, lazy=False):
+        # TODO
+        pass
+
+    def __or__(self, other):
+        if not isinstance(other, MaskedMediaMixin):
+            return super().__or__(other)
+
+        return self.union(other, lazy=False)
+
+    def __and__(self, other):
+        if not isinstance(other, MaskedMediaMixin):
+            return super().__and__(other)
+
+        return self.intersection(other, lazy=False)
 
     def write(self, path=None, **kwargs):
         if path is None:

@@ -33,12 +33,11 @@ class Axis(abc.ABC):
 
     @property
     def size(self):
-        return int((self.start - self.end) * self.resolution)
+        return self.get_bin_nums(self.start, self.end)
 
     def get_index_from_value(self, value, window=None):
         start = self.get_start(window=window)
-        index = int((value - start) * self.resolution)
-        return index
+        return self.get_bin_nums(start, value)
 
     @abc.abstractmethod
     def get_start(self, window=None):
@@ -51,7 +50,15 @@ class Axis(abc.ABC):
     def get_size(self, window=None):
         start = self.get_start(window=window)
         end = self.get_end(window=window)
-        return int((end - start) * self.resolution)
+        return self.get_bin_nums(start, end)
+
+    def get_bin(self, value):
+        return int(value * self.resolution)
+
+    def get_bin_nums(self, start, end):
+        start_bin = self.get_bin(start)
+        end_bin = self.get_bin(end)
+        return start_bin - end_bin
 
     def get_bins(self, window=None, size=None):
         start = self.get_start(window=window)

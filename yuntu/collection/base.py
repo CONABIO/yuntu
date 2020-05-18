@@ -62,7 +62,7 @@ class Collection:
             self,
             query=None,
             limit=None,
-            offset=None,
+            offset=0,
             with_annotations=False):
         if limit is None:
             query_slice = slice(offset, None)
@@ -85,7 +85,7 @@ class Collection:
 
         return pd.DataFrame(records)
 
-    def get_annotation_dataframe(self, query=None, limit=None, offset=None):
+    def get_annotation_dataframe(self, query=None, limit=None, offset=0):
         if limit is None:
             query_slice = slice(offset, None)
         else:

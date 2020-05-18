@@ -87,8 +87,11 @@ class Labels:
     def get(self, key):
         return self.labels_dict[key]
 
-    def get_value(self, key):
-        return self.labels_dict[key].value
+    def get_value(self, key, default=None):
+        try:
+            return self.labels_dict[key].value
+        except KeyError:
+            return default
 
     def get_type(self, key):
         return self.labels_dict[key].type

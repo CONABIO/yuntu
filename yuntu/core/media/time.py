@@ -217,7 +217,10 @@ class TimeMediaMixin:
             start_time: float = None,
             end_time: float = None,
             window: windows.TimeWindow = None,
-            lazy=True):
+            lazy=False,
+            pad=False,
+            pad_mode='constant',
+            constant_values=0):
         """Get a window to the media data.
 
         Parameters
@@ -260,24 +263,43 @@ class TimeMediaMixin:
                     if window.end is not None
                     else current_end)
 
-        start_time = max(min(start_time, current_end), current_start)
-        end_time = max(min(end_time, current_end), current_start)
-
         if end_time < start_time:
             message = 'Window is empty'
             raise ValueError(message)
 
+        bounded_start_time = max(min(start_time, current_end), current_start)
+        bounded_end_time = max(min(end_time, current_end), current_start)
+
         kwargs_dict = self._copy_dict()
         kwargs_dict['window'] = windows.TimeWindow(
-            start=start_time,
-            end=end_time)
-        kwargs_dict['lazy'] = lazy
+            start=start_time if pad else bounded_start_time,
+            end=end_time if pad else bounded_end_time)
 
-        if not self.is_empty():
-            start = self.get_index_from_time(start_time)
-            end = self.get_index_from_time(end_time)
+        if lazy:
+            # TODO: No lazy cutting for now. The compute method does not take
+            # into acount possible cuts and thus might not give the correct
+            # result.
+            lazy = False
+
+        if not lazy:
+            start = self.get_index_from_time(bounded_start_time)
+            end = self.get_index_from_time(bounded_end_time)
             slices = self._build_slices(start, end)
-            kwargs_dict['array'] = kwargs_dict['array'][slices]
+            array = kwargs_dict['array'][slices]
+
+            if pad:
+                start_pad = self.time_axis.get_bin_nums(
+                    start_time, bounded_start_time)
+                end_pad = self.time_axis.get_bin_nums(
+                    end_time, bounded_end_time)
+                pad_widths = self._build_pad_widths(start_pad, end_pad)
+                array = np.pad(
+                    array,
+                    pad_widths,
+                    mode=pad_mode,
+                    constant_values=constant_values)
+
+            kwargs_dict['array'] = array
 
         return type(self)(**kwargs_dict)
 
@@ -374,6 +396,11 @@ class TimeMediaMixin:
         slices = [slice(None, None) for _ in self.shape]
         slices[self.time_axis_index] = slice(start, end)
         return tuple(slices)
+
+    def _build_pad_widths(self, start, end):
+        widths = [(0, 0) for _ in self.media.shape]
+        widths[self.time_axis_index] = (start, end)
+        return widths
 
     def _copy_dict(self):
         return {
