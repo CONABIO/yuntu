@@ -12,6 +12,7 @@ from shapely.geometry.polygon import Polygon
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.linestring import LineString
+from shapely.geometry.multipoint import MultiPoint
 import shapely.affinity as shapely_affinity
 import shapely.ops as shapely_ops
 from skimage.draw import polygon, line, circle
@@ -306,6 +307,49 @@ def transform_geometry(geom, func):
     return shapely_ops.transform(func, geom)
 
 
+def point_to_mask(geom,
+                  shape,
+                  transformX=None,
+                  transformY=None):
+    """Rasterize point to binary mask of shape 'shape'.
+
+    Parameters
+    ----------
+    geom: shapely.geometry.point.Point
+        Point to rasterize.
+    shape: tuple(int, int)
+        Shape of output mask.
+    transformX: function
+        Transformation to apply on 'x' coordinates.
+    transformY: function
+        Transformation to apply on 'y' coordinates.
+
+    Returns
+    -------
+    mask: np.array
+        Resulting mask.
+    """
+    if not isinstance(geom, Point):
+        message = 'Input geom must be a shapely Point'
+        raise ValueError(message)
+
+    if transformX is not None and transformY is not None:
+        point = (transformX(geom.x), transformY(geom.y))
+    elif transformX is not None:
+        point = (transformX(geom.x), geom.y)
+    elif transformY is not None:
+        point = (geom.x, transformY(geom.y))
+    else:
+        point = (geom.x, geom.y)
+
+    mask = np.zeros(shape, dtype=bool)
+    X, Y = point
+    rr, cc = circle(Y, X, 1, shape)
+    mask[rr, cc] = True
+
+    return mask
+
+
 def linestring_to_mask(geom,
                        shape,
                        transformX=None,
@@ -314,7 +358,7 @@ def linestring_to_mask(geom,
 
     Parameters
     ----------
-    geom: shapely.geometry.LineString
+    geom: shapely.geometry.linestring.LineString
         LineString to rasterize.
     shape: tuple(int, int)
         Shape of output mask.
@@ -388,6 +432,39 @@ def polygon_to_mask(geom,
     return mask
 
 
+def multipoint_to_mask(geom,
+                       shape,
+                       transformX=None,
+                       transformY=None):
+    """Rasterize multipoint to binary mask of shape 'shape'.
+
+    Parameters
+    ----------
+    geom: shapely.geometry.multipoint.MultiPoint
+        MultiPoint to rasterize.
+    shape: tuple(int, int)
+        Shape of output mask.
+    transformX: function
+        Transformation to apply on 'x' coordinates.
+    transformY: function
+        Transformation to apply on 'y' coordinates.
+
+    Returns
+    -------
+    mask: np.array
+        Resulting mask.
+    """
+    mask = np.zeros(shape, dtype=bool)
+    for sgeom in geom.geoms:
+        smask = point_to_mask(geom=sgeom,
+                              shape=shape,
+                              transformX=transformX,
+                              transformY=transformY)
+        mask = np.logical_or(mask, smask)
+
+    return mask
+
+
 def multilinestring_to_mask(geom,
                             shape,
                             transformX=None,
@@ -430,7 +507,7 @@ def multipolygon_to_mask(geom,
 
     Parameters
     ----------
-    geom: shapely.geometry.multipolygon
+    geom: shapely.geometry.multipolygon.MultiPolygon
         MultiPolygon to rasterize.
     shape: tuple(int, int)
         Shape of output mask.
@@ -480,6 +557,16 @@ def geometry_to_mask(geom,
     if geom.is_empty:
         return np.zeros(shape, dtype=bool)
 
+    if isinstance(geom, Point):
+        return point_to_mask(geom=geom,
+                             shape=shape,
+                             transformX=transformX,
+                             transformY=transformY)
+    if isinstance(geom, MultiPoint):
+        return multipoint_to_mask(geom=geom,
+                                  shape=shape,
+                                  transformX=transformX,
+                                  transformY=transformY)
     if isinstance(geom, Polygon):
         return polygon_to_mask(geom=geom,
                                shape=shape,
@@ -502,9 +589,10 @@ def geometry_to_mask(geom,
                                        transformY=transformY)
 
     message = (
-        "Method not implemented for this kind of geometry "
+        "Method not implemented for type: "
         f"({type(geom)})"
     )
+
     raise NotImplementedError(message)
 
 
