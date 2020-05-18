@@ -6,6 +6,7 @@ from yuntu.core.geometry import base as geom
 from yuntu.core.annotation import annotation
 from yuntu.core import windows
 from yuntu.core.media import masked
+from yuntu.core.media.utils import pad_array
 from yuntu.core.media.base import Media
 from yuntu.core.axis import TimeAxis
 
@@ -42,11 +43,7 @@ class TimeMediaMixin:
             **kwargs):
 
         if time_axis is None:
-            time_axis = self.time_axis_class(
-                start=start,
-                end=duration,
-                resolution=resolution,
-                **kwargs)
+            time_axis = self.time_axis_class(resolution=resolution, **kwargs)
 
         if not isinstance(time_axis, self.time_axis_class):
             time_axis = self.time_axis_class.from_dict(time_axis)
@@ -54,8 +51,8 @@ class TimeMediaMixin:
 
         if 'window' not in kwargs:
             kwargs['window'] = windows.TimeWindow(
-                start=time_axis.start,
-                end=time_axis.end)
+                start=start,
+                end=duration)
 
         super().__init__(**kwargs)
 
@@ -280,20 +277,22 @@ class TimeMediaMixin:
             # into acount possible cuts and thus might not give the correct
             # result.
             lazy = False
+        kwargs_dict['lazy'] = lazy
 
         if not lazy:
             start = self.get_index_from_time(bounded_start_time)
             end = self.get_index_from_time(bounded_end_time)
+
             slices = self._build_slices(start, end)
-            array = kwargs_dict['array'][slices]
+            array = self.array[slices]
 
             if pad:
                 start_pad = self.time_axis.get_bin_nums(
                     start_time, bounded_start_time)
                 end_pad = self.time_axis.get_bin_nums(
-                    end_time, bounded_end_time)
+                    bounded_end_time, end_time)
                 pad_widths = self._build_pad_widths(start_pad, end_pad)
-                array = np.pad(
+                array = pad_array(
                     array,
                     pad_widths,
                     mode=pad_mode,
@@ -398,7 +397,7 @@ class TimeMediaMixin:
         return tuple(slices)
 
     def _build_pad_widths(self, start, end):
-        widths = [(0, 0) for _ in self.media.shape]
+        widths = [(0, 0) for _ in self.shape]
         widths[self.time_axis_index] = (start, end)
         return widths
 

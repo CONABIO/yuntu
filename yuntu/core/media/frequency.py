@@ -6,6 +6,7 @@ from yuntu.core.geometry import base as geom
 from yuntu.core.annotation import annotation
 from yuntu.core.media import masked
 from yuntu.core.audio.utils import resample
+from yuntu.core.media.utils import pad_array
 from yuntu.core.media.base import Media
 from yuntu.core.axis import FrequencyAxis
 
@@ -39,12 +40,11 @@ class FrequencyMediaMixin:
             max_freq=None,
             resolution=None,
             frequency_axis=None,
+            window=None,
             **kwargs):
 
         if frequency_axis is None:
             frequency_axis = self.frequency_axis_class(
-                start=min_freq,
-                end=max_freq,
                 resolution=resolution,
                 **kwargs)
 
@@ -53,12 +53,17 @@ class FrequencyMediaMixin:
 
         self.frequency_axis = frequency_axis
 
-        if 'window' not in kwargs:
-            kwargs['window'] = windows.FrequencyWindow(
-                min=frequency_axis.start,
-                max=frequency_axis.end)
+        if window is None:
+            window = windows.FrequencyWindow(
+                min=min_freq,
+                max=max_freq)
 
-        super().__init__(**kwargs)
+        if not isinstance(window, windows.FrequencyWindow):
+            window = windows.FrequencyWindow(
+                min=min_freq,
+                max=max_freq)
+
+        super().__init__(window=window, **kwargs)
 
     def to_dict(self):
         return {
@@ -205,7 +210,10 @@ class FrequencyMediaMixin:
             min_freq: float = None,
             max_freq: float = None,
             window: windows.TimeWindow = None,
-            lazy=False):
+            lazy=False,
+            pad=False,
+            pad_mode='constant',
+            constant_values=0):
         """Get a window to the media data.
 
         Parameters
@@ -242,24 +250,45 @@ class FrequencyMediaMixin:
                 if window.max is not None
                 else max_freq)
 
-        min_freq = max(min(min_freq, current_max), current_min)
-        max_freq = max(min(max_freq, current_max), current_min)
-
         if max_freq < min_freq:
             message = 'Window is empty'
             raise ValueError(message)
 
+        bounded_min_freq = max(min(min_freq, current_max), current_min)
+        bounded_max_freq = max(min(max_freq, current_max), current_min)
+
         kwargs_dict = self._copy_dict()
         kwargs_dict['window'] = windows.FrequencyWindow(
-            min=min_freq,
-            max=max_freq)
+            min=min_freq if pad else bounded_min_freq,
+            max=max_freq if pad else bounded_max_freq)
+
+        if lazy:
+            # TODO: No lazy cutting for now. The compute method does not take
+            # into acount possible cuts and thus might not give the correct
+            # result.
+            lazy = False
         kwargs_dict['lazy'] = lazy
 
-        if not lazy and 'array' in kwargs_dict:
-            start = self.get_index_from_frequency(min_freq)
-            end = self.get_index_from_frequency(max_freq)
+        if not lazy:
+            start = self.get_index_from_frequency(bounded_min_freq)
+            end = self.get_index_from_frequency(bounded_max_freq)
+
             slices = self._build_slices(start, end)
-            kwargs_dict['array'] = self.array[slices]
+            array = self.array[slices]
+
+            if pad:
+                min_pad = self.frequency_axis.get_bin_nums(
+                    min_freq, bounded_min_freq)
+                max_pad = self.frequency_axis.get_bin_nums(
+                    bounded_max_freq, max_freq)
+                pad_widths = self._build_pad_widths(min_pad, max_pad)
+                array = pad_array(
+                    array,
+                    pad_widths,
+                    mode=pad_mode,
+                    constant_values=constant_values)
+
+            kwargs_dict['array'] = array
 
         return type(self)(**kwargs_dict)
 
@@ -319,6 +348,11 @@ class FrequencyMediaMixin:
         slices = [slice(None, None) for _ in self.shape]
         slices[self.frequency_axis_index] = slice(start, end)
         return tuple(slices)
+
+    def _build_pad_widths(self, start, end):
+        widths = [(0, 0) for _ in self.shape]
+        widths[self.frequency_axis_index] = (start, end)
+        return widths
 
     def _copy_dict(self):
         return {

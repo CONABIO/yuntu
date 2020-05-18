@@ -11,6 +11,7 @@ from yuntu.core.media import masked
 from yuntu.core.media.base import Media
 from yuntu.core.media.time import TimeMediaMixin
 from yuntu.core.media.time import TimeItem
+from yuntu.core.media.utils import pad_array
 from yuntu.core.media.frequency import FrequencyMediaMixin
 from yuntu.core.media.frequency import FrequencyItem
 import yuntu.core.geometry.utils as geom_utils
@@ -50,8 +51,6 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
         if time_axis is None:
             time_axis = self.time_axis_class(
-                start=start,
-                end=duration,
                 resolution=time_resolution)
 
         if not isinstance(time_axis, self.time_axis_class):
@@ -59,8 +58,6 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
         if frequency_axis is None:
             frequency_axis = self.frequency_axis_class(
-                start=min_freq,
-                end=max_freq,
                 resolution=freq_resolution)
 
         if not isinstance(frequency_axis, self.frequency_axis_class):
@@ -68,10 +65,10 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
         if window is None:
             window = windows.TimeFrequencyWindow(
-                start=time_axis.start,
-                end=time_axis.end,
-                min=frequency_axis.start,
-                max=frequency_axis.end)
+                start=start,
+                end=duration,
+                min=min_freq,
+                max=max_freq)
 
         if not isinstance(window, windows.TimeFrequencyWindow):
 
@@ -79,13 +76,13 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 window = windows.TimeFrequencyWindow(
                     start=window.start,
                     end=window.end,
-                    min=frequency_axis.start,
-                    max=frequency_axis.end)
+                    min=min_freq,
+                    max=max_freq)
 
             elif isinstance(window, windows.FrequencyWindow):
                 window = windows.TimeFrequencyWindow(
-                    start=time_axis.start,
-                    end=time_axis.end,
+                    start=start,
+                    end=duration,
                     min=window.min,
                     max=window.max)
 
@@ -179,7 +176,9 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             max_freq: Optional[float] = None,
             min_freq: Optional[float] = None,
             lazy: Optional[bool] = False,
-            **kwargs):
+            pad=False,
+            pad_mode='constant',
+            constant_values=0):
         current_start = self._get_start()
         current_end = self._get_end()
         current_min = self._get_min()
@@ -200,8 +199,6 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             if start_time is None:
                 start_time = current_start
 
-        start_time = max(min(start_time, current_end), current_start)
-
         if end_time is None:
             if window is not None and hasattr(window, 'end'):
                 end_time = window.end
@@ -210,8 +207,6 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
             if end_time is None:
                 end_time = current_end
-
-        end_time = max(min(end_time, current_end), current_start)
 
         if min_freq is None:
             if window is not None and hasattr(window, 'min'):
@@ -222,8 +217,6 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             if min_freq is None:
                 min_freq = current_min
 
-        min_freq = max(min(min_freq, current_max), current_min)
-
         if max_freq is None:
             if window is not None and hasattr(window, 'max'):
                 max_freq = window.max
@@ -233,32 +226,65 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             if max_freq is None:
                 max_freq = current_max
 
-        max_freq = max(min(max_freq, current_max), current_min)
-
         if start_time > end_time or min_freq > max_freq:
             raise ValueError('Cut is empty')
 
+        bounded_start_time = max(min(start_time, current_end), current_start)
+        bounded_end_time = max(min(end_time, current_end), current_start)
+        bounded_max_freq = max(min(max_freq, current_max), current_min)
+        bounded_min_freq = max(min(min_freq, current_max), current_min)
+
         kwargs = self._copy_dict()
-        kwargs['lazy'] = lazy
         kwargs['window'] = windows.TimeFrequencyWindow(
-            start=start_time,
-            end=end_time,
-            min=min_freq,
-            max=max_freq)
+            start=start_time if pad else bounded_start_time,
+            end=end_time if pad else bounded_end_time,
+            min=min_freq if pad else bounded_min_freq,
+            max=max_freq if pad else bounded_max_freq)
+
+        if lazy:
+            # TODO: No lazy cutting for now. The compute method does not take
+            # into acount possible cuts and thus might not give the correct
+            # result.
+            lazy = False
+        kwargs['lazy'] = lazy
 
         if not lazy:
-            start_index = self.get_index_from_time(start_time)
-            end_index = self.get_index_from_time(end_time)
-            min_index = self.get_index_from_frequency(min_freq)
-            max_index = self.get_index_from_frequency(max_freq)
+            start_index = self.get_index_from_time(bounded_start_time)
+            end_index = self.get_index_from_time(bounded_end_time)
+            min_index = self.get_index_from_frequency(bounded_min_freq)
+            max_index = self.get_index_from_frequency(bounded_max_freq)
 
             slices = self._build_slices(
                 start_index,
                 end_index,
                 min_index,
                 max_index)
-            data = self.array[slices]
-            kwargs['array'] = data.copy()
+            array = self.array[slices]
+
+            if pad:
+                start_pad = self.time_axis.get_bin_nums(
+                    start_time, bounded_start_time)
+                end_pad = self.time_axis.get_bin_nums(
+                    bounded_end_time, end_time)
+
+                min_pad = self.frequency_axis.get_bin_nums(
+                    min_freq, bounded_min_freq)
+                max_pad = self.frequency_axis.get_bin_nums(
+                    bounded_max_freq, max_freq)
+
+                pad_widths = self._build_pad_widths(
+                    start_pad,
+                    end_pad,
+                    min_pad,
+                    max_pad)
+
+                array = pad_array(
+                    array,
+                    pad_widths,
+                    mode=pad_mode,
+                    constant_values=constant_values)
+
+            kwargs['array'] = array
 
         return type(self)(**kwargs)
 
@@ -404,6 +430,12 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
         slice_args[self.time_axis_index] = slice(start_time, end_time)
         slice_args[self.frequency_axis_index] = slice(min_freq, max_freq)
         return tuple(slice_args)
+
+    def _build_pad_widths(self, start_pad, end_pad, min_pad, max_pad):
+        widths = [(0, 0) for _ in self.shape]
+        widths[self.time_axis_index] = (start_pad, end_pad)
+        widths[self.frequency_axis_index] = (min_pad, max_pad)
+        return widths
 
 
 @masked.masks(TimeFrequencyMediaMixin)

@@ -152,7 +152,7 @@ class Audio(TimeMedia):
 
     @property
     def duration(self):
-        return self.time_axis.end
+        return self.window.end
 
     @classmethod
     def from_instance(
