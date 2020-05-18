@@ -230,6 +230,15 @@ class Geometry(ABC):
         if geom_type == Geometry.Types.Polygon:
             return Polygon(**data)
 
+        if geom_type == Geometry.Types.MultiPoint:
+            return MultiPoint(**data)
+
+        if geom_type == Geometry.Types.MultiLineString:
+            return MultiLineString(**data)
+
+        if geom_type == Geometry.Types.MultiPolygon:
+            return MultiPolygon(**data)
+
         raise NotImplementedError
 
 
