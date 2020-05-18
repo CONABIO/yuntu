@@ -329,10 +329,6 @@ def point_to_mask(geom,
     mask: np.array
         Resulting mask.
     """
-    if not isinstance(geom, Point):
-        message = 'Input geom must be a shapely Point'
-        raise ValueError(message)
-
     if transformX is not None and transformY is not None:
         point = (transformX(geom.x), transformY(geom.y))
     elif transformX is not None:
