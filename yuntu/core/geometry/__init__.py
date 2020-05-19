@@ -15,7 +15,12 @@ from yuntu.core.geometry.weak import Weak
 
 
 def geometry(geom):
-    return Geometry.from_geometry(geom)
+    # Case when geom is a shapely geometry
+    if hasattr(geom, 'geomtype'):
+        return Geometry.from_geometry(geom)
+
+    # Otherwise assume its a dictionary with geom data
+    return Geometry.from_dict(geom)
 
 
 __all__ = [
