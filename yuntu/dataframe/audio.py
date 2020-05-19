@@ -107,7 +107,7 @@ class AudioAccessor:
 
     def __getitem__(self, key):
         if isinstance(key, int):
-            return self._build_audio(self._obj.loc[key])
+            return self._build_audio(self._obj.iloc[key])
 
         return [
             self._build_audio(row)
@@ -130,11 +130,11 @@ class AudioAccessor:
             id_column = self.id_column
 
         if row is not None:
-            row = self._obj.loc[row]
+            row = self._obj.iloc[row]
         elif id is not None:
-            row = self._obj[self._obj[id_column] == id].loc[0]
+            row = self._obj[self._obj[id_column] == id].iloc[0]
         else:
-            row = self._obj.loc[0]
+            row = self._obj.iloc[0]
 
         return self._build_audio(
             row,
