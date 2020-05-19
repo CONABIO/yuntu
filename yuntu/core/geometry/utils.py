@@ -1,9 +1,9 @@
 """Utilities for geometry manipulation."""
 import math
-from enum import Enum
 
 import numpy as np
 from scipy.signal import convolve2d
+from skimage.draw import polygon, line, circle
 import matplotlib.pyplot as plt
 import shapely.wkt
 from shapely.geometry import box
@@ -15,7 +15,9 @@ from shapely.geometry.linestring import LineString
 from shapely.geometry.multipoint import MultiPoint
 import shapely.affinity as shapely_affinity
 import shapely.ops as shapely_ops
-from skimage.draw import polygon, line, circle
+
+
+INFINITY = 10e+15
 
 
 def point_geometry(x, y):
@@ -282,6 +284,42 @@ def scale_geometry(geom, xfact=1.0, yfact=1.0, origin='center'):
         The transformed geometry.
     """
     return shapely_affinity.scale(geom, xfact, yfact, origin=origin)
+
+
+def rotate_geometry(geom, angle, origin='center', use_radians=False):
+    """Returns a rotated geometry on a 2D plane.
+
+    The angle of rotation can be specified in either degrees (default) or
+    radians by setting use_radians=True. Positive angles are counter-clockwise
+    and negative are clockwise rotations.
+
+    The point of origin can be a keyword 'center' for the bounding box center
+    (default), 'centroid' for the geometry’s centroid, a Point object or a
+    coordinate tuple (x0, y0).
+
+    Parameters
+    ----------
+    geom: shapely.geometry
+        A geometry.
+
+    angle: float
+        Angle to rotate, in radians (unless use_radians is false).
+    origin: string, Point, tuple
+        Point of rotation.
+    use_radians: bool
+        Boolean flag that indicates if the angle units are radians or degrees.
+        Defaults to true.
+
+    Returns
+    -------
+    geometry: shapely.geometry
+        The rotated geometry.
+    """
+    return shapely_affinity.rotate(
+        geom,
+        angle,
+        origin=origin,
+        use_radians=use_radians)
 
 
 def transform_geometry(geom, func):
@@ -778,3 +816,43 @@ def point_buffer(time, freq, buffer):
 
     point = Point(time, freq)
     return buffer_geometry(point, buffer)
+
+
+def _parse_args(arg, method, argname, index=0, **kwargs):
+    if arg is None:
+        if argname not in kwargs:
+            message = (
+                f'Either {method} or {argname} arguments must '
+                f'be supplied to the {method} method.')
+            raise ValueError(message)
+        freq = kwargs[argname]
+
+    elif isinstance(arg, (float, int)):
+        freq = arg
+
+    elif isinstance(arg, (list, tuple)):
+        freq = arg[index]
+
+    else:
+        message = (
+            f'The {method} argument should be a number of a tuple/list')
+        raise ValueError(message)
+
+    return freq
+
+
+def _parse_tf(arg, method, default=0, **kwargs):
+    if isinstance(arg, (int, float)):
+        arg = [arg, arg]
+
+    try:
+        time = _parse_args(arg, method, 'time', **kwargs)
+    except ValueError:
+        time = default
+
+    try:
+        freq = _parse_args(arg, method, 'freq', index=1, **kwargs)
+    except ValueError:
+        freq = default
+
+    return time, freq

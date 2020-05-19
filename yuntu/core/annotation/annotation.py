@@ -3,7 +3,7 @@ from abc import ABC
 from enum import Enum
 
 from yuntu.core.annotation.labels import Labels
-import yuntu.core.geometry.base as geom
+import yuntu.core.geometry as geom
 
 
 class Annotation(ABC):

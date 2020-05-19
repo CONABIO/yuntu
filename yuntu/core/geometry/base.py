@@ -8,53 +8,11 @@ from abc import ABC
 from abc import abstractmethod
 from enum import Enum
 
-import numpy as np
-import shapely.geometry as shapely_geometry
-
 import yuntu.core.windows as windows
-import yuntu.core.geometry.utils as geom_utils
+import yuntu.core.geometry.utils as utils
+
 
 INFINITY = 10e+15
-
-
-def _parse_args(arg, method, argname, index=0, **kwargs):
-    if arg is None:
-        if argname not in kwargs:
-            message = (
-                f'Either {method} or freq arguments must '
-                f'be supplied to the {method} method.')
-            raise ValueError(message)
-        freq = kwargs[argname]
-
-    elif isinstance(arg, (float, int)):
-        freq = arg
-
-    elif isinstance(arg, (list, float)):
-        freq = arg[index]
-
-    else:
-        message = (
-            f'The {method} argument should be a number of a tuple/list')
-        raise ValueError(message)
-
-    return freq
-
-
-def _parse_tf(arg, method, default=0, **kwargs):
-    if isinstance(arg, (int, float)):
-        arg = [arg, arg]
-
-    try:
-        time = _parse_args(arg, method, 'time', **kwargs)
-    except ValueError:
-        time = default
-
-    try:
-        freq = _parse_args(arg, method, 'freq', index=1, **kwargs)
-    except ValueError:
-        freq = default
-
-    return time, freq
 
 
 class Geometry(ABC):
@@ -73,6 +31,7 @@ class Geometry(ABC):
         MultiPoint = 'MultiPoint'
         MultiLineString = 'MultiLineString'
         MultiPolygon = 'MultiPolygon'
+        GeometryCollection = 'GeometryCollection'
 
     def __init__(self, geometry=None):
         self.geometry = geometry
@@ -100,35 +59,62 @@ class Geometry(ABC):
             min=bottom, max=top, start=left, end=right)
 
     def buffer(self, buffer=None, **kwargs):
-        time, freq = _parse_tf(buffer, 'buffer', **kwargs)
-        line_buffer = geom_utils.buffer_geometry(
+        # pylint: disable=import-outside-toplevel
+        import yuntu.core.geometry.polygons as polygons
+
+        time, freq = utils._parse_tf(buffer, 'buffer', **kwargs)
+        buffer_geom = utils.buffer_geometry(
             self.geometry,
             buffer=[time, freq])
-        return Polygon(geometry=line_buffer)
+
+        if buffer_geom.geom_type == 'Polygon':
+            return polygons.Polygon(geometry=buffer_geom)
+
+        return polygons.MultiPolygon(geometry=buffer_geom)
 
     def shift(self, shift=None, **kwargs):
-        time, freq = _parse_tf(shift, 'shift', **kwargs)
-        translated = geom_utils.translate_geometry(
+        time, freq = utils._parse_tf(shift, 'shift', **kwargs)
+        translated = utils.translate_geometry(
             self.geometry,
             xoff=time,
             yoff=freq)
         return type(self)(geometry=translated)
 
     def scale(self, scale=None, center=None, **kwargs):
-        time, freq = _parse_tf(scale, 'scale', default=1, **kwargs)
+        # pylint: disable=import-outside-toplevel
+        import yuntu.core.geometry.points as points
+
+        time, freq = utils._parse_tf(scale, 'scale', default=1, **kwargs)
 
         if center is None:
             center = 'center'
 
-        scaled = geom_utils.scale_geometry(
+        if isinstance(center, points.Point):
+            center = center.geometry
+
+        scaled = utils.scale_geometry(
             self.geometry,
             xfact=time,
             yfact=freq,
             origin=center)
         return type(self)(geometry=scaled)
 
+    def rotate(self, angle, origin='center', use_radians=True):
+        # pylint: disable=import-outside-toplevel
+        import yuntu.core.geometry.points as points
+
+        if isinstance(origin, points.Point):
+            origin = origin.geometry
+
+        rotated = utils.rotate_geometry(
+            self.geometry,
+            angle,
+            origin=origin,
+            use_radians=use_radians)
+        return type(self)(geometry=rotated)
+
     def transform(self, transform):
-        transformed = geom_utils.transform_geometry(
+        transformed = utils.transform_geometry(
             self.geometry,
             transform)
         return type(self)(geometry=transformed)
@@ -144,7 +130,27 @@ class Geometry(ABC):
             other = other.geometry
 
         new_geometry = self.geometry.intersection(other)
-        return type(self)(geometry=new_geometry)
+        return self.from_geometry(new_geometry)
+
+    def union(self, other):
+        # pylint: disable=import-outside-toplevel
+        import yuntu.core.geometry.geometry_collections as geometry_collections
+        import yuntu.core.geometry.intervals as intervals
+        import yuntu.core.geometry.lines as lines
+
+        if isinstance(other, (windows.Window, Geometry)):
+            other = other.geometry
+
+        if isinstance(other, (
+                lines.TimeLine,
+                lines.FrequencyLine,
+                intervals.TimeInterval,
+                intervals.FrequencyInterval,
+                geometry_collections.GeometryCollection)):
+            return geometry_collections.GeometryCollection([self, other])
+
+        new_geometry = self.geometry.union(other)
+        return self.from_geometry(new_geometry)
 
     @abstractmethod
     def plot(self, ax=None, **kwargs):
@@ -164,845 +170,68 @@ class Geometry(ABC):
 
     @staticmethod
     def from_geometry(geometry):
-        try:
-            geom_type = Geometry.Types[geometry.geom_type]
-        except AttributeError:
-            message = (
-                'The given geometry does not have a geom_type'
-                ' attribute.')
-            raise ValueError(message)
-        except KeyError:
-            message = (
-                f'The geom_type {geometry.geom_type} is no implemented'
-                ' in yuntu')
-            raise ValueError(message)
-
-        if geom_type == Geometry.Types.Point:
-            return Point(geometry=geometry)
-
-        if geom_type == Geometry.Types.LineString:
-            return LineString(geometry=geometry)
-
-        if geom_type == Geometry.Types.Polygon:
-            return Polygon(geometry=geometry)
-
-        if geom_type == Geometry.Types.MultiPoint:
-            return MultiPoint(geometry=geometry)
-
-        if geom_type == Geometry.Types.MultiLineString:
-            return MultiLineString(geometry=geometry)
-
-        if geom_type == Geometry.Types.MultiPolygon:
-            return MultiPolygon(geometry=geometry)
-
-        message = f'Geometry Type {geom_type} has not been implemented'
-        raise NotImplementedError(message)
+        geom_type = Geometry.Types[geometry.geom_type]
+        geom_class = Geometry.get_class_from_name(geom_type)
+        return geom_class(geometry=geometry)
 
     @staticmethod
     def from_dict(data):
         data = data.copy()
         geom_type = Geometry.Types[data.pop('type')]
+        geom_class = Geometry.get_class_from_name(geom_type)
+        return geom_class(**data)
 
-        if geom_type == Geometry.Types.Weak:
-            return Weak(**data)
+    # pylint: disable=too-many-return-statements
+    @staticmethod
+    def get_class_from_name(name):
+        # pylint: disable=import-outside-toplevel
+        import yuntu.core.geometry.bbox as bbox
+        import yuntu.core.geometry.geometry_collections as geometry_collections
+        import yuntu.core.geometry.intervals as intervals
+        import yuntu.core.geometry.lines as lines
+        import yuntu.core.geometry.linestrings as linestrings
+        import yuntu.core.geometry.points as points
+        import yuntu.core.geometry.polygons as polygons
+        import yuntu.core.geometry.weak as weak
 
-        if geom_type == Geometry.Types.TimeLine:
-            return TimeLine(**data)
+        if name == Geometry.Types.Point:
+            return points.Point
 
-        if geom_type == Geometry.Types.TimeInterval:
-            return TimeInterval(**data)
+        if name == Geometry.Types.LineString:
+            return linestrings.LineString
 
-        if geom_type == Geometry.Types.FrequencyLine:
-            return FrequencyLine(**data)
+        if name == Geometry.Types.Polygon:
+            return polygons.Polygon
 
-        if geom_type == Geometry.Types.FrequencyInterval:
-            return FrequencyInterval(**data)
+        if name == Geometry.Types.MultiPoint:
+            return points.MultiPoint
 
-        if geom_type == Geometry.Types.Point:
-            return Point(**data)
+        if name == Geometry.Types.MultiLineString:
+            return linestrings.MultiLineString
 
-        if geom_type == Geometry.Types.BBox:
-            return BBox(**data)
+        if name == Geometry.Types.MultiPolygon:
+            return polygons.MultiPolygon
 
-        if geom_type == Geometry.Types.LineString:
-            return LineString(**data)
+        if name == Geometry.Types.GeometryCollection:
+            return geometry_collections.GeometryCollection
 
-        if geom_type == Geometry.Types.Polygon:
-            return Polygon(**data)
+        if name == Geometry.Types.Weak:
+            return weak.Weak
 
-        if geom_type == Geometry.Types.MultiPoint:
-            return MultiPoint(**data)
+        if name == Geometry.Types.TimeLine:
+            return lines.TimeLine
 
-        if geom_type == Geometry.Types.MultiLineString:
-            return MultiLineString(**data)
+        if name == Geometry.Types.FrequencyLine:
+            return lines.FrequencyLine
 
-        if geom_type == Geometry.Types.MultiPolygon:
-            return MultiPolygon(**data)
+        if name == Geometry.Types.TimeInterval:
+            return intervals.TimeInterval
 
-        raise NotImplementedError
+        if name == Geometry.Types.FrequencyInterval:
+            return intervals.FrequencyInterval
 
+        if name == Geometry.Types.BBox:
+            return bbox.BBox
 
-class Weak(Geometry):
-    name = Geometry.Types.Weak
-
-    def __init__(self, geometry=None):
-        if geometry is None:
-            geometry = geom_utils.bbox_to_polygon([
-                0, INFINITY,
-                0, INFINITY
-            ])
-        super().__init__(geometry=geometry)
-
-    def buffer(self, buffer=None, **kwargs):
-        return self
-
-    def shift(self, shift=None, **kwargs):
-        return self
-
-    def scale(self, scale=None, center=None, **kwargs):
-        return self
-
-    def transform(self, transform):
-        return self
-
-    def plot(self, ax=None, **kwargs):
-        return super().plot(ax=ax, **kwargs)
-
-    @property
-    def bounds(self):
-        return None, None, None, None
-
-
-class TimeLine(Geometry):
-    name = Geometry.Types.TimeLine
-
-    def __init__(self, time=None, geometry=None):
-        if geometry is None:
-            geometry = geom_utils.linestring_geometry([
-                (time, 0),
-                (time, INFINITY)])
-
-        super().__init__(geometry=geometry)
-
-        time, _, _, _ = self.geometry.bounds
-        self.time = time
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['time'] = self.time
-        return data
-
-    @property
-    def bounds(self):
-        return self.time, None, self.time, None
-
-    def buffer(self, buffer=None, **kwargs):
-        time = _parse_args(buffer, 'buffer', 'time', **kwargs)
-        start_time = self.time - time
-        end_time = self.time + time
-        return TimeInterval(start_time=start_time, end_time=end_time)
-
-    def shift(self, shift=None, **kwargs):
-        time = _parse_args(shift, 'shift', 'time', **kwargs)
-        time = self.time + time
-        return TimeLine(time=time)
-
-    def scale(self, scale=None, center=None, **kwargs):
-        return self
-
-    def transform(self, transform):
-        time = transform(self.time)
-        return TimeLine(time=time)
-
-    def plot(self, ax=None, **kwargs):
-        ax = super().plot(ax=ax, **kwargs)
-
-        ax.axvline(
-            self.time,
-            linewidth=kwargs.get('linewidth', None),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', None),
-            label=kwargs.get('label', None))
-
-        return ax
-
-
-class TimeIntervalMixin:
-    def to_start_line(self):
-        start_time, _, _, _ = self.bounds
-        return TimeLine(time=start_time)
-
-    def to_end_line(self):
-        _, _, end_time, _ = self.bounds
-        return TimeLine(time=end_time)
-
-    def to_time_center_line(self):
-        start_time, _, end_time, _ = self.bounds
-        center = (start_time + end_time) / 2
-        return TimeLine(time=center)
-
-
-class TimeInterval(TimeIntervalMixin, Geometry):
-    name = Geometry.Types.TimeInterval
-
-    def __init__(self, start_time=None, end_time=None, geometry=None):
-        if geometry is None:
-            geometry = geom_utils.bbox_to_polygon([
-                start_time, end_time,
-                0, INFINITY])
-
-        super().__init__(geometry=geometry)
-
-        start_time, _, end_time, _ = self.geometry.bounds
-        self.end_time = end_time
-        self.start_time = start_time
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['start_time'] = self.start_time
-        data['end_time'] = self.end_time
-        return data
-
-    @property
-    def bounds(self):
-        return self.start_time, None, self.end_time, None
-
-    def buffer(self, buffer=None, **kwargs):
-        time = _parse_args(buffer, 'buffer', 'time', **kwargs)
-        start_time = self.start_time - time
-        end_time = self.end_time + time
-        return TimeInterval(start_time=start_time, end_time=end_time)
-
-    def shift(self, shift=None, **kwargs):
-        time = _parse_args(shift, 'shift', 'time', **kwargs)
-        start_time = self.start_time + time
-        end_time = self.end_time + time
-        return TimeInterval(start_time=start_time, end_time=end_time)
-
-    def scale(self, scale=None, center=None, **kwargs):
-        time = _parse_args(scale, 'scale', 'time', **kwargs)
-
-        if center is None:
-            center = (self.start_time + self.end_time) / 2
-        elif isinstance(center, (list, tuple)):
-            center = center[0]
-
-        start_time = center + (self.start_time - center) * time
-        end_time = center + (self.end_time - center) * time
-        return TimeInterval(start_time=start_time, end_time=end_time)
-
-    def transform(self, transform):
-        start_time = transform(self.start_time)
-        end_time = transform(self.end_time)
-        return TimeInterval(start_time=start_time, end_time=end_time)
-
-    def plot(self, ax=None, **kwargs):
-        ax = super().plot(ax=ax, **kwargs)
-
-        color = kwargs.get('color', None)
-        if color is None:
-            color = next(ax._get_lines.prop_cycler)['color']
-
-        ax.axvline(
-            self.start_time,
-            linewidth=kwargs.get('linewidth', None),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=color)
-
-        ax.axvline(
-            self.end_time,
-            linewidth=kwargs.get('linewidth', None),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=color)
-
-        if kwargs.get('fill', True):
-            ax.axvspan(
-                self.start_time,
-                self.end_time,
-                alpha=kwargs.get('alpha', 0.5),
-                color=color,
-                label=kwargs.get('label', None))
-
-        return ax
-
-
-class FrequencyLine(Geometry):
-    name = Geometry.Types.FrequencyLine
-
-    def __init__(self, freq=None, geometry=None):
-        if geometry is None:
-            geometry = geom_utils.linestring_geometry([
-                (0, freq),
-                (INFINITY, freq)])
-
-        super().__init__(geometry=geometry)
-
-        _, freq, _, _ = self.geometry.bounds
-        self.freq = freq
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['freq'] = self.freq
-        return data
-
-    @property
-    def bounds(self):
-        return None, self.freq, None, self.freq
-
-    def buffer(self, buffer=None, **kwargs):
-        freq = _parse_args(buffer, 'buffer', 'freq', index=1, **kwargs)
-        min_freq = self.freq - freq
-        max_freq = self.freq + freq
-        return FrequencyInterval(min_freq=min_freq, max_freq=max_freq)
-
-    def shift(self, shift=None, **kwargs):
-        freq = _parse_args(shift, 'shift', 'freq', index=1, **kwargs)
-        freq = self.freq + freq
-        return FrequencyLine(freq=freq)
-
-    def scale(self, scale=None, center=None, **kwargs):
-        return self
-
-    def transform(self, transform):
-        freq = transform(self.freq)
-        return FrequencyLine(freq=freq)
-
-    def plot(self, ax=None, **kwargs):
-        ax = super().plot(ax=ax, **kwargs)
-
-        ax.axhline(
-            self.freq,
-            linewidth=kwargs.get('linewidth', None),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', None),
-            label=kwargs.get('label', None))
-
-        return ax
-
-
-class FrequencyIntervalMixin:
-    def to_min_line(self):
-        _, min_freq, _, _ = self.bounds
-        return FrequencyLine(freq=min_freq)
-
-    def to_max_line(self):
-        _, _, _, max_freq = self.bounds
-        return FrequencyLine(freq=max_freq)
-
-    def to_freq_center_line(self):
-        _, min_freq, _, max_freq = self.bounds
-        center = (min_freq + max_freq) / 2
-        return FrequencyLine(freq=center)
-
-
-class FrequencyInterval(FrequencyIntervalMixin, Geometry):
-    name = Geometry.Types.FrequencyInterval
-
-    def __init__(self, min_freq=None, max_freq=None, geometry=None):
-        if geometry is None:
-            geometry = geom_utils.bbox_to_polygon([
-                0, INFINITY,
-                min_freq, max_freq
-            ])
-
-        super().__init__(geometry=geometry)
-
-        _, min_freq, _, max_freq = self.geometry.bounds
-        self.min_freq = min_freq
-        self.max_freq = max_freq
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['min_freq'] = self.min_freq
-        data['max_freq'] = self.max_freq
-        return data
-
-    @property
-    def bounds(self):
-        return None, self.min_freq, None, self.max_freq
-
-    def buffer(self, buffer=None, **kwargs):
-        freq = _parse_args(buffer, 'buffer', 'freq', index=1, **kwargs)
-        min_freq = self.min_freq - freq
-        max_freq = self.max_freq + freq
-        return FrequencyInterval(min_freq=min_freq, max_freq=max_freq)
-
-    def shift(self, shift=None, **kwargs):
-        freq = _parse_args(shift, 'shift', 'freq', index=1, **kwargs)
-        min_freq = self.min_freq + freq
-        max_freq = self.max_freq + freq
-        return FrequencyInterval(min_freq=min_freq, max_freq=max_freq)
-
-    def scale(self, scale=None, center=None, **kwargs):
-        freq = _parse_args(scale, 'scale', 'freq', index=1, **kwargs)
-
-        if center is None:
-            center = (self.min_freq + self.max_freq) / 2
-        elif isinstance(center, (list, tuple)):
-            center = center[0]
-
-        min_freq = center + (self.min_freq - center) * freq
-        max_freq = center + (self.max_freq - center) * freq
-        return FrequencyInterval(min_freq=min_freq, max_freq=max_freq)
-
-    def transform(self, transform):
-        min_freq = transform(self.min_freq)
-        max_freq = transform(self.max_freq)
-        return FrequencyInterval(min_freq=min_freq, max_freq=max_freq)
-
-    def plot(self, ax=None, **kwargs):
-        ax = super().plot(ax=ax, **kwargs)
-
-        color = kwargs.get('color', None)
-        if color is None:
-            color = next(ax._get_lines.prop_cycler)['color']
-
-        ax.axhline(
-            self.min_freq,
-            linewidth=kwargs.get('linewidth', None),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=color)
-
-        ax.axhline(
-            self.max_freq,
-            linewidth=kwargs.get('linewidth', None),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=color)
-
-        if kwargs.get('fill', True):
-            ax.axhspan(
-                self.min_freq,
-                self.max_freq,
-                alpha=kwargs.get('alpha', 0.5),
-                color=color,
-                label=kwargs.get('label', None))
-
-        return ax
-
-
-class Point(Geometry):
-    name = Geometry.Types.Point
-
-    def __init__(self, time=None, freq=None, geometry=None):
-        if geometry is None:
-            geometry = geom_utils.point_geometry(time, freq)
-
-        super().__init__(geometry=geometry)
-
-        self.time = self.geometry.x
-        self.freq = self.geometry.y
-
-    def __getitem__(self, key):
-        if not isinstance(key, int):
-            message = f'Index must be integer not {type(key)}'
-            raise ValueError(message)
-
-        if key < 0 or key > 1:
-            raise IndexError
-
-        if key == 0:
-            return self.time
-
-        return self.freq
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['time'] = self.time
-        data['freq'] = self.freq
-        return data
-
-    def plot(self, ax=None, **kwargs):
-        ax = super().plot(ax=ax, **kwargs)
-
-        ax.scatter(
-            [self.time],
-            [self.freq],
-            s=kwargs.get('size', None),
-            color=kwargs.get('color', None),
-            marker=kwargs.get('marker', None),
-            label=kwargs.get('label', None))
-
-        return ax
-
-
-class Geometry2DMixin(TimeIntervalMixin, FrequencyIntervalMixin):
-    def to_time_interval(self):
-        start_time, _, end_time, _ = self.bounds
-        return TimeInterval(start_time=start_time, end_time=end_time)
-
-    def to_freq_interval(self):
-        _, min_freq, _, max_freq = self.bounds
-        return FrequencyInterval(min_freq=min_freq, max_freq=max_freq)
-
-    def to_center(self):
-        start_time, min_freq, end_time, max_freq = self.bounds
-        time = (start_time + end_time) / 2
-        freq = (min_freq + max_freq) / 2
-        return Point(time=time, freq=freq)
-
-    def to_bbox(self):
-        start_time, min_freq, end_time, max_freq = self.bounds
-        return BBox(
-            start_time=start_time,
-            min_freq=min_freq,
-            end_time=end_time,
-            max_freq=max_freq)
-
-
-class BBox(Geometry2DMixin, Geometry):
-    name = Geometry.Types.BBox
-
-    def __init__(
-            self,
-            start_time=None,
-            end_time=None,
-            min_freq=None,
-            max_freq=None,
-            geometry=None):
-        if geometry is None:
-            if start_time is None:
-                message = 'Bounding box start time must be set.'
-                raise ValueError(message)
-
-            if end_time is None:
-                message = 'Bounding box end time must be set.'
-                raise ValueError(message)
-
-            if min_freq is None:
-                message = 'Bounding box max freq must be set.'
-                raise ValueError(message)
-
-            if max_freq is None:
-                message = 'Bounding box min freq must be set.'
-                raise ValueError(message)
-
-            geometry = geom_utils.bbox_to_polygon([
-                start_time, end_time,
-                min_freq, max_freq])
-
-        super().__init__(geometry=geometry)
-
-        start_time, min_freq, end_time, max_freq = self.geometry.bounds
-        self.start_time = start_time
-        self.end_time = end_time
-        self.min_freq = min_freq
-        self.max_freq = max_freq
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['start_time'] = self.start_time
-        data['end_time'] = self.end_time
-        data['min_freq'] = self.min_freq
-        data['max_freq'] = self.max_freq
-        return data
-
-    def buffer(self, buffer=None, **kwargs):
-        time, freq = _parse_tf(buffer, 'buffer', default=0, **kwargs)
-        start_time = self.start_time - time
-        end_time = self.end_time + time
-        min_freq = self.min_freq - freq
-        max_freq = self.max_freq + freq
-        return BBox(
-            start_time=start_time,
-            end_time=end_time,
-            min_freq=min_freq,
-            max_freq=max_freq)
-
-    def plot(self, ax=None, **kwargs):
-        ax = super().plot(ax=ax, **kwargs)
-
-        xcoords, ycoords = self.geometry.exterior.xy
-        lineplot, = ax.plot(
-            xcoords,
-            ycoords,
-            linewidth=kwargs.get('linewidth', None),
-            color=kwargs.get('color', None),
-            linestyle=kwargs.get('linestyle', '--'),
-        )
-
-        color = lineplot.get_color()
-
-        if kwargs.get('fill', True):
-            ax.fill(
-                xcoords,
-                ycoords,
-                color=color,
-                alpha=kwargs.get('alpha', 0.5),
-                linewidth=0,
-                label=kwargs.get('label', None))
-
-        return ax
-
-
-class LineString(Geometry2DMixin, Geometry):
-    name = Geometry.Types.LineString
-
-    def __init__(self, wkt=None, vertices=None, geometry=None):
-        if geometry is None:
-            if wkt is not None:
-                geometry = geom_utils.geom_from_wkt(wkt)
-
-            elif vertices is not None:
-                geometry = geom_utils.linestring_geometry(vertices)
-
-            else:
-                message = (
-                    'Either wkt or vertices must be supplied '
-                    'to create a LineString geometry.')
-                raise ValueError(message)
-
-        super().__init__(geometry=geometry)
-
-        self.wkt = self.geometry.wkt
-
-    def __iter__(self):
-        for (x, y) in self.geometry.coords:
-            yield Point(x, y)
-
-    def __getitem__(self, key):
-        x, y = self.geometry.coords[key]
-        return Point(x, y)
-
-    @property
-    def start(self):
-        return self[0]
-
-    @property
-    def end(self):
-        return self[-1]
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['wkt'] = self.wkt
-        return data
-
-    def interpolate(self, s, normalized=True, ratio=1):
-        geometry = self.geometry
-        if ratio != 1:
-            geometry = geom_utils.scale_geometry(
-                geometry,
-                xfact=ratio,
-                origin=(0, 0))
-
-        point = geometry.interpolate(s, normalized=normalized)
-
-        if ratio != 1:
-            point = geom_utils.scale_geometry(
-                point,
-                xfact=1/ratio,
-                origin=(0, 0))
-
-        return Point(point.x, point.y)
-
-    def resample(self, num_samples, ratio=1):
-        geometry = self.geometry
-
-        if ratio != 1:
-            geometry = geom_utils.scale_geometry(
-                geometry,
-                xfact=ratio,
-                origin=(0, 0))
-
-        vertices = [
-            geometry.interpolate(param, normalized=True)
-            for param in np.linspace(0, 1, num_samples, endpoint=True)
-        ]
-
-        if ratio != 1:
-            vertices = [
-                geom_utils.scale_geometry(
-                    point,
-                    xfact=1/ratio,
-                    origin=(0, 0))
-                for point in vertices
-            ]
-        return LineString(vertices=vertices)
-
-    def plot(self, ax=None, **kwargs):
-        ax = super().plot(ax=ax, **kwargs)
-
-        xcoords, ycoords = self.geometry.xy
-        lineplot, = ax.plot(
-            xcoords,
-            ycoords,
-            linewidth=kwargs.get('linewidth', None),
-            color=kwargs.get('color', None),
-            linestyle=kwargs.get('linestyle', '--'),
-            label=kwargs.get('label', None))
-
-        color = lineplot.get_color()
-
-        if kwargs.get('scatter', False):
-            ax.scatter(
-                xcoords,
-                ycoords,
-                color=color,
-                s=kwargs.get('size', None))
-
-        return ax
-
-
-class Polygon(Geometry2DMixin, Geometry):
-    name = Geometry.Types.Polygon
-
-    def __init__(self, wkt=None, shell=None, holes=None, geometry=None):
-        if geometry is None:
-            if wkt is not None:
-                geometry = geom_utils.geom_from_wkt(wkt)
-
-            elif shell is not None:
-                if holes is None:
-                    holes = []
-
-                geometry = geom_utils.polygon_geometry(shell, holes)
-
-        super().__init__(geometry=geometry)
-
-        self.wkt = self.geometry.wkt
-
-    @property
-    def bbox(self):
-        start_time, min_freq, end_time, max_freq = self.bounds
-        return BBox(
-            start_time=start_time,
-            end_time=end_time,
-            min_freq=min_freq,
-            max_freq=max_freq)
-
-    def to_dict(self):
-        data = super().to_dict()
-        data['wkt'] = self.wkt
-        return data
-
-    def plot(self, ax=None, **kwargs):
-        ax = super().plot(ax=ax, **kwargs)
-
-        lineplot, = ax.plot(
-            *self.geometry.exterior.xy,
-            linewidth=kwargs.get('linewidth', 1),
-            color=kwargs.get('color', None),
-            linestyle=kwargs.get('linestyle', '--'),
-        )
-
-        color = lineplot.get_color()
-
-        for interior in self.geometry.interiors:
-            ax.plot(
-                *interior.xy,
-                linewidth=kwargs.get('linewidth', None),
-                color=color,
-                linestyle=kwargs.get('linestyle', '--'))
-
-        if kwargs.get('fill', True):
-            if self.geometry.exterior.is_ccw:
-                coords = self.geometry.exterior.coords
-            else:
-                coords = self.geometry.exterior.coords[::-1]
-
-            xcoords, ycoords = map(list, zip(*coords))
-            xstart = xcoords[0]
-            ystart = ycoords[0]
-
-            for interior in self.geometry.interiors:
-                if interior.is_ccw:
-                    coords = interior.coords[::-1]
-                else:
-                    coords = interior.coords
-
-                intxcoords, intycoords = map(list, zip(*coords))
-                xcoords += intxcoords
-                ycoords += intycoords
-
-                xcoords.append(xstart)
-                ycoords.append(ystart)
-
-            ax.fill(
-                xcoords,
-                ycoords,
-                color=color,
-                alpha=kwargs.get('alpha', 0.5),
-                linewidth=0,
-                label=kwargs.get('label', None))
-
-        return ax
-
-
-class MultiGeometryMixin:
-    """Mixin that adds multi geometry behaviour to geometry classes."""
-
-    @property
-    def geoms(self):
-        """Return iterator of geometries."""
-        for geom in self.geometry.geoms:
-            yield Geometry.from_geometry(geom)
-
-    def plot(self, ax=None, **kwargs):
-        ax = super().plot(ax=ax, **kwargs)
-        for geom in self.geoms:
-            ax = geom.plot(ax, **kwargs)
-        return ax
-
-
-class MultiPolygon(MultiGeometryMixin, Geometry, Geometry2DMixin):
-    """Polygon collection geometry."""
-
-    name = Geometry.Types.MultiPolygon
-
-    def __init__(self, geometry=None, polygons=None):
-        if geometry is None:
-            geoms = []
-            if polygons is not None:
-                for geom in polygons:
-                    if isinstance(geom, Polygon):
-                        geoms.append(geom.geometry)
-                    elif isinstance(geom, shapely_geometry.polygon.Polygon):
-                        geoms.append(geom)
-                    else:
-                        raise ValueError("All elements of input polygon list"
-                                         " must be polygons.")
-                geometry = shapely_geometry.multipolygon.MultiPolygon(geoms)
-        super().__init__(geometry)
-
-
-class MultiLineString(MultiGeometryMixin, Geometry, Geometry2DMixin):
-    """Linestring collection geometry."""
-
-    name = Geometry.Types.MultiLineString
-
-    def __init__(self, geometry=None, linestrings=None):
-        if geometry is None:
-            geoms = []
-            if linestrings is not None:
-                for geom in linestrings:
-                    if isinstance(geom, LineString):
-                        geoms.append(geom.geometry)
-                    elif isinstance(geom,
-                                    shapely_geometry.linestring.LineString):
-                        geoms.append(geom)
-                    else:
-                        raise ValueError("All elements of input linestring "
-                                         "list must be linestrings.")
-                mlinestring = shapely_geometry.multilinestring.MultiLineString
-                geometry = mlinestring(geoms)
-        super().__init__(geometry)
-
-
-class MultiPoint(MultiGeometryMixin, Geometry, Geometry2DMixin):
-    """Point collection geometry."""
-
-    name = Geometry.Types.MultiPoint
-
-    def __init__(self, geometry=None, points=None):
-        if geometry is None:
-            geoms = []
-            if points is not None:
-                for geom in points:
-                    if isinstance(geom, Point):
-                        geoms.append(geom.geometry)
-                    elif isinstance(geom, shapely_geometry.point.Point):
-                        geoms.append(geom)
-                    else:
-                        raise ValueError("All elements of input points list"
-                                         " must be points.")
-                geometry = shapely_geometry.multipoint.MultiPoint(geoms)
-        super().__init__(geometry)
+        message = f'Geometry Type {name} has not been implemented'
+        raise NotImplementedError(message)
