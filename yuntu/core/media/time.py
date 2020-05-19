@@ -100,15 +100,18 @@ class TimeMediaMixin:
                 'was requested')
             raise ValueError(message)
 
-        index = self.time_axis.get_index_from_value(
+        return self.time_axis.get_index_from_value(
             time,
             window=self.window)
-        size = self.time_size
 
+
+    def _restrain_time_index(self, index):
+        size = self.time_size
         return min(max(0, index), size - 1)
 
     def get_value(self, time):
         index = self.get_index_from_time(time)
+        index = self._restrain_time_index(index)
         return self.array.take(index, axis=self.time_axis_index)
 
     def get_time_item_kwargs(self, freq):
@@ -116,6 +119,7 @@ class TimeMediaMixin:
 
     def get_time_item(self, freq):
         index = self.get_index_from_time(freq)
+        index = self._restrain_time_index(index)
         array = self.array.take(index, axis=self.time_axis_index)
         kwargs = self.get_time_item_kwargs(freq)
         return self.time_item_class(freq, array=array, **kwargs)

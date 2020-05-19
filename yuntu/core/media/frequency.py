@@ -100,15 +100,17 @@ class FrequencyMediaMixin:
                 'was requested')
             raise ValueError(message)
 
-        index = self.frequency_axis.get_index_from_value(
+        return self.frequency_axis.get_index_from_value(
             freq,
             window=self.window)
-        size = self.frequency_size
 
+    def _restrain_freq_index(self, index):
+        size = self.frequency_size
         return min(max(0, index), size - 1)
 
     def get_value(self, freq):
         index = self.get_index_from_frequency(freq)
+        index = self._restrain_freq_index(index)
         return self.array.take(index, axis=self.frequency_axis_index)
 
     def get_freq_item_kwargs(self, freq):
@@ -116,6 +118,7 @@ class FrequencyMediaMixin:
 
     def get_freq_item(self, freq):
         index = self.get_index_from_frequency(freq)
+        index = self._restrain_freq_index(index)
         array = self.array.take(index, axis=self.frequency_axis_index)
         kwargs = self.get_freq_item_kwargs(freq)
         return self.frequency_item_class(freq, array=array, **kwargs)

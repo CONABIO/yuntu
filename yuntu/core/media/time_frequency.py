@@ -109,7 +109,10 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             The value of the spectrogram at the desired time and frequency.
         """
         time_index = self.get_index_from_time(time)
+        time_index = self._restrain_time_index(time_index)
+
         freq_index = self.get_index_from_frequency(freq)
+        freq_index = self._restrain_freq_index(freq_index)
 
         if self.time_axis_index > self.frequency_axis_index:
             first_axis = self.time_axis_index
