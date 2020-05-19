@@ -38,12 +38,28 @@ class MaskedMediaMixin:
         return ax
 
     def union(self, other, lazy=False):
-        # TODO
-        pass
+        assert isinstance(other, MaskedMediaMixin)
+        geometry = self.geometry.union(other.geometry)
+        kwargs = self._copy_dict()
+        kwargs['geometry'] = geometry
+
+        if not self.is_empty() and not other.is_empty() and not lazy:
+            array = self.array | other.array
+            kwargs['array'] = array
+
+        return type(self)(**kwargs, lazy=lazy)
 
     def intersection(self, other, lazy=False):
-        # TODO
-        pass
+        assert isinstance(other, MaskedMediaMixin)
+        geometry = self.geometry.intersection(other.geometry)
+        kwargs = self._copy_dict()
+        kwargs['geometry'] = geometry
+
+        if not self.is_empty() and not other.is_empty() and not lazy:
+            array = self.array & other.array
+            kwargs['array'] = array
+
+        return type(self)(**kwargs, lazy=lazy)
 
     def __or__(self, other):
         if not isinstance(other, MaskedMediaMixin):

@@ -13,6 +13,7 @@ from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry.multilinestring import MultiLineString
 from shapely.geometry.linestring import LineString
 from shapely.geometry.multipoint import MultiPoint
+from shapely.geometry import GeometryCollection
 import shapely.affinity as shapely_affinity
 import shapely.ops as shapely_ops
 
@@ -566,6 +567,39 @@ def multipolygon_to_mask(geom,
     return mask
 
 
+def geometry_collection_to_mask(geom,
+                                shape,
+                                transformX=None,
+                                transformY=None):
+    """Rasterize geometry collection to binary mask of shape 'shape'.
+
+    Parameters
+    ----------
+    geom: shapely.geometry.GeometryCollection
+        GeometryCollection to rasterize.
+    shape: tuple(int, int)
+        Shape of output mask.
+    transformX: function
+        Transformation to apply on 'x' coordinates.
+    transformY: function
+        Transformation to apply on 'y' coordinates.
+
+    Returns
+    -------
+    mask: np.array
+        Resulting mask.
+    """
+    mask = np.zeros(shape, dtype=bool)
+    for sgeom in geom.geoms:
+        smask = geometry_to_mask(geom=sgeom,
+                                 shape=shape,
+                                 transformX=transformX,
+                                 transformY=transformY)
+        mask = np.logical_or(mask, smask)
+
+    return mask
+
+
 def geometry_to_mask(geom,
                      shape,
                      transformX=None,
@@ -621,6 +655,11 @@ def geometry_to_mask(geom,
                                        shape=shape,
                                        transformX=transformX,
                                        transformY=transformY)
+    if isinstance(geom, GeometryCollection):
+        return geometry_collection_to_mask(geom=geom,
+                                           shape=shape,
+                                           transformX=transformX,
+                                           transformY=transformY)
 
     message = (
         "Method not implemented for type: "

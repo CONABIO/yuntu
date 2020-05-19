@@ -5,7 +5,7 @@ from scipy.interpolate import interp2d
 from scipy.interpolate import RectBivariateSpline
 
 import yuntu.core.windows as windows
-from yuntu.core.geometry import base as geom
+from yuntu.core import geometry as geom
 from yuntu.core.annotation import annotation
 from yuntu.core.media import masked
 from yuntu.core.media.base import Media

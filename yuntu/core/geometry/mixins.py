@@ -98,6 +98,10 @@ class MultiGeometryMixin:
         for geom in self.geometry.geoms:
             yield Geometry.from_geometry(geom)
 
+    def __iter__(self):
+        for geom in self.geoms:
+            yield geom
+
     def plot(self, ax=None, **kwargs):
         ax = super().plot(ax=ax, **kwargs)
         for geom in self.geoms:
