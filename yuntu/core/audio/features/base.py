@@ -9,6 +9,9 @@ from yuntu.core.media.frequency import FrequencyMediaMixin
 from yuntu.core.media.time_frequency import TimeFrequencyMediaMixin
 
 
+# TODO: Fix load after cut!!!
+
+
 # pylint: disable=abstract-method
 class Feature(Media):
     """Feature base class.

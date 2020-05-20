@@ -102,7 +102,7 @@ class Audio(TimeMedia):
             raise ValueError(message)
 
         self.path = path
-        self.timeexp = timeexp
+        self._timeexp = timeexp
 
         if id is None:
             id = os.path.basename(path)
@@ -145,6 +145,19 @@ class Audio(TimeMedia):
             duration=duration,
             resolution=resolution,
             **kwargs)
+
+    @property
+    def timeexp(self):
+        return self._timeexp
+
+    @timeexp.setter
+    def timeexp(self, value):
+        prev_timeexp = self._timeexp
+        ratio = prev_timeexp / value
+        self.time_axis.resolution *= ratio
+        self.window.start /= ratio
+        self.window.end /= ratio
+        self._timeexp = value
 
     @property
     def samplerate(self):
@@ -349,7 +362,7 @@ class Audio(TimeMedia):
         data['samplerate'] = self.samplerate
 
         if self.timeexp != 1:
-            data['timeexp'] = 1
+            data['timeexp'] = self.timeexp
 
         if not self._has_trivial_window():
             data['window'] = repr(self.window)
