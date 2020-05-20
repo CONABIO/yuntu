@@ -33,8 +33,10 @@ class Feature(Media):
     @property
     def audio(self):
         if not hasattr(self, '_audio'):
+            data = self._audio_data.copy()
+            data.pop('type')
             self._audio = audio_module.Audio.from_dict(
-                self._audio_data,
+                data,
                 lazy=True)
         return self._audio
 

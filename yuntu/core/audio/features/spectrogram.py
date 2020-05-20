@@ -133,7 +133,7 @@ class Spectrogram(TimeFrequencyFeature):
 
         has_audio = self.has_audio()
         if not has_path and has_audio:
-            data['audio'] = repr(self._audio_data)
+            data['audio'] = f'Audio(path={self._audio_data["path"]})'
 
         if not has_audio and not has_path:
             data['array'] = repr(self.array)

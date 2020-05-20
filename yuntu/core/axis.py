@@ -43,7 +43,7 @@ class Axis(abc.ABC):
         return self.get_bin_nums(start, end)
 
     def get_bin(self, value):
-        return int(value * self.resolution)
+        return int(np.floor(value * self.resolution))
 
     def get_bin_nums(self, start, end):
         start_bin = self.get_bin(start)
