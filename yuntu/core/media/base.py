@@ -66,6 +66,9 @@ class Media(ABC, AnnotatedObjectMixin):
 
         return self.load()
 
+    def force_load(self):
+        self._array = self._load_array()
+
     @property
     def array(self):
         """Get media contents."""

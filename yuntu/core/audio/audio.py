@@ -152,6 +152,9 @@ class Audio(TimeMedia):
 
     @timeexp.setter
     def timeexp(self, value):
+        if self.is_empty():
+            self.force_load()
+
         prev_timeexp = self._timeexp
         ratio = prev_timeexp / value
         self.time_axis.resolution *= ratio

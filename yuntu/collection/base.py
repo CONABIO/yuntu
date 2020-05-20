@@ -54,15 +54,16 @@ class Collection:
     def __len__(self):
         return len(self.recordings())
 
-    def get(self, key):
+    def get(self, key, with_metadata=True):
         record = self.recordings(lambda rec: rec.id == key).get()
-        return self.build_audio(record)
+        return self.build_audio(record, with_metadata=with_metadata)
 
     def get_recording_dataframe(
             self,
             query=None,
             limit=None,
             offset=0,
+            with_metadata=False,
             with_annotations=False):
         if limit is None:
             query_slice = slice(offset, None)
@@ -76,6 +77,9 @@ class Collection:
             media_info = data.pop('media_info')
             data.update(media_info)
 
+            if not with_metadata:
+                data.pop('metadata')
+
             if with_annotations:
                 data['annotations'] = [
                     _parse_annotation(annotation)
@@ -85,7 +89,12 @@ class Collection:
 
         return pd.DataFrame(records)
 
-    def get_annotation_dataframe(self, query=None, limit=None, offset=0):
+    def get_annotation_dataframe(
+            self,
+            query=None,
+            limit=None,
+            offset=0,
+            with_metadata=None):
         if limit is None:
             query_slice = slice(offset, None)
         else:
@@ -96,6 +105,9 @@ class Collection:
         for annotation in annotations:
             data = annotation.to_dict()
             labels = data.pop('labels')
+
+            if not with_metadata:
+                data.pop('metadata')
 
             data['labels'] = labels
 
@@ -157,19 +169,21 @@ class Collection:
             return matches
         return list(matches)
 
-    def build_audio(self, recording):
+    def build_audio(self, recording, with_metadata=True):
         annotations = []
         for annotation in recording.annotations:
             data = annotation.to_dict()
             annotation = self.annotation_class.from_record(data)
             annotations.append(annotation)
 
+        metadata = recording.meta_arr if with_metadata else None
+
         return self.audio_class(
             path=recording.path,
             id=recording.id,
             media_info=recording.media_info,
             timeexp=recording.timeexp,
-            metadata=recording.metadata,
+            metadata=metadata,
             annotations=annotations,
             lazy=True)
 
