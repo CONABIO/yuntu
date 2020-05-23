@@ -4,7 +4,7 @@ from abc import abstractmethod
 import numpy as np
 from skimage.feature import peak_local_max, match_template
 from shapely.ops import unary_union
-from yuntu.core.geometry.base import BBox, Polygon, FrequencyInterval
+from yuntu.core.geometry import BBox, Polygon, FrequencyInterval
 
 
 class Probe(ABC):
@@ -50,6 +50,7 @@ class CrossCorrelationProbe(TemplateProbe):
         self.tag = tag
         self._template = []
         self._frequency_interval = None
+        self._frequencies = []
         self.set_template(molds)
 
     @property
@@ -70,6 +71,7 @@ class CrossCorrelationProbe(TemplateProbe):
         if self._template is None:
             self._template = []
         self._template.append(mold.array)
+
         self._extend_interval_with(mold)
 
     def _extend_interval_with(self, mold):
@@ -82,15 +84,18 @@ class CrossCorrelationProbe(TemplateProbe):
             max_freq = self._frequency_interval.max_freq
             if freqs[0] < min_freq:
                 min_freq = freqs[0]
-            if freqs[1] > max_freq:
+            if freqs[-1] > max_freq:
                 max_freq = freqs[-1]
             self._frequency_interval = FrequencyInterval(min_freq=min_freq,
                                                          max_freq=max_freq)
+        self._frequencies.append(freqs)
 
     def compare(self, target):
-        return np.array([match_template(target.array, templ, pad_input=True)
-                        for templ in self.template])
-
+        results = []
+        for templ in self.template:
+            corr = match_template(target.array, templ, pad_input=True)
+            results.append(corr)
+        return np.array(results)
 
     def apply(self, target, thresh=0.5, method='mean',
               peak_distance=10, limit_freqs=True):
@@ -98,17 +103,13 @@ class CrossCorrelationProbe(TemplateProbe):
             if limit_freqs:
                 limit_freqs = self.frequency_interval
 
-        min_distancex = self.shape[0]
-        min_distancey = self.shape[1]
+        min_distancex = self.shape_range[0][0]
+        min_distancey = self.shape_range[0][1]
 
-        corr = self.compare(target)
-        if len(self.template) > 0:
-            if method == 'max':
-                corr = np.amax(corr, axis=0)
-            elif method == 'median':
-                corr = np.median(corr, axis=0)
-            else:
-                corr = np.mean(corr, axis=0)
+        if limit_freqs:
+            target = target.cut(min_freq=limit_freqs.min_freq,
+                                max_freq=limit_freqs.max_freq)
+        corr = self.corr(target, method=method)
 
         all_peaks = peak_local_max(corr,
                                    min_distance=peak_distance,
@@ -121,9 +122,6 @@ class CrossCorrelationProbe(TemplateProbe):
             if xind2 - xind1 > 1:
                 min_freq = target.frequencies[xind1]
                 max_freq = target.frequencies[xind2]
-                if limit_freqs:
-                    min_freq = max(min_freq, limit_freqs.min_freq)
-                    max_freq = min(max_freq, limit_freqs.max_freq)
                 yind1 = max(0, y - int(round(min_distancey/2)))
                 yind2 = min(yind1 + min_distancey, corr.shape[1]-1)
                 if yind2 - yind1 > 1:
@@ -131,17 +129,13 @@ class CrossCorrelationProbe(TemplateProbe):
                     end_time = target.times[yind2]
                     new_box = BBox(start_time, end_time,
                                    min_freq, max_freq)
-                    found = False
-                    for ind, box in enumerate(boxes):
-                        if new_box.intersects(box):
-                            disolved = unary_union([new_box.geometry,
-                                                    box.geometry])
-                            boxes[ind] = Polygon(geometry=disolved)
-                            found = True
-                            break
-                    if not found:
-                        boxes.append(BBox(start_time, end_time,
-                                          min_freq, max_freq))
+                    boxes.append(new_box)
+
+        boxes = unary_union([b.geometry for b in boxes])
+        if boxes.geom_type == 'MultiPolygon':
+            boxes = [Polygon(geometry=geom) for geom in boxes]
+        else:
+            boxes = [Polygon(geometry=boxes)]
 
         output = []
         for box in boxes:
@@ -167,15 +161,26 @@ class CrossCorrelationProbe(TemplateProbe):
                 output.append(result)
         return output
 
+    def corr(self, target, method='mean'):
+        corr = self.compare(target)
+        if len(self.template) > 0:
+            if method == 'max':
+                corr = np.amax(corr, axis=0)
+            elif method == 'median':
+                corr = np.median(corr, axis=0)
+            else:
+                corr = np.mean(corr, axis=0)
+        return corr
 
     @property
-    def shape(self):
+    def shape_range(self):
         """Return probe's shape.
 
         The shape of a probe is the shape of a ndarray that covers all
         molds in template.
         """
-        return np.amax(np.array([x.shape for x in self.template]), axis=0)
+        return (np.amin(np.array([x.shape for x in self.template]), axis=0),
+                np.amax(np.array([x.shape for x in self.template]), axis=0))
 
     @property
     def frequency_interval(self):
