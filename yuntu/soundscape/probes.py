@@ -142,7 +142,12 @@ class CrossCorrelationProbe(TemplateProbe):
             if box.geometry.geom_type == 'MultiPolygon':
                 for poly in box.geometry:
                     new_box = Polygon(geometry=poly)
-                    corr_values = corr[target.to_mask(geometry=new_box)]
+                    try:
+                        corr_values = corr[target.to_mask(geometry=new_box)]
+                    except IndexError:
+                        s1 = corr.shape
+                        s2 = target.to_mask(geomtry=new_box).array.shape
+                        raise IndexError(f"Mismatch in shapes: {s1} {s2}")
                     if corr_values.size > 0:
                         peak_corr = np.amax(corr_values)
                         result = {
@@ -152,7 +157,12 @@ class CrossCorrelationProbe(TemplateProbe):
                         }
                         output.append(result)
             else:
-                corr_values = corr[target.to_mask(geometry=box)]
+                try:
+                    corr_values = corr[target.to_mask(geometry=box)]
+                except IndexError:
+                    s1 = corr.shape
+                    s2 = target.to_mask(geomtry=box).array.shape
+                    raise IndexError(f"Mismatch in shapes: {s1} {s2}")
                 if corr_values.size > 0:
                     peak_corr = np.amax(corr_values)
                     result = {
