@@ -143,22 +143,24 @@ class CrossCorrelationProbe(TemplateProbe):
                 for poly in box.geometry:
                     new_box = Polygon(geometry=poly)
                     corr_values = corr[target.to_mask(geometry=new_box)]
+                    if corr_values.size > 0:
+                        peak_corr = np.amax(corr_values)
+                        result = {
+                            "tag": self.tag,
+                            "peak_corr": peak_corr,
+                            "geometry": new_box
+                        }
+                        output.append(result)
+            else:
+                corr_values = corr[target.to_mask(geometry=box)]
+                if corr_values.size > 0:
                     peak_corr = np.amax(corr_values)
                     result = {
                         "tag": self.tag,
                         "peak_corr": peak_corr,
-                        "geometry": new_box
+                        "geometry": box
                     }
                     output.append(result)
-            else:
-                corr_values = corr[target.to_mask(geometry=box)]
-                peak_corr = np.amax(corr_values)
-                result = {
-                    "tag": self.tag,
-                    "peak_corr": peak_corr,
-                    "geometry": box
-                }
-                output.append(result)
         return output
 
     def corr(self, target, method='mean'):
