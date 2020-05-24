@@ -74,6 +74,16 @@ class CrossCorrelationProbe(TemplateProbe):
 
         self._extend_interval_with(mold)
 
+    def _build_output(self, corr, target, geom):
+        corr_values = corr[target.to_mask(geometry=geom).array]
+        if corr_values.size > 0:
+            return {
+                "tag": self.tag,
+                "peak_corr": np.amax(corr_values),
+                "geometry": geom
+            }
+        return None
+
     def _extend_interval_with(self, mold):
         freqs = mold.frequencies
         if self._frequency_interval is None:
@@ -142,34 +152,12 @@ class CrossCorrelationProbe(TemplateProbe):
             if box.geometry.geom_type == 'MultiPolygon':
                 for poly in box.geometry:
                     new_box = Polygon(geometry=poly)
-                    try:
-                        corr_values = corr[target.to_mask(geometry=new_box)]
-                    except IndexError:
-                        s1 = corr.shape
-                        s2 = target.to_mask(geometry=new_box).array.shape
-                        raise IndexError(f"Mismatch in shapes: {s1} {s2}")
-                    if corr_values.size > 0:
-                        peak_corr = np.amax(corr_values)
-                        result = {
-                            "tag": self.tag,
-                            "peak_corr": peak_corr,
-                            "geometry": new_box
-                        }
+                    result = self._build_output(corr, target, new_box)
+                    if result is not None:
                         output.append(result)
             else:
-                try:
-                    corr_values = corr[target.to_mask(geometry=box)]
-                except IndexError:
-                    s1 = corr.shape
-                    s2 = target.to_mask(geometry=box).array.shape
-                    raise IndexError(f"Mismatch in shapes: {s1} {s2}")
-                if corr_values.size > 0:
-                    peak_corr = np.amax(corr_values)
-                    result = {
-                        "tag": self.tag,
-                        "peak_corr": peak_corr,
-                        "geometry": box
-                    }
+                result = self._build_output(corr, target, box)
+                if result is not None:
                     output.append(result)
         return output
 
