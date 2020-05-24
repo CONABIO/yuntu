@@ -186,7 +186,7 @@ class CrossCorrelationProbe(TemplateProbe):
         return self._frequency_interval
 
     def __enter__(self):
-        print("Working with probe...")
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         del self._template[:]
