@@ -146,7 +146,7 @@ class CrossCorrelationProbe(TemplateProbe):
                         corr_values = corr[target.to_mask(geometry=new_box)]
                     except IndexError:
                         s1 = corr.shape
-                        s2 = target.to_mask(geomtry=new_box).array.shape
+                        s2 = target.to_mask(geometry=new_box).array.shape
                         raise IndexError(f"Mismatch in shapes: {s1} {s2}")
                     if corr_values.size > 0:
                         peak_corr = np.amax(corr_values)
@@ -161,7 +161,7 @@ class CrossCorrelationProbe(TemplateProbe):
                     corr_values = corr[target.to_mask(geometry=box)]
                 except IndexError:
                     s1 = corr.shape
-                    s2 = target.to_mask(geomtry=box).array.shape
+                    s2 = target.to_mask(geometry=box).array.shape
                     raise IndexError(f"Mismatch in shapes: {s1} {s2}")
                 if corr_values.size > 0:
                     peak_corr = np.amax(corr_values)
