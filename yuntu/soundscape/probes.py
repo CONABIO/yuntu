@@ -50,7 +50,6 @@ class CrossCorrelationProbe(TemplateProbe):
         self.tag = tag
         self._template = []
         self._frequency_interval = None
-        self._frequencies = []
         self.set_template(molds)
 
     @property
@@ -98,7 +97,6 @@ class CrossCorrelationProbe(TemplateProbe):
                 max_freq = freqs[-1]
             self._frequency_interval = FrequencyInterval(min_freq=min_freq,
                                                          max_freq=max_freq)
-        self._frequencies.append(freqs)
 
     def compare(self, target):
         results = []
@@ -186,6 +184,13 @@ class CrossCorrelationProbe(TemplateProbe):
     def frequency_interval(self):
         """Return frequency interval of probe."""
         return self._frequency_interval
+
+    def __enter__(self):
+        print("Working with probe...")
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        del self._template[:]
+        self._frequency_interval = None
 
 
 def probe(ptype="cross_correlation", **kwargs):
