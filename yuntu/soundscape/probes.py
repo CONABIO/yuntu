@@ -70,7 +70,7 @@ class CrossCorrelationProbe(TemplateProbe):
         """
         if self._template is None:
             self._template = []
-        self._template.append(mold.array)
+        self._template.append(mold.array.copy())
 
         self._extend_interval_with(mold)
 
