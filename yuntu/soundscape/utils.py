@@ -64,12 +64,15 @@ def slice_windows(time_unit, duration, frequency_bins, frequency_limits):
     weights = []
     for interval_t, interval_f in bounds:
         start_time, end_time = interval_t
-        weights.append((end_time - start_time) / time_unit)
-        min_frequency, max_frequency = interval_f
-        windows.append(TimeFrequencyWindow(start=start_time,
-                                           end=end_time,
-                                           min=min_frequency,
-                                           max=max_frequency))
+        end_time = min(end_time, duration)
+        size_T = end_time - start_time
+        if size_T >= time_unit / 2:
+            min_frequency, max_frequency = interval_f
+            weights.append((end_time - start_time) / time_unit)
+            windows.append(TimeFrequencyWindow(start=start_time,
+                                               end=end_time,
+                                               min=min_frequency,
+                                               max=max_frequency))
     return windows, weights
 
 
