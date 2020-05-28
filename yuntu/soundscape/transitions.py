@@ -23,7 +23,7 @@ def feature_slices(row, audio, config):
     feature = getattr(audio.features,
                       config["feature_type"])(**config["feature_config"])
     audio.clean()
-    feature_cuts = [feature.cut(cut).array for cut in cuts]
+    feature_cuts = [feature.cut(cut).array.copy() for cut in cuts]
     feature.clean()
 
     start_times = [cut.start for cut in cuts]
