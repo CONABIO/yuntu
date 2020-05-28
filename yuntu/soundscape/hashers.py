@@ -68,10 +68,8 @@ class GenericHasher(Hasher, ABC):
     def hash(self, row, out_name="hash", **kwargs):
         """Return row hash."""
         new_row = {}
-        for key in row:
-            new_row[key] = row[key]
         new_row[out_name] = self._hash_method(new_row, **kwargs)
-        return new_row
+        return pd.Series(new_row)
 
     def unhash(self, hashed, **kwargs):
         """Invert hash (if possible)."""
@@ -163,9 +161,8 @@ class CronoHasher(Hasher):
 
         remainder = delta_from_start % self.module
         new_row = {}
-        for key in row:
-            new_row[key] = row[key]
         new_row[out_name] = np.int64(int(round(remainder/self.unit)))
+
         return pd.Series(new_row)
 
     def unhash(self, hashed):

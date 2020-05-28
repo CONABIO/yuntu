@@ -32,9 +32,6 @@ def feature_slices(row, audio, config):
     min_freqs = [cut.min for cut in cuts]
 
     new_row = {}
-    for key in row:
-        new_row[key] = row[key]
-
     new_row['start_time'] = start_times
     new_row['end_time'] = end_times
     new_row['min_freq'] = max_freqs
@@ -48,8 +45,6 @@ def feature_slices(row, audio, config):
 def feature_indices(row, indices):
     """Compute acoustic indices for one row."""
     new_row = {}
-    for key in row:
-        new_row[key] = row[key]
     for index in indices:
         new_row[index.name] = index(new_row['feature_cut'])
     return pd.Series(row)
@@ -68,12 +63,11 @@ def add_hash(dataframe, hasher, out_name="xhash"):
                    f"Missing column inputs. Hasher needs: {str_cols} ")
         raise ValueError(message)
 
-    meta = [(name, dtype)
-            for name, dtype in zip(dataframe.columns,
-                                   dataframe.dtypes.values)]
+    meta = [(out_name, hasher.dtype)]
+    result = dataframe.apply(hasher, out_name=out_name, meta=meta, axis=1)
+    dataframe[out_name] = result[out_name]
 
-    meta.append((out_name, hasher.dtype))
-    return dataframe.apply(hasher, out_name=out_name, meta=meta, axis=1)
+    return dataframe
 
 
 @transition(name='slice_features', outputs=["feature_slices"], persist=True,
@@ -92,7 +86,15 @@ def slice_features(recordings, config):
     result = recordings.audio.apply(feature_slices,
                                     meta=meta,
                                     config=config)
-    exploded_slices = result[['id', 'start_time']].explode('start_time')
+    recordings['start_time'] = result['start_time']
+    recordings['end_time'] = result['end_time']
+    recordings['min_freq'] = result['min_freq']
+    recordings['max_freq'] = result['max_freq']
+    recordings['weight'] = result['weight']
+    recordings['feature_cut'] = result['weight']
+
+    exploded_slices = (recordings[['id', 'start_time']]
+                       .explode('start_time'))
     exploded_slices['end_time'] = result['end_time'].explode()
     exploded_slices['min_freq'] = result['max_freq'].explode()
     exploded_slices['max_freq'] = result['min_freq'].explode()
@@ -114,24 +116,18 @@ def apply_indices(slices, indices):
                   " for each index to compute."
         raise ValueError(message)
 
-    meta = [('id', np.dtype('int64')),
-            ('start_time', np.dtype('float64')),
-            ('end_time', np.dtype('float64')),
-            ('min_freq', np.dtype('float64')),
-            ('max_freq', np.dtype('float64')),
-            ('weight', np.dtype('float64')),
-            ('feature_cut', np.dtype('float64'))]
-
-    meta += [(index.name,
-             np.dtype('float64'))
-             for index in indices]
+    meta = [(index.name,
+            np.dtype('float64'))
+            for index in indices]
 
     results = slices.apply(feature_indices,
                            meta=meta,
                            axis=1,
                            indices=indices)
+    for index in indices:
+        slices[index.name] = results[index.name]
 
-    return results.drop(['feature_cut'], axis=1)
+    return slices.drop(['feature_cut'], axis=1)
 
 
 @transition(name='as_dd', outputs=["recordings_dd"],
