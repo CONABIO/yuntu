@@ -1103,7 +1103,7 @@ class Pipeline(MetaPipeline):
 
         G = self.struct
 
-        feed_keys = feed.keys()
+        feed_keys = list(feed.keys())
         for key in feed_keys:
             for nkey in nodes:
                 if nkey == key:
@@ -1111,7 +1111,7 @@ class Pipeline(MetaPipeline):
                 if self.shortest_path(nkey, key, nxgraph=G) is not None:
                     del feed[key]
 
-        feed_keys = feed.keys()
+        feed_keys = list(feed.keys())
         for key in feed_keys:
             for nkey in feed_keys:
                 if key != nkey:
