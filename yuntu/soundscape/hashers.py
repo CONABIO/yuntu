@@ -2,6 +2,7 @@
 from abc import ABC
 from abc import abstractmethod
 import numpy as np
+import pandas as pd
 from yuntu.soundscape.utils import aware_time
 import datetime
 
@@ -66,8 +67,11 @@ class GenericHasher(Hasher, ABC):
 
     def hash(self, row, out_name="hash", **kwargs):
         """Return row hash."""
-        row[out_name] = self._hash_method(row, **kwargs)
-        return row
+        new_row = {}
+        for key in row:
+            new_row[key] = row[key]
+        new_row[out_name] = self._hash_method(new_row, **kwargs)
+        return new_row
 
     def unhash(self, hashed, **kwargs):
         """Invert hash (if possible)."""
@@ -158,8 +162,11 @@ class CronoHasher(Hasher):
         delta_from_start = self.start - atime
 
         remainder = delta_from_start % self.module
-        row[out_name] = np.int64(int(round(remainder/self.unit)))
-        return row
+        new_row = {}
+        for key in row:
+            new_row[key] = row[key]
+        new_row[out_name] = np.int64(int(round(remainder/self.unit)))
+        return pd.Series(new_row)
 
     def unhash(self, hashed):
         """Produce datetime object according to input integer hash."""

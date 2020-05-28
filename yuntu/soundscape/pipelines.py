@@ -102,5 +102,9 @@ class HashedSoundscape(Soundscape):
         self['hasher'] = place(data=self.hasher,
                                name='hasher',
                                ptype='pickleable')
+        self['hash_name'] = place(data="xhash",
+                                  name="hash_name",
+                                  ptype='scalar')
         self['hashed_soundscape'] = trans.add_hash(self['index_results'],
-                                                   self['hasher'])
+                                                   self['hasher'],
+                                                   self['hash_name'])
