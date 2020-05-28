@@ -17,7 +17,7 @@ from yuntu.soundscape.dataframe import SoundscapeAccessor
 def feature_slices(row, audio, config):
     """Produce slices from recording and configuration."""
     cuts, weights = slice_windows(config["time_unit"],
-                                  audio.media_info.duration,
+                                  audio.duration,
                                   config["frequency_bins"],
                                   config["frequency_limits"])
     feature = getattr(audio.features,
