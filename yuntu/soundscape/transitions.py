@@ -74,34 +74,28 @@ def add_hash(dataframe, hasher, out_name="xhash"):
             signature=((DaskDataFramePlace, DictPlace), (DaskDataFramePlace,)))
 def slice_features(recordings, config):
     """Produce feature slices dataframe."""
-    meta = [(name, dtype)
-            for name, dtype in zip(recordings.columns,
-                                   recordings.dtypes.values)]
-    meta += [('start_time', np.dtype('float64')),
-             ('end_time', np.dtype('float64')),
-             ('min_freq', np.dtype('float64')),
-             ('max_freq', np.dtype('float64')),
-             ('weight', np.dtype('float64')),
-             ('feature_cut', np.dtype('float64'))]
+
+    meta = [('start_time', np.dtype('float64')),
+            ('end_time', np.dtype('float64')),
+            ('min_freq', np.dtype('float64')),
+            ('max_freq', np.dtype('float64')),
+            ('weight', np.dtype('float64')),
+            ('feature_cut', np.dtype('float64'))]
+
     result = recordings.audio.apply(feature_slices,
                                     meta=meta,
                                     config=config)
+
     recordings['start_time'] = result['start_time']
-    recordings['end_time'] = result['end_time']
-    recordings['min_freq'] = result['min_freq']
-    recordings['max_freq'] = result['max_freq']
-    recordings['weight'] = result['weight']
-    recordings['feature_cut'] = result['weight']
 
-    exploded_slices = (recordings[['id', 'start_time']]
-                       .explode('start_time'))
-    exploded_slices['end_time'] = result['end_time'].explode()
-    exploded_slices['min_freq'] = result['max_freq'].explode()
-    exploded_slices['max_freq'] = result['min_freq'].explode()
-    exploded_slices['weight'] = result['weight'].explode()
-    exploded_slices['feature_cut'] = result['feature_cut'].explode()
+    slices = recordings.explode('start_time')
+    slices['end_time'] = result['end_time'].explode()
+    slices['min_freq'] = result['max_freq'].explode()
+    slices['max_freq'] = result['min_freq'].explode()
+    slices['weight'] = result['weight'].explode()
+    slices['feature_cut'] = result['feature_cut'].explode()
 
-    return exploded_slices
+    return slices
 
 
 @transition(name='apply_indices', outputs=["index_results"],
