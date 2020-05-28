@@ -46,8 +46,8 @@ def feature_indices(row, indices):
     """Compute acoustic indices for one row."""
     new_row = {}
     for index in indices:
-        new_row[index.name] = index(new_row['feature_cut'])
-    return pd.Series(row)
+        new_row[index.name] = index(row['feature_cut'])
+    return pd.Series(new_row)
 
 
 @transition(name='add_hash', outputs=["hashed_soundscape"],
