@@ -23,7 +23,6 @@ def to_audio(row, read_samplerate=None, lazy=True):
                  media_info=media_info,
                  metadata=row['metadata'],
                  id=row['id'],
-                 read_samplerate=read_samplerate,
                  lazy=lazy)
 
 
