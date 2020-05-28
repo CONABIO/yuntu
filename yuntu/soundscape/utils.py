@@ -74,9 +74,11 @@ def slice_windows(time_unit, duration, frequency_bins, frequency_limits):
 
 
 def aware_time(strtime, tzone, time_format):
-    tzobj = pytz.timezone(tzone)
-
-    return tzobj.localize(datetime.datetime.strptime(strtime, time_format))
+    dtime = datetime.datetime.strptime(strtime, time_format)
+    if dtime.tzinfo is None or dtime.tzinfo.utcoffset(dtime) is None:
+        tzobj = pytz.timezone(tzone)
+        dtime = tzobj.localize(dtime)
+    return dtime
 
 
 def time_as_seconds(time_obj):
