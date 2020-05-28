@@ -1,5 +1,6 @@
 """Operations for soundscape Pipeline."""
 import numpy as np
+import pandas as pd
 import dask.dataframe as dd
 from yuntu.core.audio.audio import Audio, MEDIA_INFO_FIELDS
 from yuntu.core.pipeline.transitions.decorators import transition
@@ -13,48 +14,45 @@ from yuntu.soundscape.hashers import Hasher
 from yuntu.soundscape.dataframe import SoundscapeAccessor
 
 
-def to_audio(row, read_samplerate=None, lazy=True):
-    """Return Audio object using row values from an audio dataframe."""
-    media_info = {}
-    for field in MEDIA_INFO_FIELDS:
-        media_info[field] = row[field]
-    return Audio(path=row['path'],
-                 timeexp=row['timeexp'],
-                 media_info=media_info,
-                 metadata=row['metadata'],
-                 id=row['id'],
-                 lazy=lazy)
-
-
-def feature_slices(row, config):
+def feature_slices(row, audio, config):
     """Produce slices from recording and configuration."""
-    audio = to_audio(row)
     cuts, weights = slice_windows(config["time_unit"],
                                   audio.media_info.duration,
                                   config["frequency_bins"],
                                   config["frequency_limits"])
-    features = audio.features
-    feature = getattr(features,
+    feature = getattr(audio.features,
                       config["feature_type"])(**config["feature_config"])
+    audio.clean()
     feature_cuts = [feature.cut(cut).array for cut in cuts]
+    feature.clean()
+
     start_times = [cut.start for cut in cuts]
     end_times = [cut.end for cut in cuts]
     max_freqs = [cut.max for cut in cuts]
     min_freqs = [cut.min for cut in cuts]
-    row['start_time'] = start_times
-    row['end_time'] = end_times
-    row['min_freq'] = max_freqs
-    row['max_freq'] = min_freqs
-    row['weight'] = weights
-    row['feature_cut'] = feature_cuts
-    return row
+
+    new_row = {}
+    for key in row:
+        new_row[key] = row[key]
+
+    new_row['start_time'] = start_times
+    new_row['end_time'] = end_times
+    new_row['min_freq'] = max_freqs
+    new_row['max_freq'] = min_freqs
+    new_row['weight'] = weights
+    new_row['feature_cut'] = feature_cuts
+
+    return pd.Series(new_row)
 
 
 def feature_indices(row, indices):
     """Compute acoustic indices for one row."""
+    new_row = {}
+    for key in row:
+        new_row[key] = row[key]
     for index in indices:
-        row[index.name] = index(row['feature_cut'])
-    return row
+        new_row[index.name] = index(new_row['feature_cut'])
+    return pd.Series(row)
 
 
 @transition(name='add_hash', outputs=["hashed_soundscape"],
@@ -91,16 +89,16 @@ def slice_features(recordings, config):
              ('max_freq', np.dtype('float64')),
              ('weight', np.dtype('float64')),
              ('feature_cut', np.dtype('float64'))]
-    result = recordings.apply(feature_slices,
-                              meta=meta,
-                              axis=1,
-                              config=config)
+    result = recordings.audio.apply(feature_slices,
+                                    meta=meta,
+                                    config=config)
     exploded_slices = result[['id', 'start_time']].explode('start_time')
     exploded_slices['end_time'] = result['end_time'].explode()
     exploded_slices['min_freq'] = result['max_freq'].explode()
     exploded_slices['max_freq'] = result['min_freq'].explode()
     exploded_slices['weight'] = result['weight'].explode()
     exploded_slices['feature_cut'] = result['feature_cut'].explode()
+
     return exploded_slices
 
 
