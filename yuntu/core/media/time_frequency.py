@@ -237,7 +237,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
         bounded_max_freq = max(min(max_freq, current_max), current_min)
         bounded_min_freq = max(min(min_freq, current_max), current_min)
 
-        kwargs = self._copy_dict(with_array=False)
+        kwargs = self._copy_dict()
         kwargs['window'] = windows.TimeFrequencyWindow(
             start=start_time if pad else bounded_start_time,
             end=end_time if pad else bounded_end_time,
