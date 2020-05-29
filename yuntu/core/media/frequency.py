@@ -49,7 +49,7 @@ class FrequencyMediaMixin:
                 **kwargs)
 
         if not isinstance(frequency_axis, self.frequency_axis_class):
-            frequency_axis = self.frequency_axis_class.from_dict(frequency_axis) # noqa
+            frequency_axis = self.frequency_axis_class.from_dict(frequency_axis)  # noqa
 
         self.frequency_axis = frequency_axis
 

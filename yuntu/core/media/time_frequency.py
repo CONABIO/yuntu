@@ -237,7 +237,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
         bounded_max_freq = max(min(max_freq, current_max), current_min)
         bounded_min_freq = max(min(min_freq, current_max), current_min)
 
-        kwargs = self._copy_dict()
+        kwargs = self._copy_dict(with_array=False)
         kwargs['window'] = windows.TimeFrequencyWindow(
             start=start_time if pad else bounded_start_time,
             end=end_time if pad else bounded_end_time,
@@ -252,44 +252,120 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
         kwargs['lazy'] = lazy
 
         if not lazy:
-            start_index = self.get_index_from_time(bounded_start_time)
-            end_index = self.get_index_from_time(bounded_end_time)
-            min_index = self.get_index_from_frequency(bounded_min_freq)
-            max_index = self.get_index_from_frequency(bounded_max_freq)
+            kwargs['array'] = self.cut_array(
+                window=window,
+                start_time=start_time,
+                end_time=end_time,
+                max_freq=max_freq,
+                min_freq=min_freq,
+                pad=pad,
+                pad_mode=pad_mode,
+                constant_values=constant_values)
 
-            slices = self._build_slices(
+        return type(self)(**kwargs)
+
+    def cut_array(
+            self,
+            window: Optional[windows.TimeFrequencyWindow] = None,
+            geometry: Optional[geom.Geometry] = None,
+            start_time: Optional[float] = None,
+            end_time: Optional[float] = None,
+            max_freq: Optional[float] = None,
+            min_freq: Optional[float] = None,
+            pad=False,
+            pad_mode='constant',
+            constant_values=0):
+        current_start = self._get_start()
+        current_end = self._get_end()
+        current_min = self._get_min()
+        current_max = self._get_max()
+
+        if window is not None:
+            assert isinstance(window, windows.Window)
+
+        if geometry is not None:
+            assert isinstance(geometry, geom.Geometry)
+
+        if start_time is None:
+            if window is not None and hasattr(window, 'start'):
+                start_time = window.start
+            elif geometry is not None:
+                start_time, _, _, _ = geometry.bounds
+
+            if start_time is None:
+                start_time = current_start
+
+        if end_time is None:
+            if window is not None and hasattr(window, 'end'):
+                end_time = window.end
+            elif geometry is not None:
+                _, _, end_time, _ = geometry.bounds
+
+            if end_time is None:
+                end_time = current_end
+
+        if min_freq is None:
+            if window is not None and hasattr(window, 'min'):
+                min_freq = window.min
+            elif geometry is not None:
+                _, min_freq, _, _ = geometry.bounds
+
+            if min_freq is None:
+                min_freq = current_min
+
+        if max_freq is None:
+            if window is not None and hasattr(window, 'max'):
+                max_freq = window.max
+            elif geometry is not None:
+                _, _, _, max_freq = geometry.bounds
+
+            if max_freq is None:
+                max_freq = current_max
+
+        if start_time > end_time or min_freq > max_freq:
+            raise ValueError('Cut is empty')
+
+        bounded_start_time = max(min(start_time, current_end), current_start)
+        bounded_end_time = max(min(end_time, current_end), current_start)
+        bounded_max_freq = max(min(max_freq, current_max), current_min)
+        bounded_min_freq = max(min(min_freq, current_max), current_min)
+
+        start_index = self.get_index_from_time(bounded_start_time)
+        end_index = self.get_index_from_time(bounded_end_time)
+        min_index = self.get_index_from_frequency(bounded_min_freq)
+        max_index = self.get_index_from_frequency(bounded_max_freq)
+
+        slices = self._build_slices(
                 start_index,
                 end_index,
                 min_index,
                 max_index)
-            array = self.array[slices]
+        array = self.array[slices]
 
-            if pad:
-                start_pad = self.time_axis.get_bin_nums(
+        if pad:
+            start_pad = self.time_axis.get_bin_nums(
                     start_time, bounded_start_time)
-                end_pad = self.time_axis.get_bin_nums(
+            end_pad = self.time_axis.get_bin_nums(
                     bounded_end_time, end_time)
 
-                min_pad = self.frequency_axis.get_bin_nums(
+            min_pad = self.frequency_axis.get_bin_nums(
                     min_freq, bounded_min_freq)
-                max_pad = self.frequency_axis.get_bin_nums(
+            max_pad = self.frequency_axis.get_bin_nums(
                     bounded_max_freq, max_freq)
 
-                pad_widths = self._build_pad_widths(
+            pad_widths = self._build_pad_widths(
                     start_pad,
                     end_pad,
                     min_pad,
                     max_pad)
 
-                array = pad_array(
+            array = pad_array(
                     array,
                     pad_widths,
                     mode=pad_mode,
                     constant_values=constant_values)
 
-            kwargs['array'] = array
-
-        return type(self)(**kwargs)
+        return array
 
     def resample(
             self,

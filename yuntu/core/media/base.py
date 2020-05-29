@@ -236,14 +236,14 @@ class Media(ABC, AnnotatedObjectMixin):
         cls = type(self)
         return cls(**data)
 
-    def _copy_dict(self, **kwargs):
+    def _copy_dict(self, with_array=True, **kwargs):
         data = {
             'annotations': self.annotations,
             'window': self.window.copy(),
             'path': self.path,
         }
 
-        if not self.is_empty():
+        if not self.is_empty() and with_array:
             data['array'] = self.array.copy(**kwargs)
 
         return data
