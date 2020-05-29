@@ -23,7 +23,7 @@ def feature_slices(row, audio, config, indices):
     feature = getattr(audio.features,
                       config["feature_type"])(**config["feature_config"])
     audio.clean()
-    feature_cuts = [feature.cut(cut).array.copy() for cut in cuts]
+    feature_cuts = [feature.cut_array(cut) for cut in cuts]
     feature.clean()
 
     start_times = [cut.start for cut in cuts]
@@ -85,8 +85,7 @@ def slice_features(recordings, config, indices):
             ('end_time', np.dtype('float64')),
             ('min_freq', np.dtype('float64')),
             ('max_freq', np.dtype('float64')),
-            ('weight', np.dtype('float64')),
-            ('feature_cut', np.dtype('float64'))]
+            ('weight', np.dtype('float64'))]
 
     meta += [(index.name,
              np.dtype('float64'))
