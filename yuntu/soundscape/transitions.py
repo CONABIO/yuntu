@@ -14,7 +14,7 @@ from yuntu.soundscape.hashers import Hasher
 from yuntu.soundscape.dataframe import SoundscapeAccessor
 
 
-def feature_slices(row, audio, config):
+def feature_slices(row, audio, config, indices):
     """Produce slices from recording and configuration."""
     cuts, weights = slice_windows(config["time_unit"],
                                   audio.duration,
@@ -37,7 +37,12 @@ def feature_slices(row, audio, config):
     new_row['min_freq'] = max_freqs
     new_row['max_freq'] = min_freqs
     new_row['weight'] = weights
-    new_row['feature_cut'] = feature_cuts
+
+    for index in indices:
+        results = []
+        for fcut in feature_cuts:
+            results.append(index(fcut))
+        new_row[index.name] = results
 
     return pd.Series(new_row)
 
@@ -71,8 +76,9 @@ def add_hash(dataframe, hasher, out_name="xhash"):
 
 
 @transition(name='slice_features', outputs=["feature_slices"], persist=True,
-            signature=((DaskDataFramePlace, DictPlace), (DaskDataFramePlace,)))
-def slice_features(recordings, config):
+            signature=((DaskDataFramePlace, DictPlace, PickleablePlace),
+                       (DaskDataFramePlace,)))
+def slice_features(recordings, config, indices):
     """Produce feature slices dataframe."""
 
     meta = [('start_time', np.dtype('float64')),
@@ -82,9 +88,14 @@ def slice_features(recordings, config):
             ('weight', np.dtype('float64')),
             ('feature_cut', np.dtype('float64'))]
 
+    meta += [(index.name,
+             np.dtype('float64'))
+             for index in indices]
+
     result = recordings.audio.apply(feature_slices,
                                     meta=meta,
-                                    config=config)
+                                    config=config,
+                                    indices=indices)
 
     recordings['start_time'] = result['start_time']
 
@@ -93,7 +104,9 @@ def slice_features(recordings, config):
     slices['min_freq'] = result['max_freq'].explode()
     slices['max_freq'] = result['min_freq'].explode()
     slices['weight'] = result['weight'].explode()
-    slices['feature_cut'] = result['feature_cut'].explode()
+
+    for index in indices:
+        slices[index.name] = result[index.name].explode()
 
     return slices
 
