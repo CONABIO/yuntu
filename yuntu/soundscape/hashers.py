@@ -9,7 +9,7 @@ import datetime
 
 TIME_ZONE = "America/Mexico_city"
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
-TIME_START = "2000-01-01 00:00:00"
+TIME_START = "2018-01-01 00:00:00"
 TIME_UNIT = 3600
 TIME_MODULE = 24
 TIME_COLUMN = "time_raw"
@@ -157,7 +157,7 @@ class CronoHasher(Hasher):
         timeformat = row[self.format_column]
 
         atime = aware_time(strtime, timezone, timeformat)
-        delta_from_start = self.start - atime
+        delta_from_start = atime - self.start
 
         remainder = delta_from_start % self.module
         new_row = {}
