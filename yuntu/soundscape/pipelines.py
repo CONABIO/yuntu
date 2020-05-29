@@ -73,10 +73,11 @@ class Soundscape(Pipeline):
                                     ptype='scalar')
         self['recordings_dd'] = trans.as_dd(self['recordings'],
                                             self['npartitions'])
-        self['feature_slices'] = trans.slice_features(self['recordings_dd'],
-                                                      self['slice_config'])
-        self['index_results'] = trans.apply_indices(self['feature_slices'],
-                                                    self['indices'])
+        self['index_results'] = trans.slice_features(self['recordings_dd'],
+                                                     self['slice_config'],
+                                                     self['indices'])
+        # self['index_results'] = trans.apply_indices(self['feature_slices'],
+        #                                             self['indices'])
 
 
 class HashedSoundscape(Soundscape):
