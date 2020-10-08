@@ -1,6 +1,6 @@
-import yuntu.core.geometry.base as base
-import yuntu.core.geometry.utils as utils
+import yuntu.core.utils.atlas as utils
 
+import yuntu.core.geometry.base as base
 
 class Weak(base.Geometry):
     name = base.Geometry.Types.Weak

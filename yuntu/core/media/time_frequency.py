@@ -14,7 +14,7 @@ from yuntu.core.media.time import TimeItem
 from yuntu.core.media.utils import pad_array
 from yuntu.core.media.frequency import FrequencyMediaMixin
 from yuntu.core.media.frequency import FrequencyItem
-import yuntu.core.geometry.utils as geom_utils
+import yuntu.core.utils.atlas as geom_utils
 
 
 class TimeItemWithFrequencies(FrequencyMediaMixin, TimeItem):

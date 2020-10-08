@@ -8,8 +8,8 @@ from abc import ABC
 from abc import abstractmethod
 from enum import Enum
 
+import yuntu.core.utils.atlas as utils
 import yuntu.core.windows as windows
-import yuntu.core.geometry.utils as utils
 
 
 INFINITY = 10e+15

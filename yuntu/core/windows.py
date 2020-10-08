@@ -2,7 +2,7 @@
 from typing import Optional
 from abc import ABC
 from abc import abstractmethod
-import yuntu.core.geometry.utils as geom_utils
+import yuntu.core.utils.atlas as geom_utils
 
 
 INFINITY = 10e+15
