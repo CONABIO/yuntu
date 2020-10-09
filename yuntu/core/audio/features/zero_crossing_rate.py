@@ -2,7 +2,6 @@
 import librosa
 import numpy as np
 
-import yuntu.core.audio.audio as audio_mod
 from yuntu.core.audio.features.base import TimeFeature
 
 
@@ -31,9 +30,9 @@ class ZeroCrossingRate(TimeFeature):
         self.ref_magnitude = ref_magnitude
         self.frame_length = frame_length
         self.hop_length = hop_length
-
-        if audio is not None and not isinstance(audio, audio_mod.Audio):
-            audio = audio_mod.Audio.from_dict(audio)
+        from yuntu.core.audio.audio import Audio
+        if audio is not None and not isinstance(audio, Audio):
+            audio = Audio.from_dict(audio)
 
         if duration is None:
             if audio is None:

@@ -7,7 +7,6 @@ import numpy as np
 from librosa.core import amplitude_to_db
 from librosa.core import power_to_db
 
-import yuntu.core.audio.audio as audio_mod
 from yuntu.core.audio.features.base import TimeFrequencyFeature
 from yuntu.core.audio.features.utils import stft
 
@@ -70,8 +69,9 @@ class Spectrogram(TimeFrequencyFeature):
         self.window_function = window_function
 
         if time_axis is None:
-            if audio is not None and not isinstance(audio, audio_mod.Audio):
-                audio = audio_mod.Audio.from_dict(audio)
+            from yuntu.core.audio.audio import Audio
+            if audio is not None and not isinstance(audio, Audio):
+                audio = Audio.from_dict(audio)
 
             if duration is None:
                 if audio is None:

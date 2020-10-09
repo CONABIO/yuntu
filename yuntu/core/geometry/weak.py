@@ -1,9 +1,9 @@
 import yuntu.core.utils.atlas as utils
+from yuntu.core.geometry.base import Geometry
 
-import yuntu.core.geometry.base as base
 
-class Weak(base.Geometry):
-    name = base.Geometry.Types.Weak
+class Weak(Geometry):
+    name = Geometry.Types.Weak
 
     def __init__(self, geometry=None):
         if geometry is None:

@@ -1,11 +1,10 @@
 import yuntu.core.utils.atlas as utils
+from yuntu.core.geometry.base import Geometry
+from yuntu.core.geometry.mixins import Non2DGeometryMixin, TimeIntervalMixin
 
-import yuntu.core.geometry.base as base
-import yuntu.core.geometry.mixins as mixins
 
-
-class TimeLine(mixins.Non2DGeometryMixin, base.Geometry):
-    name = base.Geometry.Types.TimeLine
+class TimeLine(Non2DGeometryMixin, Geometry):
+    name = Geometry.Types.TimeLine
 
     def __init__(self, time=None, geometry=None):
         if geometry is None:
@@ -62,8 +61,8 @@ class TimeLine(mixins.Non2DGeometryMixin, base.Geometry):
         return ax
 
 
-class FrequencyLine(mixins.Non2DGeometryMixin, base.Geometry):
-    name = base.Geometry.Types.FrequencyLine
+class FrequencyLine(Non2DGeometryMixin, Geometry):
+    name = Geometry.Types.FrequencyLine
 
     def __init__(self, freq=None, geometry=None):
         if geometry is None:

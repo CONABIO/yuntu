@@ -2,7 +2,6 @@
 import os
 
 import numpy as np
-import yuntu.core.audio.audio as audio_module
 from yuntu.core.media.base import Media
 from yuntu.core.media.time import TimeMediaMixin
 from yuntu.core.media.frequency import FrequencyMediaMixin
@@ -25,7 +24,8 @@ class Feature(Media):
             audio=None,
             **kwargs):
         """Construct a feature."""
-        if isinstance(audio, audio_module.Audio):
+        from yuntu.core.audio.audio import Audio
+        if isinstance(audio, Audio):
             self._audio = audio
             self._audio_data = audio.to_dict()
         else:
@@ -36,9 +36,10 @@ class Feature(Media):
     @property
     def audio(self):
         if not hasattr(self, '_audio'):
+            from yuntu.core.audio.audio import Audio
             data = self._audio_data.copy()
             data.pop('type')
-            self._audio = audio_module.Audio.from_dict(
+            self._audio = Audio.from_dict(
                 data,
                 lazy=True)
         return self._audio

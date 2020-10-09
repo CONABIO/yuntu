@@ -1,14 +1,14 @@
 import yuntu.core.utils.atlas as utils
-
-import yuntu.core.geometry.base as base
-import yuntu.core.geometry.mixins as mixins
-
+from yuntu.core.geometry.base import Geometry
+from yuntu.core.geometry.mixins import Non2DGeometryMixin, \
+                                       TimeIntervalMixin, \
+                                       FrequencyIntervalMixin
 
 class TimeInterval(
-        mixins.Non2DGeometryMixin,
-        mixins.TimeIntervalMixin,
-        base.Geometry):
-    name = base.Geometry.Types.TimeInterval
+        Non2DGeometryMixin,
+        TimeIntervalMixin,
+        Geometry):
+    name = Geometry.Types.TimeInterval
 
     def __init__(self, start_time=None, end_time=None, geometry=None):
         if geometry is None:
@@ -92,10 +92,10 @@ class TimeInterval(
 
 
 class FrequencyInterval(
-        mixins.Non2DGeometryMixin,
-        mixins.FrequencyIntervalMixin,
-        base.Geometry):
-    name = base.Geometry.Types.FrequencyInterval
+        Non2DGeometryMixin,
+        FrequencyIntervalMixin,
+        Geometry):
+    name = Geometry.Types.FrequencyInterval
 
     def __init__(self, min_freq=None, max_freq=None, geometry=None):
         if geometry is None:

@@ -1,16 +1,15 @@
 import shapely.geometry as shapely_geometry
-
-import yuntu.core.geometry.base as base
-import yuntu.core.geometry.mixins as mixins
+from yuntu.core.geometry.base import Geometry
+from yuntu.core.geometry.mixins import Geometry2DMixin, MultiGeometryMixin
 
 
 class GeometryCollection(
-        mixins.MultiGeometryMixin,
-        mixins.Geometry2DMixin,
-        base.Geometry):
+        MultiGeometryMixin,
+        Geometry2DMixin,
+        Geometry):
     """Point collection geometry."""
 
-    name = base.Geometry.Types.GeometryCollection
+    name = Geometry.Types.GeometryCollection
 
     def __init__(self, collection=None, geometry=None):
         if geometry is None:
@@ -22,14 +21,14 @@ class GeometryCollection(
 
             geoms = []
             for geom in collection:
-                if isinstance(geom, base.Geometry):
+                if isinstance(geom, Geometry):
                     geoms.append(geom)
                 elif isinstance(geom, (
                         shapely_geometry.Point,
                         shapely_geometry.Polygon,
                         shapely_geometry.LineString
                         )):
-                    geoms.append(base.Geometry.from_geometry(geom))
+                    geoms.append(Geometry.from_geometry(geom))
                 elif isinstance(geom, (
                         shapely_geometry.GeometryCollection,
                         shapely_geometry.MultiLineString,
@@ -37,7 +36,7 @@ class GeometryCollection(
                         shapely_geometry.MultiPolygon
                         )):
                     for sgeom in geom:
-                        geoms.append(base.Geometry.from_geometry(sgeom))
+                        geoms.append(Geometry.from_geometry(sgeom))
                 elif isinstance(geom, GeometryCollection):
                     for sgeom in geom:
                         geoms.append(sgeom)
@@ -51,7 +50,7 @@ class GeometryCollection(
 
         else:
             self._geoms = [
-                base.Geometry.from_geometry(geom) for geom in geometry.geoms
+                Geometry.from_geometry(geom) for geom in geometry.geoms
             ]
 
         super().__init__(geometry=geometry)

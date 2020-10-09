@@ -1,10 +1,10 @@
 import yuntu.core.utils.atlas as utils
-import yuntu.core.geometry.base as base
-import yuntu.core.geometry.mixins as mixins
+from yuntu.core.geometry.base import Geometry
+from yuntu.core.geometry.mixins import Geometry2DMixin
 
 
-class BBox(mixins.Geometry2DMixin, base.Geometry):
-    name = base.Geometry.Types.BBox
+class BBox(Geometry2DMixin, Geometry):
+    name = Geometry.Types.BBox
 
     def __init__(
             self,

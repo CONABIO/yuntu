@@ -1,12 +1,11 @@
 import shapely.geometry as shapely_geometry
 import yuntu.core.utils.atlas as utils
+from yuntu.core.geometry.base import Geometry
+from yuntu.core.geometry.mixins import Geometry2DMixin, MultiGeometryMixin
 
-import yuntu.core.geometry.base as base
-import yuntu.core.geometry.mixins as mixins
 
-
-class Point(base.Geometry):
-    name = base.Geometry.Types.Point
+class Point(Geometry):
+    name = Geometry.Types.Point
 
     def __init__(self, time=None, freq=None, geometry=None):
         if geometry is None:
@@ -51,12 +50,12 @@ class Point(base.Geometry):
 
 
 class MultiPoint(
-        mixins.MultiGeometryMixin,
-        mixins.Geometry2DMixin,
-        base.Geometry):
+        MultiGeometryMixin,
+        Geometry2DMixin,
+        Geometry):
     """Point collection geometry."""
 
-    name = base.Geometry.Types.MultiPoint
+    name = Geometry.Types.MultiPoint
 
     def __init__(self, points=None, geometry=None):
         if geometry is None:

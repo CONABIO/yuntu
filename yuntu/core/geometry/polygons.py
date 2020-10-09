@@ -1,12 +1,11 @@
 import shapely.geometry as shapely_geometry
 import yuntu.core.utils.atlas as utils
+from yuntu.core.geometry.base import Geometry
+from yuntu.core.geometry.mixins import Geometry2DMixin, MultiGeometryMixin
 
-import yuntu.core.geometry.base as base
-import yuntu.core.geometry.mixins as mixins
 
-
-class Polygon(mixins.Geometry2DMixin, base.Geometry):
-    name = base.Geometry.Types.Polygon
+class Polygon(Geometry2DMixin, Geometry):
+    name = Geometry.Types.Polygon
 
     def __init__(self, wkt=None, shell=None, holes=None, geometry=None):
         if geometry is None:
@@ -82,12 +81,12 @@ class Polygon(mixins.Geometry2DMixin, base.Geometry):
 
 
 class MultiPolygon(
-        mixins.MultiGeometryMixin,
-        mixins.Geometry2DMixin,
-        base.Geometry):
+        MultiGeometryMixin,
+        Geometry2DMixin,
+        Geometry):
     """Polygon collection geometry."""
 
-    name = base.Geometry.Types.MultiPolygon
+    name = Geometry.Types.MultiPolygon
 
     def __init__(self, polygons=None, geometry=None):
         if geometry is None:

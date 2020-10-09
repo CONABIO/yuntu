@@ -1,13 +1,13 @@
 import numpy as np
 import shapely.geometry as shapely_geometry
 import yuntu.core.utils.atlas as utils
+from yuntu.core.geometry.base import Geometry
+from yuntu.core.geometry.mixins import Geometry2DMixin, MultiGeometryMixin
 
-import yuntu.core.geometry.base as base
-import yuntu.core.geometry.mixins as mixins
 
 
-class LineString(mixins.Geometry2DMixin, base.Geometry):
-    name = base.Geometry.Types.LineString
+class LineString(Geometry2DMixin, Geometry):
+    name = Geometry.Types.LineString
 
     def __init__(self, wkt=None, vertices=None, geometry=None):
         if geometry is None:
@@ -121,12 +121,12 @@ class LineString(mixins.Geometry2DMixin, base.Geometry):
 
 
 class MultiLineString(
-        mixins.MultiGeometryMixin,
-        mixins.Geometry2DMixin,
-        base.Geometry):
+        MultiGeometryMixin,
+        Geometry2DMixin,
+        Geometry):
     """Linestring collection geometry."""
 
-    name = base.Geometry.Types.MultiLineString
+    name = Geometry.Types.MultiLineString
 
     def __init__(self, linestrings=None, geometry=None):
         if geometry is None:

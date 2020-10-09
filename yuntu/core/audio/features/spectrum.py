@@ -1,7 +1,6 @@
 """Spectrum class module."""
 import numpy as np
 
-import yuntu.core.audio.audio as audio_mod
 from yuntu.core.audio.features.base import FrequencyFeature
 
 
@@ -19,8 +18,9 @@ class Spectrum(FrequencyFeature):
             **kwargs):
 
         if frequency_axis is None:
-            if audio is not None and not isinstance(audio, audio_mod.Audio):
-                audio = audio_mod.Audio.from_dict(audio)
+            from yuntu.core.audio.audio import Audio
+            if audio is not None and not isinstance(audio, Audio):
+                audio = Audio.from_dict(audio)
 
             if max_freq is None:
                 if array is not None and resolution is not None:
