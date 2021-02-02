@@ -312,7 +312,7 @@ class Audio(TimeMedia):
         """Return HTML5 audio element player of current audio."""
         # pylint: disable=import-outside-toplevel
         from IPython.display import Audio as HTMLAudio
-        rate = self.media_info.samplerate * speed
+        rate = self.samplerate * speed
         return HTMLAudio(data=self.array, rate=rate)
 
     def plot(self, ax=None, **kwargs):
