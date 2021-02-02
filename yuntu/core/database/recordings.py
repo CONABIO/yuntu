@@ -9,6 +9,7 @@ from datetime import datetime
 
 AUDIBLE_SPECTRUM = 'audible'
 ULTRASONIC_SPECTRUM = 'ultrasonic'
+ULTRASONIC_SAMPLERATE_THRESHOLD = 100000
 SPECTRUMS = [AUDIBLE_SPECTRUM, ULTRASONIC_SPECTRUM]
 
 
@@ -35,11 +36,11 @@ def build_base_recording_model(db):
 
             samplerate = self.media_info["samplerate"] * self.timeexp
             if self.spectrum == AUDIBLE_SPECTRUM:
-                if samplerate > 50000:
+                if samplerate > ULTRASONIC_SAMPLERATE_THRESHOLD:
                     raise ValueError("Not an audible recording.")
 
             if self.spectrum == ULTRASONIC_SPECTRUM:
-                if samplerate <= 50000:
+                if samplerate <= ULTRASONIC_SAMPLERATE_THRESHOLD:
                     print(samplerate)
                     raise ValueError("Not an ultrasonic recording.")
 
