@@ -34,6 +34,7 @@ pickle-mixin==1.0.2
 Pillow==7.1.1
 pony==0.7.13
 psutil==5.7.0
+psycopg2==2.8.6
 pycparser==2.20
 pygraphviz==1.5
 pymongo==3.10.1
@@ -54,7 +55,7 @@ SoundFile==0.10.3.post1
 tblib==1.6.0
 thrift==0.13.0
 toolz==0.10.0
-tornado==6.0.4
+tornado>=6.0.4
 tqdm==4.45.0
 typing-extensions==3.7.4.2
 urllib3==1.25.9
