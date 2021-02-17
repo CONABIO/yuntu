@@ -4,6 +4,7 @@ Annotated Object Module.
 This module defines a Mixin that can be given to all
 objects that posses annotations.
 """
+from inspect import signature
 import pandas as pd
 from yuntu.core.annotation.annotation import Annotation
 
@@ -113,7 +114,7 @@ class AnnotatedObjectMixin:
             annotations = self._filter_annotations(annotations)
 
         self.annotations = AnnotationList(annotations)
-        if bool(kwargs):
+        if len([key for key in signature(super().__init__).parameters.keys() if key != "self"]) != 0:
             super().__init__(**kwargs)
         else:
             super().__init__()
