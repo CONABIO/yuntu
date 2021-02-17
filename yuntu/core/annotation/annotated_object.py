@@ -114,10 +114,11 @@ class AnnotatedObjectMixin:
             annotations = self._filter_annotations(annotations)
 
         self.annotations = AnnotationList(annotations)
-        if len([key for key in signature(super().__init__).parameters.keys() if key != "self"]) != 0:
-            super().__init__(**kwargs)
-        else:
-            super().__init__()
+#         if len([key for key in signature(super().__init__).parameters.keys() if key != "self"]) != 0:
+#             super().__init__(**kwargs)
+#         else:
+#             super().__init__()
+        super().__init__()
 
     def to_dict(self):
         return {
