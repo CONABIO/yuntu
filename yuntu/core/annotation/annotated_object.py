@@ -113,8 +113,10 @@ class AnnotatedObjectMixin:
             annotations = self._filter_annotations(annotations)
 
         self.annotations = AnnotationList(annotations)
-
-        super().__init__(**kwargs)
+        if bool(kwargs)
+            super().__init__(**kwargs)
+        else:
+            super().__init__()
 
     def to_dict(self):
         return {
