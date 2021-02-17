@@ -19,7 +19,7 @@ Jinja2==3.0.0a1
 joblib==0.14.1
 kiwisolver==1.2.0
 librosa>=0.7.2
-llvmlite<0.37.0
+llvmlite==0.36.0rc1
 locket==0.2.0
 MarkupSafe==2.0.0a1
 matplotlib==3.2.1
