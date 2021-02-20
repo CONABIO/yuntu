@@ -131,9 +131,12 @@ def get_am_datetime(comment):
         tz = new_tz
     except Exception:
         pass
-
-    datetime_format = '%H:%M:%S %d/%m/%Y (%Z%z)'
-
+    
+    if "(UTC)" in raw:
+        datetime_format = '%H:%M:%S %d/%m/%Y (%Z)'
+    else:
+        datetime_format = '%H:%M:%S %d/%m/%Y (%Z%z)'
+    
     return {
         'raw': raw,
         'time': time,
