@@ -215,6 +215,11 @@ class AudioMothDatastore(Datastore):
 
         datetime_info = get_am_datetime(comment)
         datetime = datetime_info['datetime']
+        
+        if "(UTC)" in datetime_info["raw"]:
+            time_zone = "UTC"
+        else:
+            time_zone = datetime.tzinfo.tzname(datetime)
 
         return {
             'path': datum,
@@ -225,7 +230,7 @@ class AudioMothDatastore(Datastore):
             'spectrum': spectrum,
             'time_raw': datetime_info['raw'],
             'time_format': datetime_info['format'],
-            'time_zone': datetime.tzinfo.tzname(datetime),
+            'time_zone': time_zone,
             'time_utc': datetime
         }
 
