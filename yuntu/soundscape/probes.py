@@ -36,6 +36,17 @@ class TemplateProbe(Probe, ABC):
     def compare(self, target):
         """Compare target with self's template."""
 
+class ModelProbe(Probe, ABC):
+    """A probe that use any kind of detection or multilabelling model."""
+
+    @property
+    @abstractmethod
+    def model(self):
+        """Return probe's model."""
+
+    @abstractmethod
+    def predict(self, target):
+        """Return self model's raw output."""
 
 class CrossCorrelationProbe(TemplateProbe):
     """A probe that uses cross correaltion to match inputs with templates."""
