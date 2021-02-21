@@ -1,8 +1,10 @@
+"""Base classes for probes that use keras models as criteria."""
+from abc import ABC
 import tensorflow.keras as keras
 from yuntu.soundscape.probes.base import ModelProbe
 
 class KerasModelProbe(Probe, ABC):
-    """A probe that use any kind of detection or multilabelling model."""
+    """A model probe that uses keras."""
 
     def load_model(self):
         """Load model from model path."""

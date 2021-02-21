@@ -1,3 +1,4 @@
+"""Miscelaneous template based probes."""
 import numpy as np
 from skimage.feature import peak_local_max, match_template
 from shapely.ops import unary_union
