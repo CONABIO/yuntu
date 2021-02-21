@@ -4,14 +4,14 @@ from yuntu.core.audio.features.spectrogram import HOP_LENGTH
 from yuntu.core.audio.features.spectrogram import WINDOW_FUNCTION
 from yuntu.core.pipeline.base import Pipeline
 from yuntu.core.pipeline.places.extended import place
-import yuntu.soundscape.transitions.index_trans as trans
 from yuntu.soundscape.acoustic_indices.direct import EXAG
 from yuntu.soundscape.acoustic_indices.direct import INFORMATION
 from yuntu.soundscape.acoustic_indices.direct import CORE
 from yuntu.soundscape.acoustic_indices.direct import TOTAL
 from yuntu.soundscape.hashers.base import Hasher
 from yuntu.soundscape.hashers.hasher import hasher
-
+import yuntu.soundscape.transitions.index_trans as index_trans
+import yuntu.soundscape.transitions.basic_trans as basic_trans
 
 INDICES = [TOTAL(), EXAG(), INFORMATION(), CORE()]
 TIME_UNIT = 60
@@ -71,13 +71,12 @@ class Soundscape(Pipeline):
         self['npartitions'] = place(data=10,
                                     name='npartitions',
                                     ptype='scalar')
-        self['recordings_dd'] = trans.as_dd(self['recordings'],
+        self['recordings_dd'] = basic_trans.as_dd(self['recordings'],
                                             self['npartitions'])
-        self['index_results'] = trans.slice_features(self['recordings_dd'],
+        self['index_results'] = index_trans.slice_features(self['recordings_dd'],
                                                      self['slice_config'],
                                                      self['indices'])
-        # self['index_results'] = trans.apply_indices(self['feature_slices'],
-        #                                             self['indices'])
+
 
 
 class HashedSoundscape(Soundscape):
@@ -106,6 +105,6 @@ class HashedSoundscape(Soundscape):
         self['hash_name'] = place(data="xhash",
                                   name="hash_name",
                                   ptype='scalar')
-        self['hashed_soundscape'] = trans.add_hash(self['index_results'],
+        self['hashed_soundscape'] = basic_trans.add_hash(self['index_results'],
                                                    self['hasher'],
                                                    self['hash_name'])
