@@ -17,15 +17,19 @@ class Probe(ABC):
     @abstractmethod
     def apply(self, target, **kwargs):
         """Apply probe and return matches."""
-    
+
+    @abstractmethod
+    def clean(self):
+        """Remove memory footprint."""
+
     def __enter__(self):
         """Behaviour for context manager"""
         return self
 
-    @abstractmethod
     def __exit__(self, exception_type, exception_value, traceback):
         """Behaviour for context manager"""
-        
+        self.clean()
+
     def __call__(self, target, **kwargs):
         """Call apply method."""
         return self.apply(target, **kwargs)
@@ -211,7 +215,7 @@ class CrossCorrelationProbe(TemplateProbe):
         """Return frequency interval of probe."""
         return self._frequency_interval
 
-    def __exit__(self, exception_type, exception_value, traceback):
+    def clean(self):
         del self._template[:]
         self._frequency_interval = None
 
