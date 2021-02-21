@@ -4,13 +4,13 @@ from yuntu.core.audio.features.spectrogram import HOP_LENGTH
 from yuntu.core.audio.features.spectrogram import WINDOW_FUNCTION
 from yuntu.core.pipeline.base import Pipeline
 from yuntu.core.pipeline.places.extended import place
-import yuntu.soundscape.transitions as trans
-from yuntu.soundscape.indices import EXAG
-from yuntu.soundscape.indices import INFORMATION
-from yuntu.soundscape.indices import CORE
-from yuntu.soundscape.indices import TOTAL
-from yuntu.soundscape.hashers import Hasher
-from yuntu.soundscape.hashers import hasher
+import yuntu.soundscape.transitions.index_trans as trans
+from yuntu.soundscape.acoustic_indices.direct import EXAG
+from yuntu.soundscape.acoustic_indices.direct import INFORMATION
+from yuntu.soundscape.acoustic_indices.direct import CORE
+from yuntu.soundscape.acoustic_indices.direct import TOTAL
+from yuntu.soundscape.hashers.base import Hasher
+from yuntu.soundscape.hashers.hasher import hasher
 
 
 INDICES = [TOTAL(), EXAG(), INFORMATION(), CORE()]

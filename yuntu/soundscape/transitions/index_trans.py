@@ -10,7 +10,7 @@ from yuntu.core.pipeline.places import PickleablePlace
 from yuntu.core.pipeline.places import ScalarPlace
 from yuntu.core.pipeline.places.extended import PandasDataFramePlace
 from yuntu.core.pipeline.places.extended import DaskDataFramePlace
-from yuntu.soundscape.hashers import Hasher
+from yuntu.soundscape.hashers.base import Hasher
 from yuntu.soundscape.dataframe import SoundscapeAccessor
 
 

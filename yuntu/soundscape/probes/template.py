@@ -1,71 +1,8 @@
-"""Classes for audio probes."""
-from abc import ABC
-from abc import abstractmethod
 import numpy as np
 from skimage.feature import peak_local_max, match_template
 from shapely.ops import unary_union
 from yuntu.core.geometry import BBox, Polygon, FrequencyInterval
-
-class Probe(ABC):
-    """Base class for all probes.
-
-    Given a signal, a probe is a method that tests matching
-    criteria against it and returns a list of media slices that
-    satisfy them.
-    """
-
-    @abstractmethod
-    def apply(self, target, **kwargs):
-        """Apply probe and return matches."""
-
-    @abstractmethod
-    def clean(self):
-        """Remove memory footprint."""
-
-    def __enter__(self):
-        """Behaviour for context manager"""
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        """Behaviour for context manager"""
-        self.clean()
-
-    def __call__(self, target, **kwargs):
-        """Call apply method."""
-        return self.apply(target, **kwargs)
-
-class TemplateProbe(Probe, ABC):
-    """A probe that uses a template to find similar matches."""
-
-    @property
-    @abstractmethod
-    def template(self):
-        """Return probe's template."""
-
-    @abstractmethod
-    def compare(self, target):
-        """Compare target with self's template."""
-
-class ModelProbe(Probe, ABC):
-    """A probe that use any kind of detection or multilabelling model."""
-
-    def __init__(self, model_path):
-        self._model = None
-        self.model_path = model_path
-
-    @property
-    def model(self):
-        if self._model is None:
-            self.load_model()
-        return self._model
-
-    @abstractmethod
-    def load_model(self):
-        """Load model from model path."""
-
-    @abstractmethod
-    def predict(self, target):
-        """Return self model's raw output."""
+from yuntu.soundscape.probes.base import TemplateProbe
 
 class CrossCorrelationProbe(TemplateProbe):
     """A probe that uses cross correaltion to match inputs with templates."""
@@ -218,10 +155,3 @@ class CrossCorrelationProbe(TemplateProbe):
     def clean(self):
         del self._template[:]
         self._frequency_interval = None
-
-
-def probe(ptype="cross_correlation", **kwargs):
-    """Create probe of type 'ptype'."""
-    if ptype == "cross_correlation":
-        return CrossCorrelationProbe(**kwargs)
-    raise NotImplementedError(f"Probe type {ptype} not found.")
