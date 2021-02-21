@@ -5,7 +5,6 @@ import numpy as np
 from skimage.feature import peak_local_max, match_template
 from shapely.ops import unary_union
 from yuntu.core.geometry import BBox, Polygon, FrequencyInterval
-import tensorflow.keras as keras
 
 class Probe(ABC):
     """Base class for all probes.
