@@ -5,7 +5,7 @@ import numpy as np
 from skimage.feature import peak_local_max, match_template
 from shapely.ops import unary_union
 from yuntu.core.geometry import BBox, Polygon, FrequencyInterval
-
+import tensorflow.keras as keras
 
 class Probe(ABC):
     """Base class for all probes.
@@ -31,7 +31,6 @@ class Probe(ABC):
         """Call apply method."""
         return self.apply(target, **kwargs)
 
-
 class TemplateProbe(Probe, ABC):
     """A probe that uses a template to find similar matches."""
 
@@ -47,17 +46,6 @@ class TemplateProbe(Probe, ABC):
 class ModelProbe(Probe, ABC):
     """A probe that use any kind of detection or multilabelling model."""
 
-    @property
-    @abstractmethod
-    def model(self):
-        """Return probe's model."""
-
-    @abstractmethod
-    def predict(self, target):
-        """Return self model's raw output."""
-        
-class KerasModelProbe(ModelProbe, ABC):
-
     def __init__(self, model_path):
         self._model = None
         self.model_path = model_path
@@ -65,12 +53,16 @@ class KerasModelProbe(ModelProbe, ABC):
     @property
     def model(self):
         if self._model is None:
-            self._model = keras.models.load_model(self.model_path, compile=False)
+            self.load_model()
         return self._model
 
-    def __exit__(self, exception_type, exception_value, traceback):
-        del self._model
-        keras.backend.clear_session()
+    @abstractmethod
+    def load_model(self):
+        """Load model from model path."""
+
+    @abstractmethod
+    def predict(self, target):
+        """Return self model's raw output."""
 
 class CrossCorrelationProbe(TemplateProbe):
     """A probe that uses cross correaltion to match inputs with templates."""
