@@ -3,7 +3,7 @@ from abc import ABC
 import tensorflow.keras as keras
 from yuntu.soundscape.probes.base import ModelProbe
 
-class KerasModelProbe(Probe, ABC):
+class KerasModelProbe(ModelProbe, ABC):
     """A model probe that uses keras."""
 
     def load_model(self):
