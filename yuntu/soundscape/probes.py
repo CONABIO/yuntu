@@ -18,7 +18,15 @@ class Probe(ABC):
     @abstractmethod
     def apply(self, target, **kwargs):
         """Apply probe and return matches."""
+    
+    @abstractmethod
+    def __enter__(self):
+        """Behaviour for context manager"""
 
+    @abstractmethod
+    def __exit__(self, exception_type, exception_value, traceback):
+        """Behaviour for context manager"""
+        
     def __call__(self, target, **kwargs):
         """Call apply method."""
         return self.apply(target, **kwargs)
