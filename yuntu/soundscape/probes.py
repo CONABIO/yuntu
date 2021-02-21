@@ -19,9 +19,9 @@ class Probe(ABC):
     def apply(self, target, **kwargs):
         """Apply probe and return matches."""
     
-    @abstractmethod
     def __enter__(self):
         """Behaviour for context manager"""
+        return self
 
     @abstractmethod
     def __exit__(self, exception_type, exception_value, traceback):
@@ -203,9 +203,6 @@ class CrossCorrelationProbe(TemplateProbe):
     def frequency_interval(self):
         """Return frequency interval of probe."""
         return self._frequency_interval
-
-    def __enter__(self):
-        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         del self._template[:]
