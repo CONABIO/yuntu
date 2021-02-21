@@ -55,6 +55,22 @@ class ModelProbe(Probe, ABC):
     @abstractmethod
     def predict(self, target):
         """Return self model's raw output."""
+        
+class KerasModelProbe(ModelProbe, ABC):
+
+    def __init__(self, model_path):
+        self._model = None
+        self.model_path = model_path
+
+    @property
+    def model(self):
+        if self._model is None:
+            self._model = keras.models.load_model(self.model_path, compile=False)
+        return self._model
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        del self._model
+        keras.backend.clear_session()
 
 class CrossCorrelationProbe(TemplateProbe):
     """A probe that uses cross correaltion to match inputs with templates."""
