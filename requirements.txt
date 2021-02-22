@@ -13,7 +13,7 @@ distributed>=2.15.0
 fastparquet==0.3.3
 fsspec==0.7.3
 HeapDict==1.0.1
-idna>=2.8
+idna>=2.8,<2.9
 imageio==2.8.0
 Jinja2>=2.11.3
 joblib==0.14.1
