@@ -38,10 +38,11 @@ def insert_datastore(dstore_config, col_config):
 
     with db_session:
         datastore_record, recording_inserts, annotation_inserts = datastore.insert_into(col)
+        datastore_id = datastore_record.id
 
     col.db_manager.db.disconnect()
 
-    return {"datastore_record": datastore_record,
+    return {"datastore_record": datastore_id,
             "recording_inserts": recording_inserts,
             "annotation_inserts": annotation_inserts}
 
