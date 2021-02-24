@@ -4,10 +4,8 @@ import numpy as np
 from pony.orm import db_session
 
 from yuntu.utils import module_object
-
 from yuntu import Audio
 from yuntu.collection.base import collection
-
 from yuntu.core.pipeline.places import *
 from yuntu.core.pipeline import transition
 

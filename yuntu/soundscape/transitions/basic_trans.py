@@ -8,15 +8,12 @@ import dask.dataframe as dd
 import dask.bag as db
 from pony.orm import db_session
 
-from yuntu.utils import module_shobject
-
+from yuntu.utils import module_object
 from yuntu.core.audio.audio import Audio, MEDIA_INFO_FIELDS
 from yuntu.core.database.mixins.utils import pg_create_db
 from yuntu.collection.base import collection
-
 from yuntu.core.pipeline.places import *
 from yuntu.core.pipeline.transitions.decorators import transition
-
 from yuntu.soundscape.utils import slice_windows
 from yuntu.soundscape.hashers.base import Hasher
 from yuntu.soundscape.dataframe import SoundscapeAccessor
