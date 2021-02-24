@@ -6,7 +6,7 @@ from pony.orm import Json
 
 
 WEAK_ANNOTATION = 'WeakAnnotation'
-INTERVAL_ANNOTATION = 'IntervalAnnotation'
+TIME_INTERVAL_ANNOTATION = 'TimeIntervalAnnotation'
 FREQUENCY_INTERVAL_ANNOTATION = 'FrequencyIntervalAnnotation'
 BBOX_ANNOTATION = 'BBoxAnnotation'
 LINESTRING_ANNOTATION = 'LineStringAnnotation'
@@ -15,7 +15,7 @@ POLYGON_ANNOTATION = 'PolygonAnnotation'
 
 ANNOTATION_TYPES = [
     WEAK_ANNOTATION,
-    INTERVAL_ANNOTATION,
+    TIME_INTERVAL_ANNOTATION,
     FREQUENCY_INTERVAL_ANNOTATION,
     BBOX_ANNOTATION,
     LINESTRING_ANNOTATION,
@@ -56,7 +56,7 @@ def build_base_annotation_model(db):
                     'a starting and ending time (start_time and end_time)')
                 raise ValueError(message)
 
-            if self.type == INTERVAL_ANNOTATION:
+            if self.type == TIME_INTERVAL_ANNOTATION:
                 return
 
             if self.max_freq is None or self.min_freq is None:
