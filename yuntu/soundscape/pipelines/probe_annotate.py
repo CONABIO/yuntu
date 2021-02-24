@@ -14,8 +14,7 @@ class ProbeAnnotatePipeline(Pipeline):
                  collection_config,
                  query=None,
                  **kwargs):
-        if not isinstance(default_partitions, int):
-            raise ValueError("Arugment 'npartitions' must be an integer.")
+
         if not isinstance(collection_config, dict):
             raise ValueError("Argument 'collection_config' must be a dictionary.")
         if not isinstance(write_config, dict):
@@ -25,7 +24,6 @@ class ProbeAnnotatePipeline(Pipeline):
 
         super().__init__(name, **kwargs)
 
-        self.default_partitions = default_partitions
         self.query = query
         self.collection_config = collection_config
         self.probe_config = probe_config

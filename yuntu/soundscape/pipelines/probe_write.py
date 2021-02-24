@@ -24,7 +24,6 @@ class ProbeWritePipeline(Pipeline):
 
         super().__init__(name, **kwargs)
 
-        self.default_partitions = default_partitions
         self.query = query
         self.collection_config = collection_config
         self.write_config = write_config
