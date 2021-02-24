@@ -117,7 +117,10 @@ def probe_write(partitions, probe_config, col_config, write_config, batch_size):
 def probe_annotate(partitions, probe_config, col_config, batch_size):
     """Run probe and annotate recordings for each partition in parallel"""
 
-    results = partitions.map(insert_probe_annotations, col_config=col_config, batch_size=batch_size).flatten()
+    results = partitions.map(insert_probe_annotations,
+                             probe_config=probe_config,
+                             col_config=col_config,
+                             batch_size=batch_size).flatten()
 
     meta = [('id', np.dtype('int')), ('annotations', np.dtype('O'))]
 
