@@ -9,12 +9,14 @@ from abc import abstractmethod
 import os
 import pickle
 from pony.orm import db_session
-# import dill
+
 
 
 class Datastore(ABC):
-    _metadata = None
-    base_dir = '.'
+
+    def __init__(self):
+        self._metadata = None
+        self.base_dir = '.'
 
     def get_abspath(self, path):
         return os.path.join(self.base_dir, path)
@@ -51,7 +53,6 @@ class Datastore(ABC):
             self._metadata = self.get_metadata()
         return self._metadata
 
-    @db_session
     def create_datastore_record(self, collection):
         """Register this datastore into the collection."""
         return collection.db_manager.models.datastore(metadata=self.metadata)
@@ -59,6 +60,7 @@ class Datastore(ABC):
     @db_session
     def insert_into(self, collection):
         datastore_record = self.create_datastore_record(collection)
+        datastore_record.flush()
         datastore_id = datastore_record.id
 
         recording_inserts = 0
@@ -78,3 +80,15 @@ class Datastore(ABC):
             recording_inserts += 1
 
         return datastore_id, recording_inserts, annotation_inserts
+
+
+class Storage(Datastore, ABC):
+
+    def __init__(self, dir_path):
+        super().__init__()
+        self.dir_path = dir_path
+
+    def create_datastore_record(self, collection):
+        """Register this datastore into the collection."""
+        return collection.db_manager.models.storage(metadata=self.metadata,
+                                                    dir_path=self.dir_path)

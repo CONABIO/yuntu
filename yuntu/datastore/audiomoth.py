@@ -6,7 +6,7 @@ import struct
 import re
 from datetime import datetime
 
-from yuntu.datastore.base import Datastore
+from yuntu.datastore.base import Storage
 from yuntu.core.audio.utils import hash_file
 
 RIFF_ID_LENGTH = 4
@@ -163,18 +163,19 @@ def get_am_battery_state(comment):
     return match.group(1)
 
 
-class AudioMothDatastore(Datastore):
-    def __init__(self, path, tqdm=None):
-        self.path = path
+class AudioMothDatastore(Storage):
+
+    def __init__(self,*args, tqdm=None,**kwargs):
+        super().__init__(*args, **kwargs)
         self.tqdm = tqdm
 
     def iter(self):
         if self.tqdm is not None:
-            for fname in self.tqdm(glob.glob(os.path.join(self.path,
+            for fname in self.tqdm(glob.glob(os.path.join(self.dir_path,
                                                           '*.WAV'))):
                 yield fname
         else:
-            for fname in glob.glob(os.path.join(self.path, '*.WAV')):
+            for fname in glob.glob(os.path.join(self.dir_path, '*.WAV')):
                 yield fname
 
     def iter_annotations(self, datum):
@@ -182,14 +183,14 @@ class AudioMothDatastore(Datastore):
 
     def get_metadata(self):
         meta = {}
-        for fname in glob.glob(os.path.join(self.path, '*.WAV')):
+        for fname in glob.glob(os.path.join(self.dir_path, '*.WAV')):
             header = read_am_header(fname)
             comment = header['icmt']['comment'].decode('utf-8').rstrip('\x00')
             am_id = get_am_id(comment)
             meta["am_id"] = am_id
             break
 
-        meta["sd_path"] = self.path
+        meta["sd_path"] = self.dir_path
 
         return meta
 
