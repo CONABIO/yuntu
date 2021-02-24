@@ -31,7 +31,6 @@ class ProbeAnnotatePipeline(Pipeline):
         self["col_config"] = place(self.collection_config, 'dict', 'col_config')
         self["query"] = place(self.query, 'dynamic', 'query')
         self["npartitions"] = place(1, 'scalar', 'npartitions')
-        self["overwrite"] = place(False, "dynamic", "overwrite")
         self["batch_size"] = place(200, 'scalar', 'batch_size')
         self["probe_config"] = place(self.probe_config, 'dict', 'probe_config')
 

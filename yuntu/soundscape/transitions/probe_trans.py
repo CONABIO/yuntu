@@ -1,4 +1,5 @@
 import os
+import shutil
 import numpy as np
 from pony.orm import db_session
 
@@ -76,11 +77,11 @@ def insert_probe_annotations(partition, probe_config, col_config, batch_size, ov
             with Audio(path=path, timeexp=timeexp) as audio:
                 annotations = probe.annotate(audio, batch_size)
 
-            recording = col.recordings(rid)
-            for i in range(len(annotations)):
-                annotations[i]["recording"] = recording
-
-            col.annotate(annotations)
+            with db_session:
+                recording = col.recordings(rid)
+                for i in range(len(annotations)):
+                    annotations[i]["recording"] = recording
+                col.annotate(annotations)
 
             new_row["annotations"] = annotations
 
@@ -97,9 +98,14 @@ def insert_probe_annotations(partition, probe_config, col_config, batch_size, ov
 
 
 @transition(name="probe_write", outputs=["write_result"], persist=True,
-            signature=((DynamicPlace, DictPlace, DictPlace, DictPlace, ScalarPlace), (DaskDataFramePlace,)))
-def probe_write(partitions, probe_config, col_config, write_config, batch_size):
+            signature=((DynamicPlace, DictPlace, DictPlace, DictPlace, ScalarPlace, BoolPlace), (DaskDataFramePlace,)))
+def probe_write(partitions, probe_config, col_config, write_config, batch_size, overwrite=False):
     """Run probe and write results for each partition in parallel"""
+
+    if os.path.exists(write_config["write_dir"]) and overwrite:
+        shutil.rmtree(write_config["write_dir"], ignore_errors=True)
+    if not os.path.exists(write_config["write_dir"]):
+        os.makedirs(write_config["write_dir"])
 
     results = partitions.map(write_probe_outputs,
                              probe_config=probe_config,

@@ -1,13 +1,14 @@
 
 """Transitions for basic usage."""
 import os
+import shutil
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
 import dask.bag as db
 from pony.orm import db_session
 
-from yuntu.utils import module_object
+from yuntu.utils import module_shobject
 
 from yuntu.core.audio.audio import Audio, MEDIA_INFO_FIELDS
 from yuntu.core.database.mixins.utils import pg_create_db
@@ -78,11 +79,8 @@ def as_dd(pd_dataframe, npartitions):
 
 
 @transition(name="get_partitions", outputs=["partitions"],
-            signature=((DictPlace, DynamicPlace, ScalarPlace, DynamicPlace), (DynamicPlace,)))
-def get_partitions(col_config, query, npartitions=1, proceed=True):
-    if not proceed:
-        raise InterruptedError(f"Interrupted by pipeline checkpoint.")
-
+            signature=((DictPlace, DynamicPlace, ScalarPlace), (DynamicPlace,)))
+def get_partitions(col_config, query, npartitions=1):
     length = get_fragment_size(col_config, query)
     if length == 0:
         raise ValueError("Collection has no data. Populate collection first.")

@@ -1,7 +1,7 @@
 from yuntu.core.pipeline.base import Pipeline
 from yuntu.core.pipeline.places.extended import place
 
-from yuntu.soundscape.transitions.basic_trans import init_write_dir, get_partitions
+from yuntu.soundscape.transitions.basic_trans import get_partitions
 from yuntu.soundscape.transitions.probe_trans import probe_write
 
 
@@ -39,14 +39,12 @@ class ProbeWritePipeline(Pipeline):
         self["batch_size"] = place(200, 'scalar', 'batch_size')
         self["probe_config"] = place(self.probe_config, 'dict', 'probe_config')
 
-        self["dir_exists"] = init_write_dir(self["write_config"],
-                                            self["overwrite"])
         self["partitions"] = get_partitions(self["col_config"],
                                             self["query"],
-                                            self["npartitions"],
-                                            self["dir_exists"])
+                                            self["npartitions"])
         self["write_result"] = probe_write(self["partitions"],
                                            self["probe_config"],
                                            self["col_config"],
                                            self["write_config"],
-                                           self["batch_size"])
+                                           self["batch_size"],
+                                           self["overwrite"])
