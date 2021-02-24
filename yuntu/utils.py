@@ -83,7 +83,7 @@ def load_module_object_from_file(path, object_name):
         return meth
 
     else:
-        return getattr(modl, name_arr)
+        return getattr(modl, object_name)
 
 def module_object(module_config):
     if "path" in module_config:
