@@ -18,7 +18,7 @@ class Probe(ABC):
         structure and information:
         {
             'geometry': <yuntu.core.geometry.Geometry>,
-            'tag': <str>,
+            'labels': [{"key": <str>, "value": <str>, "type": <str>}, ...],
             'score': <dict>
         }
 
@@ -34,11 +34,11 @@ class Probe(ABC):
         geom = output["geometry"]
         start_time, min_freq, end_time, max_freq = geom.geometry.bounds
         wkt = geom.geometry.wkt
-        meta = {"score": meta["score"]}
+        meta = {"score": output["score"]}
         geom_type = geom.name
 
         return {
-            "labels": [{"key": "tag", "value": output["tag"], "type": "model_tag"}],
+            "labels": output["labels"],
             "type": f"{geom_type}Annotation",
             "start_time": start_time,
             "end_time": end_time,

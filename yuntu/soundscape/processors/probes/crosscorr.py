@@ -48,7 +48,7 @@ class CrossCorrelationProbe(TemplateProbe):
         if corr_values.size > 0:
             return {
                 "geometry": geom,
-                "tag": self.tag,
+                "labels": [{"key": "tag", "value": self.tag, "type": "crosscorr_tag"}],
                 "score": {
                     "peak_corr": np.amax(corr_values)
                 }
