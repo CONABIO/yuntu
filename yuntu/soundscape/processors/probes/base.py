@@ -35,7 +35,7 @@ class Probe(ABC):
         start_time, min_freq, end_time, max_freq = geom.geometry.bounds
         wkt = geom.geometry.wkt
         meta = {"score": output["score"]}
-        geom_type = str(geom.name).replace("Type.", "")
+        geom_type = str(geom.name).replace("Types.", "")
 
         return {
             "labels": output["labels"],
