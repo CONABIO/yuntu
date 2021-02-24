@@ -138,7 +138,7 @@ def pg_init_database(init_config, admin_config):
             signature=((DictPlace, PickleablePlace), (DaskDataFramePlace,)))
 def load_datastores(col_config, dstore_configs):
     dstore_bag = db.from_sequence(dstore_configs, npartitions=len(dstore_configs))
-    inserted = dstore_bag.map(insert_datastore, col_config=col_config).flatten()
+    inserted = dstore_bag.map(insert_datastore, col_config=col_config)
 
     meta = [('datastore_record', np.dtype('int')),
             ('recording_inserts', np.dtype('int')),
