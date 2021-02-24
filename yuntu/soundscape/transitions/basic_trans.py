@@ -114,7 +114,7 @@ def init_write_dir(write_config, overwrite=False):
 
 
 @transition(name="pg_init_database", outputs=["col_config"],
-            signature=((DictPlace, DynamicPlace, DynamicPlace), (DictPlace,)))
+            signature=((DictPlace, DynamicPlace), (DictPlace,)))
 def pg_init_database(init_config, admin_config):
     pg_create_db(init_config["db_config"]["config"],
                  admin_user=admin_config["admin_user"],
