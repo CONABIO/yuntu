@@ -52,6 +52,9 @@ class Datastore(ABC):
     def insert_into(self, collection):
         datastore_record = self.create_datastore_record(collection)
         commit()
+
+        datastore_id = datastore_record.id
+
         recording_inserts = 0
         annotation_inserts = 0
         for datum in self.iter():
