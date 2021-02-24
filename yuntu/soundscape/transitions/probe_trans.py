@@ -1,3 +1,4 @@
+import gc
 import os
 import shutil
 import numpy as np
@@ -8,7 +9,6 @@ from yuntu import Audio
 from yuntu.collection.base import collection
 from yuntu.core.pipeline.places import *
 from yuntu.core.pipeline import transition
-
 
 def write_probe_outputs(partition, probe_config, col_config, write_config, batch_size, overwrite=False):
     """Run probe on partition and write results"""
