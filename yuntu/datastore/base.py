@@ -13,7 +13,7 @@ from pony.orm import db_session
 
 
 class Datastore(ABC):
-    metadata = {}
+    metadata = None
     base_dir = '.'
 
     def get_abspath(self, path):
@@ -36,18 +36,25 @@ class Datastore(ABC):
     def prepare_annotation(self, datum, annotation):
         """Prepare a datastore annotation for collection insertion."""
 
+    @abstractmethod
+    def get_metadata(self):
+        """Return self's metadata"""
+
     def pickle(self):
         """Pickle instance."""
         return pickle.dumps(self)
 
-    def get_metadata(self):
-        return self.metadata
+    @property
+    def metadata(self):
+        """Datastore metadata"""
+        if self._metadata is None:
+            self._metadata = self.get_metadata()
+        return self._metadata
 
     @db_session
     def create_datastore_record(self, collection):
         """Register this datastore into the collection."""
-        metadata = self.get_metadata()
-        return collection.db_manager.models.datastore(metadata=metadata)
+        return collection.db_manager.models.datastore(metadata=self.metadata)
 
     @db_session
     def insert_into(self, collection):

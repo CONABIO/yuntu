@@ -131,12 +131,12 @@ def get_am_datetime(comment):
         tz = new_tz
     except Exception:
         pass
-    
+
     if "(UTC)" in raw:
         datetime_format = '%H:%M:%S %d/%m/%Y (%Z)'
     else:
         datetime_format = '%H:%M:%S %d/%m/%Y (%Z%z)'
-    
+
     return {
         'raw': raw,
         'time': time,
@@ -180,6 +180,24 @@ class AudioMothDatastore(Datastore):
     def iter_annotations(self, datum):
         return []
 
+    def get_metadata(self):
+        meta = None
+        for fname in glob.glob(os.path.join(self.path, '*.WAV')):
+            if meta is None:
+                try:
+                    header = read_am_header(fname)
+                    comment = header['icmt']['comment'].decode('utf-8').rstrip('\x00')
+                    am_id = get_am_id(comment)
+                    meta = {"am_id": am_id}
+                except:
+                    meta = None
+            else:
+                break
+
+        meta["sd_path"] = self.path
+
+        return meta
+
     def prepare_datum(self, datum):
         header = read_am_header(datum)
 
@@ -215,7 +233,7 @@ class AudioMothDatastore(Datastore):
 
         datetime_info = get_am_datetime(comment)
         datetime = datetime_info['datetime']
-        
+
         if "(UTC)" in datetime_info["raw"]:
             time_zone = "UTC"
         else:
