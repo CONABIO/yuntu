@@ -15,8 +15,6 @@ class ProbeWritePipeline(Pipeline):
                  write_config,
                  query=None,
                  **kwargs):
-        if not isinstance(default_partitions, int):
-            raise ValueError("Arugment 'npartitions' must be an integer.")
         if not isinstance(collection_config, dict):
             raise ValueError("Argument 'collection_config' must be a dictionary.")
         if not isinstance(write_config, dict):
