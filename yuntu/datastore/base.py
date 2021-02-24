@@ -13,7 +13,7 @@ from pony.orm import db_session
 
 
 class Datastore(ABC):
-    metadata = None
+    _metadata = None
     base_dir = '.'
 
     def get_abspath(self, path):
