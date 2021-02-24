@@ -82,7 +82,7 @@ def insert_probe_annotations(partition, probe_config, col_config, batch_size, ov
                     col.annotate(annotations)
 
             new_row = {"id": rid}
-            new_row["annotations"] = annotations
+            new_row["annotation_inserts"] = len(annotations)
 
             count += 1
 
@@ -127,6 +127,6 @@ def probe_annotate(partitions, probe_config, col_config, batch_size):
                              col_config=col_config,
                              batch_size=batch_size).flatten()
 
-    meta = [('id', np.dtype('int')), ('annotations', np.dtype('O'))]
+    meta = [('id', np.dtype('int')), ('annotation_inserts', np.dtype('int'))]
 
     return results.to_dataframe(meta=meta)
