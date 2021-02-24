@@ -1,6 +1,4 @@
-"""Audio dataframe base classes.
-An audio dataframe is a
-"""
+"""Audio dataframe base classes"""
 import pandas as pd
 from dask import delayed
 import dask.dataframe.extensions

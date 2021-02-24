@@ -3,7 +3,9 @@ import numpy as np
 from skimage.feature import peak_local_max, match_template
 from shapely.ops import unary_union
 from yuntu.core.geometry import BBox, Polygon, FrequencyInterval
-from yuntu.soundscape.probes.base import TemplateProbe
+from yuntu.core.annotation.annotation import Annotation
+
+from yuntu.soundscape.processors.probes.base import TemplateProbe
 
 class CrossCorrelationProbe(TemplateProbe):
     """A probe that uses cross correaltion to match inputs with templates."""
@@ -45,9 +47,11 @@ class CrossCorrelationProbe(TemplateProbe):
         corr_values = corr[target.to_mask(geometry=geom).array]
         if corr_values.size > 0:
             return {
+                "geometry": geom,
                 "tag": self.tag,
-                "peak_corr": np.amax(corr_values),
-                "geometry": geom
+                "score": {
+                    "peak_corr": np.amax(corr_values)
+                }
             }
         return None
 
@@ -73,8 +77,7 @@ class CrossCorrelationProbe(TemplateProbe):
             results.append(corr)
         return np.array(results)
 
-    def apply(self, target, thresh=0.5, method='mean',
-              peak_distance=10, limit_freqs=True):
+    def apply(self, target, thresh=0.5, method='mean', peak_distance=10, limit_freqs=True):
         if not isinstance(limit_freqs, FrequencyInterval):
             if limit_freqs:
                 limit_freqs = self.frequency_interval

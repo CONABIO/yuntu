@@ -274,6 +274,14 @@ class Media(ABC, AnnotatedObjectMixin):
 
         return getattr(ufunc, method)(*modified_inputs, **modified_kwargs)
 
+    def __enter__(self):
+        """Behaviour for context manager"""
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """Behaviour for context manager"""
+        self.clean()
+
 
 NUMPY_METHODS = [
     'all',

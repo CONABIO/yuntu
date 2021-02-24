@@ -1,4 +1,6 @@
 """Yuntu utilities."""
+from importlib import import_module
+
 import os
 import io
 import tempfile
@@ -50,3 +52,41 @@ def scp_file(src, dest):
     subprocess.run(['scp', src, filename], check=True)
     print(' done.')
     return filename
+
+def load_module_object(object_name):
+    name_arr = object_name.split(".")
+    if len(name_arr) > 1:
+        meth = import_module(name_arr[0])
+        for i in range(1,len(name_arr)):
+            last = getattr(meth, name_arr[i])
+            meth = last
+
+        return meth
+
+    else:
+        raise ValueError("Only module specified.")
+
+def load_module_object_from_file(path, object_name):
+    spec = importlib.util.spec_from_file_location(object_name, path)
+    modl = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modl)
+
+    name_arr = object_name.split(".")
+
+    if len(name_arr) > 1:
+        meth = getattr(modl, name_arr[0])
+        for i in range(1, len(name_arr)):
+            last = getattr(meth, name_arr[i])
+            meth = last
+
+        return meth
+
+    else:
+        return getattr(modl, name_arr)
+
+def module_object(module_config):
+    if "path" in module_config:
+        if module_config["path"] is not None:
+            return load_module_object_from_file(module_config["path"],
+                                                module_config["object_name"])
+    return load_module_object(module_config["object_name"])

@@ -1,5 +1,5 @@
 """Probe importer and high level functions."""
-from yuntu.sounscape.probes.crosscorr import CrossCorrelationProbe
+from yuntu.soundscape.processors.probes.crosscorr import CrossCorrelationProbe
 
 def probe(ptype="cross_correlation", **kwargs):
     """Create probe of type 'ptype'."""

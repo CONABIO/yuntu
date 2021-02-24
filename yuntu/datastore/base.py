@@ -21,7 +21,7 @@ class Datastore(ABC):
 
     @abstractmethod
     def iter(self):
-        """Return an iterator of the datums to import."""
+        """Return an iterator of the data to import."""
 
     @abstractmethod
     def iter_annotations(self, datum):
@@ -51,7 +51,8 @@ class Datastore(ABC):
     @db_session
     def insert_into(self, collection):
         datastore_record = self.create_datastore_record(collection)
-
+        recording_inserts = 0
+        annotation_inserts = 0
         for datum in self.iter():
             meta = self.prepare_datum(datum)
             meta['path'] = self.get_abspath(meta['path'])
@@ -62,3 +63,8 @@ class Datastore(ABC):
                 annotation_meta = self.prepare_annotation(datum, annotation)
                 annotation_meta['recording'] = recording
                 collection.annotate([annotation_meta])
+                annotation_inserts += 1
+
+            recording_inserts += 1
+
+        return datastore_record, recording_inserts, annotation_inserts

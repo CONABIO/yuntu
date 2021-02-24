@@ -4,14 +4,16 @@ from yuntu.core.audio.features.spectrogram import HOP_LENGTH
 from yuntu.core.audio.features.spectrogram import WINDOW_FUNCTION
 from yuntu.core.pipeline.base import Pipeline
 from yuntu.core.pipeline.places.extended import place
-from yuntu.soundscape.acoustic_indices.direct import EXAG
-from yuntu.soundscape.acoustic_indices.direct import INFORMATION
-from yuntu.soundscape.acoustic_indices.direct import CORE
-from yuntu.soundscape.acoustic_indices.direct import TOTAL
+
+from yuntu.soundscape.processors.indices.direct import EXAG
+from yuntu.soundscape.processors.indices.direct import INFORMATION
+from yuntu.soundscape.processors.indices.direct import CORE
+from yuntu.soundscape.processors.indices.direct import TOTAL
 from yuntu.soundscape.hashers.base import Hasher
 from yuntu.soundscape.hashers.hasher import hasher
-import yuntu.soundscape.transitions.index_trans as index_trans
-import yuntu.soundscape.transitions.basic_trans as basic_trans
+
+from yuntu.soundscape.transitions.basic_trans import as_dd, add_hash
+from yuntu.soundscape.transitions.index_trans import slice_features
 
 INDICES = [TOTAL(), EXAG(), INFORMATION(), CORE()]
 TIME_UNIT = 60
@@ -25,11 +27,11 @@ HASHER = hasher('crono')
 HASH_COL = 'crono_hash'
 
 
-class Soundscape(Pipeline):
-    """Base class for soundscape pipelines."""
+class SoundscapePipeline(Pipeline):
+    """Basic soundscape pipeline"""
 
     def __init__(self,
-                 *args,
+                 name,
                  recordings,
                  indices=INDICES,
                  time_unit=TIME_UNIT,
@@ -38,7 +40,7 @@ class Soundscape(Pipeline):
                  feature_type=FEATURE_TYPE,
                  feature_config=FEATURE_CONFIG,
                  **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(name, **kwargs)
         if not isinstance(indices, (tuple, list)):
             message = "Argument 'indices' must be a tuple or a list of " + \
                       " acoustic indices."
@@ -71,15 +73,15 @@ class Soundscape(Pipeline):
         self['npartitions'] = place(data=10,
                                     name='npartitions',
                                     ptype='scalar')
-        self['recordings_dd'] = basic_trans.as_dd(self['recordings'],
-                                            self['npartitions'])
-        self['index_results'] = index_trans.slice_features(self['recordings_dd'],
-                                                     self['slice_config'],
-                                                     self['indices'])
+        self['recordings_dd'] = as_dd(self['recordings'],
+                                      self['npartitions'])
+        self['index_results'] = slice_features(self['recordings_dd'],
+                                               self['slice_config'],
+                                               self['indices'])
 
 
 
-class HashedSoundscape(Soundscape):
+class HashedSoundscapePipeline(SoundscapePipeline):
     """Hashed soundscape pipeline.
 
     A hashed soundscape is a soundscape that has a special column 'hash'
@@ -105,6 +107,6 @@ class HashedSoundscape(Soundscape):
         self['hash_name'] = place(data="xhash",
                                   name="hash_name",
                                   ptype='scalar')
-        self['hashed_soundscape'] = basic_trans.add_hash(self['index_results'],
-                                                   self['hasher'],
-                                                   self['hash_name'])
+        self['hashed_soundscape'] = add_hash(self['index_results'],
+                                             self['hasher'],
+                                             self['hash_name'])

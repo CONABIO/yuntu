@@ -1,7 +1,7 @@
 import numpy as np
 from yuntu.soundscape.utils import interpercentile_mean_decibels
 from yuntu.soundscape.utils import decile_mod
-from yuntu.soundscape.acoustic_indices.base import AcousticIndex
+from yuntu.soundscape.processors.indices.base import AcousticIndex
 
 class TOTAL(AcousticIndex):
     name = 'TOTAL'

@@ -3,49 +3,40 @@
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-from yuntu.soundscape.utils import slice_windows
+import dask.bag as db
 from yuntu.core.pipeline.transitions.decorators import transition
 from yuntu.core.audio.audio import Audio, MEDIA_INFO_FIELDS
-from yuntu.core.pipeline.places import DictPlace
-from yuntu.core.pipeline.places import ScalarPlace
-from yuntu.core.pipeline.places import PickleablePlace
-from yuntu.core.pipeline.places.extended import PandasDataFramePlace
-from yuntu.core.pipeline.places.extended import DaskDataFramePlace
+from yuntu.core.pipeline.places import *
+
+from yuntu.soundscape.utils import slice_windows
 from yuntu.soundscape.hashers.base import Hasher
 from yuntu.soundscape.dataframe import SoundscapeAccessor
 
 
-def feature_slices(row, audio, config, indices):
-    """Produce slices from recording and configuration."""
-    cuts, weights = slice_windows(config["time_unit"],
-                                  audio.duration,
-                                  config["frequency_bins"],
-                                  config["frequency_limits"])
-    feature = getattr(audio.features,
-                      config["feature_type"])(**config["feature_config"])
-    audio.clean()
-    feature_cuts = [feature.cut_array(cut) for cut in cuts]
-    feature.clean()
+def get_fragment_size(col_config, query):
+    col = collection(**col_config)
 
-    start_times = [cut.start for cut in cuts]
-    end_times = [cut.end for cut in cuts]
-    max_freqs = [cut.max for cut in cuts]
-    min_freqs = [cut.min for cut in cuts]
+    with db_session:
+        fragment_length = col.recordings(query=qury).count()
 
-    new_row = {}
-    new_row['start_time'] = start_times
-    new_row['end_time'] = end_times
-    new_row['min_freq'] = max_freqs
-    new_row['max_freq'] = min_freqs
-    new_row['weight'] = weights
+    col.db_manager.db.disconnect()
+    return fragment_length
 
-    for index in indices:
-        results = []
-        for fcut in feature_cuts:
-            results.append(index(fcut))
-        new_row[index.name] = results
+def insert_datastore(dstore_config, col_config):
+    dstore_class = module_object(dstore_config["module"])
+    dstore_kwargs = dstore_config["kwargs"]
 
-    return pd.Series(new_row)
+    datastore = dstore_class(**dstore_kwargs)
+    col = collection(**col_config)
+
+    with db_session:
+        datastore_record, recording_inserts, annotation_inserts = datastore.insert_into(col)
+
+    col.db_manager.db.disconnect()
+
+    return {"datastore_record": datastore_record,
+            "recording_inserts": recording_inserts,
+            "annotation_inserts": annotation_inserts}
 
 @transition(name='add_hash', outputs=["hashed_soundscape"],
             keep=True, persist=True, is_output=True,
@@ -67,41 +58,6 @@ def add_hash(dataframe, hasher, out_name="xhash"):
     return dataframe
 
 
-@transition(name='slice_features', outputs=["feature_slices"], persist=True,
-            signature=((DaskDataFramePlace, DictPlace, PickleablePlace),
-                       (DaskDataFramePlace,)))
-def slice_features(recordings, config, indices):
-    """Produce feature slices dataframe."""
-
-    meta = [('start_time', np.dtype('float64')),
-            ('end_time', np.dtype('float64')),
-            ('min_freq', np.dtype('float64')),
-            ('max_freq', np.dtype('float64')),
-            ('weight', np.dtype('float64'))]
-
-    meta += [(index.name,
-             np.dtype('float64'))
-             for index in indices]
-
-    result = recordings.audio.apply(feature_slices,
-                                    meta=meta,
-                                    config=config,
-                                    indices=indices)
-
-    recordings['start_time'] = result['start_time']
-
-    slices = recordings.explode('start_time')
-    slices['end_time'] = result['end_time'].explode()
-    slices['min_freq'] = result['max_freq'].explode()
-    slices['max_freq'] = result['min_freq'].explode()
-    slices['weight'] = result['weight'].explode()
-
-    for index in indices:
-        slices[index.name] = result[index.name].explode()
-
-    return slices
-
-
 @transition(name='as_dd', outputs=["recordings_dd"],
             signature=((PandasDataFramePlace, ScalarPlace),
                        (DaskDataFramePlace,)))
@@ -111,3 +67,74 @@ def as_dd(pd_dataframe, npartitions):
                                     npartitions=npartitions,
                                     name="as_dd")
     return dask_dataframe
+
+
+@transition(name="get_partitions", outputs=["partitions"],
+            signature=((DictPlace, DynamicPlace, ScalarPlace, DynamicPlace), (DynamicPlace,)))
+def get_partitions(col_config, query, npartitions=1, proceed=True):
+    if not proceed:
+        raise InterruptedError(f"Interrupted by pipeline checkpoint.")
+
+    length = get_fragment_size(col_config, query)
+    if length == 0:
+        raise ValueError("Collection has no data. Populate collection first.")
+
+    psize = int(np.floor(length / npartitions))
+    psize = min(length, max(psize, 1))
+
+    partitions = []
+    for ind in range(0, length, psize):
+        offset = ind
+        limit = min(psize, length - offset)
+
+        stop = False
+        if length - (offset + limit) < 30:
+            limit = length - offset
+            stop = True
+
+        partitions.append({"query": query, "limit": limit, "offset": offset})
+
+        if stop:
+            break
+
+
+    return db.from_sequence(partitions, npartitions=len(partitions))
+
+
+@transition(name="init_write_dir", outputs=["dir_exists"],
+            signature=((DictPlace, DynamicPlace), (DynamicPlace,)))
+def init_write_dir(write_config, overwrite=False):
+    """Initialize output directory"""
+
+    if os.path.exists(write_config["write_dir"]) and overwrite:
+        shutil.rmtree(write_config["write_dir"], ignore_errors=True)
+    if not os.path.exists(write_config["write_dir"]):
+        os.makedirs(write_config["write_dir"])
+    return True
+
+
+@transition(name="pg_init_database", outputs=["col_config"],
+            signature=((DictPlace, DynamicPlace, DynamicPlace), (DictPlace,)))
+def pg_init_database(init_config, admin_config):
+    pg_create_db(init_config["db_config"]["config"],
+                 admin_user=admin_config["admin_user"],
+                 admin_password=admin_config["admin_password"],
+                 admin_db=admin_config["admin_db"])
+
+    col = collection(**init_config)
+    col.db_manager.db.disconnect()
+
+    return init_config
+
+
+@transition(name="load_datastores", outputs=["insert_results"],
+            signature=((DictPlace, PickleablePlace), (DaskDataFramePlace,)))
+def load_datastores(col_config, dstore_configs):
+    dstore_bag = db.from_sequence(dstore_configs, npartitions=len(dstore_configs))
+    inserted = dstore_bag.map(insert_datastore, col_config=col_config).flatten()
+
+    meta = [('datastore_record', np.dtype('int')),
+            ('recording_inserts', np.dtype('int')),
+            ('annotation_inserts', np.dtype('int'))]
+
+    return inserted.to_dataframe(meta=meta)

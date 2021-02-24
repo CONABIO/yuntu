@@ -6,12 +6,17 @@ from yuntu.dataframe.annotation import AnnotationAccessor
 
 from .core import audio, database
 from . import collection
+from . import datastore
+from . import dataframe
+from . import soundscape
+
 
 __all__ = [
     'Audio',
     'audio',
     'database',
     'datastore',
+    'soundscape',
     'collection',
     'AudioAccessor',
     'AnnotationAccessor',
