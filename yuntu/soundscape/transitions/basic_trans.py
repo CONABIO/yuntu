@@ -1,5 +1,6 @@
 
 """Transitions for basic usage."""
+import os
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd

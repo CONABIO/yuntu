@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from pony.orm import db_session
 
