@@ -71,16 +71,17 @@ def insert_probe_annotations(partition, probe_config, col_config, batch_size, ov
     count = 0
     with probe_class(**probe_kwargs) as probe:
         for rid, path, duration, timeexp in dataframe[["id", "path", "duration", "timeexp"]].values:
-            new_row = {"id": rid}
             with Audio(path=path, timeexp=timeexp) as audio:
                 annotations = probe.annotate(audio, batch_size)
 
-            with db_session:
-                recording = col.recordings(query=lambda recording: recording.id == rid)
-                for i in range(len(annotations)):
-                    annotations[i]["recording"] = recording
-                col.annotate(annotations)
+            if len(annotations) > 0:
+                with db_session:
+                    recording = col.recordings(query=lambda recording: recording.id == rid)
+                    for i in range(len(annotations)):
+                        annotations[i]["recording"] = recording
+                    col.annotate(annotations)
 
+            new_row = {"id": rid}
             new_row["annotations"] = annotations
 
             count += 1
