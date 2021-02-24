@@ -17,8 +17,6 @@ class ProbeAnnotatePipeline(Pipeline):
 
         if not isinstance(collection_config, dict):
             raise ValueError("Argument 'collection_config' must be a dictionary.")
-        if not isinstance(write_config, dict):
-            raise ValueError("Argument 'write_config' must be a dictionary.")
         if not isinstance(probe_config, dict):
             raise ValueError("Argument 'probe_config' must be a dictionary.")
 
