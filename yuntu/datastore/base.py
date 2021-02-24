@@ -51,6 +51,7 @@ class Datastore(ABC):
     @db_session
     def insert_into(self, collection):
         datastore_record = self.create_datastore_record(collection)
+        commit()
         recording_inserts = 0
         annotation_inserts = 0
         for datum in self.iter():
@@ -67,4 +68,4 @@ class Datastore(ABC):
 
             recording_inserts += 1
 
-        return datastore_record, recording_inserts, annotation_inserts
+        return datastore_id, recording_inserts, annotation_inserts
