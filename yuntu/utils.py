@@ -1,4 +1,5 @@
 """Yuntu utilities."""
+import importlib.util
 from importlib import import_module
 
 import os
