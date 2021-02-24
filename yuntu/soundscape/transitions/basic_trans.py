@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import dask.dataframe as dd
 import dask.bag as db
+from pony.orm import db_session
 
 from yuntu.utils import module_object
 
