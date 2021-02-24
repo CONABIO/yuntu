@@ -34,7 +34,7 @@ class DatastoreLoadPipeline(Pipeline):
     def build(self):
         self["init_config"] = place(self.collection_config, 'dict', 'init_config')
         self["admin_config"] = place(self.admin_config, 'dynamic', 'admin_config')
-        self["datastore_configs"] = place(self.datastore_configs, 'pickleabe', 'datastore_configs')
+        self["datastore_configs"] = place(self.datastore_configs, 'pickleable', 'datastore_configs')
 
         self["col_config"] = pg_init_database(self["init_config"],
                                               self["admin_config"])
