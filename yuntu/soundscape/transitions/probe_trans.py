@@ -76,7 +76,7 @@ def insert_probe_annotations(partition, probe_config, col_config, batch_size, ov
 
             if len(annotations) > 0:
                 with db_session:
-                    recording = col.recordings(query=lambda recording: recording.id == rid)
+                    recording = col.recordings(query=lambda recording: recording.id == rid, iterate=False)[0]
                     for i in range(len(annotations)):
                         annotations[i]["recording"] = recording
                     col.annotate(annotations)
