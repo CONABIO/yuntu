@@ -35,12 +35,9 @@ class ProbeAnnotatePipeline(Pipeline):
         self["batch_size"] = place(200, 'scalar', 'batch_size')
         self["probe_config"] = place(self.probe_config, 'dict', 'probe_config')
 
-        self["dir_exists"] = init_write_dir(self["write_config"],
-                                            self["overwrite"])
         self["partitions"] = get_partitions(self["col_config"],
                                             self["query"],
-                                            self["npartitions"],
-                                            self["dir_exists"])
+                                            self["npartitions"])
         self["annotation_result"] = probe_annotate(self["partitions"],
                                                    self["probe_config"],
                                                    self["col_config"],
