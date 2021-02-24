@@ -43,6 +43,7 @@ class Datastore(ABC):
     def get_metadata(self):
         return self.metadata
 
+    @db_session
     def create_datastore_record(self, collection):
         """Register this datastore into the collection."""
         metadata = self.get_metadata()
@@ -51,8 +52,6 @@ class Datastore(ABC):
     @db_session
     def insert_into(self, collection):
         datastore_record = self.create_datastore_record(collection)
-        commit()
-
         datastore_id = datastore_record.id
 
         recording_inserts = 0
