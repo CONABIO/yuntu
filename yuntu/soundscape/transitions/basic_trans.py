@@ -25,7 +25,7 @@ def get_fragment_size(col_config, query):
     col = collection(**col_config)
 
     with db_session:
-        fragment_length = col.recordings(query=qury).count()
+        fragment_length = col.recordings(query=query).count()
 
     col.db_manager.db.disconnect()
     return fragment_length
