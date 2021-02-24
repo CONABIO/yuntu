@@ -5,6 +5,8 @@ import pandas as pd
 import dask.dataframe as dd
 import dask.bag as db
 
+from yuntu.utils import module_object
+
 from yuntu.core.audio.audio import Audio, MEDIA_INFO_FIELDS
 from yuntu.core.database.mixins.utils import pg_create_db
 from yuntu.collection.base import collection

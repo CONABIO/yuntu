@@ -1,7 +1,6 @@
 from yuntu.core.pipeline.base import Pipeline
 from yuntu.core.pipeline.places.extended import place
 
-
 from yuntu.soundscape.transitions.basic_trans import load_datastores, pg_init_database
 
 class DatastoreLoadPipeline(Pipeline):
