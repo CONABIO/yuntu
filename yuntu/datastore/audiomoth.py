@@ -181,18 +181,13 @@ class AudioMothDatastore(Datastore):
         return []
 
     def get_metadata(self):
-        meta = None
+        meta = {}
         for fname in glob.glob(os.path.join(self.path, '*.WAV')):
-            if meta is None:
-                try:
-                    header = read_am_header(fname)
-                    comment = header['icmt']['comment'].decode('utf-8').rstrip('\x00')
-                    am_id = get_am_id(comment)
-                    meta = {"am_id": am_id}
-                except:
-                    meta = None
-            else:
-                break
+            header = read_am_header(fname)
+            comment = header['icmt']['comment'].decode('utf-8').rstrip('\x00')
+            am_id = get_am_id(comment)
+            meta["am_id"] = am_id
+            break
 
         meta["sd_path"] = self.path
 
