@@ -82,7 +82,7 @@ class DatabaseManager:
         """Build supplemental datastores for specific behaviours."""
         foreign = build_foreign_db_datastore_model(datastore)
         storage = build_storage_model(datastore)
-        remote = build_remote_storage_model(datastore)
+        remote = build_remote_storage_model(storage)
         return foreign, storage, remote
 
     def get_model_class(self, model):

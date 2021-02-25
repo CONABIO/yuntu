@@ -39,6 +39,6 @@ def build_storage_model(Datastore):
 def build_remote_storage_model(Storage):
     class RemoteStorage(Storage):
         """Datastore that builds metadata from a remote storage."""
-        base_uri = Required(str)
+        dir_path = Required(str)
         metadata_url = Optional(str)
     return RemoteStorage

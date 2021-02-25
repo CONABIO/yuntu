@@ -87,8 +87,6 @@ def source_partition(datastore_config, npartitions=1):
     total_pages = math.ceil(float(item_count)/float(page_size))
     partition_size = math.ceil(total_pages/npartitions)
 
-    dir_path = datastore_config["kwargs"]["dir_path"]
-
     partitions = []
     for n in range(npartitions):
         page_start = n*partition_size+1
