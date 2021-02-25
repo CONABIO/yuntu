@@ -5,7 +5,7 @@ from yuntu.datastore.base import RemoteStorage
 
 class IrekuaDatastore(RemoteStorage):
 
-    def __init__(self, *args, page_size, page_start=0, page_end=None, **kwargs):
+    def __init__(self, *args, page_size=10, page_start=0, page_end=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.page_start = page_start
         self.page_end = page_end

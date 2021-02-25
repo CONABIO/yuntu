@@ -35,7 +35,7 @@ class DatastoreLoad(Pipeline):
     def build(self):
         self["init_config"] = place(self.collection_config, 'dict', 'init_config')
         self["admin_config"] = place(self.admin_config, 'dynamic', 'admin_config')
-        self["datastore_configs"] = place(self.datastore_configs, 'pickleable', 'datastore_configs')
+        self["datastore_configs"] = place(self.datastore_configs, 'dynamic', 'datastore_configs')
 
         self["col_config"] = pg_init_database(self["init_config"],
                                               self["admin_config"])
@@ -52,6 +52,7 @@ class DatastoreLoadPartitioned(Pipeline):
                  datastore_config,
                  collection_config,
                  admin_config,
+                 rest_auth,
                  **kwargs):
         if not isinstance(collection_config, dict):
             raise ValueError(
@@ -68,6 +69,7 @@ class DatastoreLoadPartitioned(Pipeline):
         self.admin_config = admin_config
         self.collection_config = collection_config
         self.datastore_config = datastore_config
+        self.rest_auth = rest_auth
         self.build()
 
     def build(self):
@@ -75,8 +77,9 @@ class DatastoreLoadPartitioned(Pipeline):
         self["admin_config"] = place(self.admin_config, 'dynamic', 'admin_config')
         self["datastore_config"] = place(self.datastore_config, 'dynamic', 'datastore_config')
         self['npartitions'] = place(1, 'scalar', 'npartitions')
-
+        self["rest_auth"] = place(self.rest_auth, 'dynamic', 'rest_auth')
         self["datastore_configs"] = source_partition(self["datastore_config"],
+                                                     self["rest_auth"],
                                                      self['npartitions'])
         self["col_config"] = pg_init_database(self["init_config"],
                                               self["admin_config"])

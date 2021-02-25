@@ -3,6 +3,7 @@
 import os
 import math
 import shutil
+import copy
 import numpy as np
 import pandas as pd
 import requests
@@ -78,11 +79,11 @@ def as_dd(pd_dataframe, npartitions):
 
 
 @transition(name="source_partition", outputs=["datastore_configs"],
-            signature=((DynamicPlace, ScalarPlace), (PickleablePlace,)))
-def source_partition(datastore_config, npartitions=1):
+            signature=((DynamicPlace, DynamicPlace, ScalarPlace), (DynamicPlace,)))
+def source_partition(datastore_config, rest_auth, npartitions=1):
     metadata_url = datastore_config["kwargs"]["metadata_url"]
     url = metadata_url+"&page_size=1"
-    item_count = requests.get(url, auth=datastore_config["kwargs"]["auth"]).json()["count"]
+    item_count = requests.get(url, auth=rest_auth).json()["count"]
     page_size = datastore_config["kwargs"]["page_size"]
     total_pages = math.ceil(float(item_count)/float(page_size))
     partition_size = math.ceil(total_pages/npartitions)
@@ -91,12 +92,15 @@ def source_partition(datastore_config, npartitions=1):
     for n in range(npartitions):
         page_start = n*partition_size+1
         page_end = (n+1)*partition_size
-        part_config = datastore_config.copy()
-        part_config["page_start"] = page_start
-        part_config["page_end"] = page_end
+        part_config = copy.deepcopy(datastore_config)
+        part_config["kwargs"]["page_start"] = page_start
+        part_config["kwargs"]["page_end"] = page_end
+        part_config["kwargs"]["auth"] = rest_auth
         partitions.append(part_config)
 
     return partitions
+
+
 
 @transition(name="get_partitions", outputs=["partitions"],
             signature=((DictPlace, DynamicPlace, ScalarPlace), (DynamicPlace,)))
@@ -154,7 +158,7 @@ def pg_init_database(init_config, admin_config):
 
 
 @transition(name="load_datastores", outputs=["insert_results"], persist=True,
-            signature=((DictPlace, PickleablePlace), (DaskDataFramePlace,)))
+            signature=((DictPlace, DynamicPlace), (DaskDataFramePlace,)))
 def load_datastores(col_config, dstore_configs):
     dstore_bag = db.from_sequence(dstore_configs, npartitions=len(dstore_configs))
     inserted = dstore_bag.map(insert_datastore, col_config=col_config)
