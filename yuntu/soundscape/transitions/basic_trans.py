@@ -81,9 +81,8 @@ def as_dd(pd_dataframe, npartitions):
             signature=((DynamicPlace, ScalarPlace), (PickleablePlace,)))
 def source_partition(datastore_config, npartitions=1):
     metadata_url = datastore_config["kwargs"]["metadata_url"]
-
-    item_count = requests.get(metadata_url+"&page_size=1",
-                              auth=datastore_config["kwargs"]["auth"]).json()["count"]
+    url = metadata_url+"&page_size=1"
+    item_count = requests.get(url, auth=datastore_config["kwargs"]["auth"]).json()["count"]
     page_size = datastore_config["kwargs"]["page_size"]
     total_pages = math.ceil(float(item_count)/float(page_size))
     partition_size = math.ceil(total_pages/npartitions)
