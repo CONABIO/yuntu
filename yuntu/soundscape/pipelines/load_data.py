@@ -67,7 +67,7 @@ class DatastoreLoadPartitioned(Pipeline):
 
         self.admin_config = admin_config
         self.collection_config = collection_config
-        self.datastore_configs = datastore_configs
+        self.datastore_config = datastore_config
         self.build()
 
     def build(self):
