@@ -18,17 +18,18 @@ class IrekuaDatastore(RemoteStorage):
             url = self.metadata_url
             if "?" not in url:
                 url = url + "?"
-            else:
+            elif url[-1] != "&":
                 url = url + "&"
-            url = url +  + f"page_size={page_size}&page={page_number}"
+            url = url + f"page_size={page_size}&page={page_number}"
 
-            res = requests.get(base_url, auth=self.auth)
+            res = requests.get(url, auth=self.auth)
             if res.status_code != 200:
                 break
+
             res_json = res.json()
             res_json["page_url"] = url
 
-            return res_json
+            yield res_json
 
     def iter(self):
         for page in self.iter_pages():
@@ -44,7 +45,7 @@ class IrekuaDatastore(RemoteStorage):
 
     def prepare_datum(self, datum):
         # This part should be changed
-        path = datum["item_file"].replace("https://irekua.s3.amazonaws.com",self.base_uri)
+        path = datum["item_file"].replace("https://irekua.s3.amazonaws.com",self.dir_path)
         samplerate = datum["media_info"]["sampling_rate"]
         media_info = {
             'nchannels': datum["media_info"]["channels"],
@@ -52,18 +53,18 @@ class IrekuaDatastore(RemoteStorage):
             'samplerate': samplerate,
             'length': datum["media_info"]["frames"],
             'filesize': datum["filesize"],
-            'duration': datum["duration"]
+            'duration': datum["media_info"]["duration"]
         }
         spectrum = 'ultrasonic' if samplerate > 50000 else 'audible'
         metadata = {
-            'url': datum["url"],
+            'item_url': datum["url"],
             'page_url': datum["page_url"]
         }
 
         dtime_zone = datum["captured_on_timezone"]
         dtime = parse(datum["captured_on"])
         dtime_format = "%H:%M:%S %d/%m/%Y (%z)"
-        dtime_raw = datetime.datetime.strftime(format=datetime_format)
+        dtime_raw = datetime.datetime.strftime(dtime, format=dtime_format)
 
         return {
             'id': datum['id'],
@@ -81,7 +82,7 @@ class IrekuaDatastore(RemoteStorage):
 
     def get_metadata(self):
         meta = {
-            "base_uri": self.base_uri,
+            "dir_path": self.dir_path,
             "metadata_url": self.metadata_url
         }
         return meta

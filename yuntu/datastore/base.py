@@ -96,13 +96,12 @@ class Storage(Datastore, ABC):
 
 class RemoteStorage(Storage, ABC):
 
-    def __init__(self, base_uri, metadata_url=None, auth=None):
-        super().__init__()
-        self.base_uri = base_uri
+    def __init__(self, dir_path, metadata_url=None, auth=None):
+        super().__init__(dir_path)
         self.metadata_url = metadata_url
         self.auth = auth
 
     def create_datastore_record(self, collection):
         """Register this datastore into the collection."""
         return collection.db_manager.models.remote_storage(metadata=self.metadata,
-                                                           base_url=self.base_uri)
+                                                           dir_path=self.dir_path)
