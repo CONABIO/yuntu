@@ -59,9 +59,9 @@ class DatastoreLoadPartitioned(Pipeline):
         if not isinstance(admin_config, dict):
             raise ValueError(
                 "Argument 'admin_config' must be a dictionary.")
-        if not isinstance(datastore_configs, list):
+        if not isinstance(datastore_config, dict):
             raise ValueError(
-                "Argument 'datastore_configs' must be a list.")
+                "Argument 'datastore_configs' must be a dict.")
 
         super().__init__(name, **kwargs)
 
