@@ -95,7 +95,7 @@ def source_partition(datastore_config, npartitions=1):
         page_end = (n+1)*partition_size
         part_config = datastore_config.copy()
         part_config["page_start"] = page_start
-        part_config["page_stop"] = page_stop
+        part_config["page_end"] = page_end
         partitions.append(part_config)
 
     return partitions
