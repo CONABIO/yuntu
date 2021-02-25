@@ -1,6 +1,7 @@
 import requests
 from dateutil.parser import parse
 import datetime
+
 from yuntu.datastore.base import RemoteStorage
 
 class IrekuaDatastore(RemoteStorage):
@@ -23,8 +24,10 @@ class IrekuaDatastore(RemoteStorage):
             url = url + f"page_size={page_size}&page={page_number}"
 
             res = requests.get(url, auth=self.auth)
+
             if res.status_code != 200:
-                break
+                res = requests.get(url, auth=self.auth)
+                raise ValueError(str(res.json()))
 
             res_json = res.json()
             res_json["page_url"] = url
