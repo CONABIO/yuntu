@@ -32,7 +32,6 @@ def build_foreign_db_datastore_model(Datastore):
 def build_storage_model(Datastore):
     class Storage(Datastore):
         """Datastore builds from directory structure."""
-
         dir_path = Required(str)
     return Storage
 
@@ -40,6 +39,6 @@ def build_storage_model(Datastore):
 def build_remote_storage_model(Storage):
     class RemoteStorage(Storage):
         """Datastore that builds metadata from a remote storage."""
-
-        url = Required(str)
+        base_uri = Required(str)
+        metadata_url = Optional(str)
     return RemoteStorage

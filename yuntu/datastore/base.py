@@ -11,7 +11,6 @@ import pickle
 from pony.orm import db_session
 
 
-
 class Datastore(ABC):
 
     def __init__(self):
@@ -24,6 +23,7 @@ class Datastore(ABC):
     @abstractmethod
     def iter(self):
         """Return an iterator of the data to import."""
+
 
     @abstractmethod
     def iter_annotations(self, datum):
@@ -92,3 +92,17 @@ class Storage(Datastore, ABC):
         """Register this datastore into the collection."""
         return collection.db_manager.models.storage(metadata=self.metadata,
                                                     dir_path=self.dir_path)
+
+
+class RemoteStorage(Storage, ABC):
+
+    def __init__(self, base_uri, metadata_url=None, auth=None):
+        super().__init__()
+        self.base_uri = base_uri
+        self.metadata_url = metadata_url
+        self.auth = auth
+
+    def create_datastore_record(self, collection):
+        """Register this datastore into the collection."""
+        return collection.db_manager.models.remote_storage(metadata=self.metadata,
+                                                           base_url=self.base_uri)

@@ -179,6 +179,9 @@ class Geometry(ABC):
         data = data.copy()
         geom_type = Geometry.Types[data.pop('type')]
         geom_class = Geometry.get_class_from_name(geom_type)
+        if "Interval" in geom_type:
+            if "wkt" in data:
+                del data["wkt"]
         return geom_class(**data)
 
     # pylint: disable=too-many-return-statements
