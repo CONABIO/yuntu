@@ -27,7 +27,7 @@ class IrekuaDatastore(RemoteStorage):
 
             if res.status_code != 200:
                 res = requests.get(url, auth=self.auth)
-                raise ValueError(str(res.json()))
+                raise ValueError(str(res))
 
             res_json = res.json()
             res_json["page_url"] = url
