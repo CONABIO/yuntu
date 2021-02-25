@@ -5,7 +5,7 @@ from yuntu.soundscape.transitions.basic_trans import get_partitions
 from yuntu.soundscape.transitions.probe_trans import probe_write
 
 
-class ProbeWritePipeline(Pipeline):
+class ProbeWrite(Pipeline):
     """Pipeline to build tfrecords from bat call annotations."""
 
     def __init__(self,

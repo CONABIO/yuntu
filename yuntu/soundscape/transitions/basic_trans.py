@@ -1,9 +1,11 @@
 
 """Transitions for basic usage."""
 import os
+import math
 import shutil
 import numpy as np
 import pandas as pd
+import requests
 import dask.dataframe as dd
 import dask.bag as db
 from pony.orm import db_session
@@ -74,6 +76,30 @@ def as_dd(pd_dataframe, npartitions):
                                     name="as_dd")
     return dask_dataframe
 
+
+@transition(name="source_partition", outputs=["datastore_configs"],
+            signature=((DynamicPlace, ScalarPlace), (PickleablePlace,)))
+def source_partition(datastore_config, npartitions=1):
+    metadata_url = datastore_config["kwargs"]["metadata_url"]
+
+    item_count = requests.get(f"{metadata_url}&page_size=1",
+                              auth=datastore_config["kwargs"]["auth"]).json()["count"]
+    page_size = datastore_config["kwargs"]["page_size"]
+    total_pages = math.ceil(float(item_count)/float(page_size))
+    partition_size = math.ceil(total_pages/npartitions)
+
+    dir_path = datastore_config["kwargs"]["dir_path"]
+
+    partitions = []
+    for n in range(npartitions):
+        page_start = n*partition_size+1
+        page_end = (n+1)*partition_size
+        part_config = datastore_config.copy()
+        part_config["page_start"] = page_start
+        part_config["page_stop"] = page_stop
+        partitions.append(part_config)
+
+    return partitions
 
 @transition(name="get_partitions", outputs=["partitions"],
             signature=((DictPlace, DynamicPlace, ScalarPlace), (DynamicPlace,)))

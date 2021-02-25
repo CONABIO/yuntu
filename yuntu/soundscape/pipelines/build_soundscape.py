@@ -27,7 +27,7 @@ HASHER = hasher('crono')
 HASH_COL = 'crono_hash'
 
 
-class SoundscapePipeline(Pipeline):
+class Soundscape(Pipeline):
     """Basic soundscape pipeline"""
 
     def __init__(self,
@@ -81,7 +81,7 @@ class SoundscapePipeline(Pipeline):
 
 
 
-class HashedSoundscapePipeline(SoundscapePipeline):
+class HashedSoundscape(Soundscape):
     """Hashed soundscape pipeline.
 
     A hashed soundscape is a soundscape that has a special column 'hash'
