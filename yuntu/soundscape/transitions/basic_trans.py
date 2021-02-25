@@ -156,7 +156,7 @@ def pg_init_database(init_config, admin_config):
     return init_config
 
 
-@transition(name="load_datastores", outputs=["insert_results"],
+@transition(name="load_datastores", outputs=["insert_results"], persist=True,
             signature=((DictPlace, PickleablePlace), (DaskDataFramePlace,)))
 def load_datastores(col_config, dstore_configs):
     dstore_bag = db.from_sequence(dstore_configs, npartitions=len(dstore_configs))
