@@ -9,12 +9,10 @@ class RESTManager(ABC):
         self.recordings_url = config["recordings_url"]
         self.page_size = config["page_size"]
         self.auth = config["auth"]
-        self.build_models()
+        self.models = self.build_models()
 
-    def select(self, query, limit=None, offset=None, model="recording"):
+    def select(self, query=None, limit=None, offset=None, model="recording"):
         """Query entries from database."""
-        if not isinstance(query, dict):
-            raise ValueError("Parameter 'query' should be a dictionary")
 
         model_class = self.get_model_class(model)
 
