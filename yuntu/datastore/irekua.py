@@ -47,8 +47,7 @@ class IrekuaDatastore(RemoteStorage):
         pass
 
     def prepare_datum(self, datum):
-        # This part should be changed
-        path = datum["item_file"].replace("https://irekua.s3.amazonaws.com",self.dir_path)
+        path = datum["item_file"]
         samplerate = datum["media_info"]["sampling_rate"]
         media_info = {
             'nchannels': datum["media_info"]["channels"],

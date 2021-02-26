@@ -10,7 +10,7 @@ from yuntu.core.database.datastores import build_base_datastore_model
 from yuntu.core.database.datastores import build_foreign_db_datastore_model
 from yuntu.core.database.datastores import build_storage_model
 from yuntu.core.database.datastores import build_remote_storage_model
-
+from yuntu.core.database.REST.irekua import IrekuaREST
 
 MODELS = [
     'recording',
@@ -31,6 +31,9 @@ class DatabaseManager:
     """
 
     def __init__(self, provider, config=None):
+        if provider == "irekua":
+            return IrekuaREST(provider, config)
+
         if config is None:
             config = {}
 
