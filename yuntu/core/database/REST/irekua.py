@@ -100,7 +100,6 @@ class IrekuaRecording(RESTModel):
         page_start, page_end, page_size = self._get_pagination(query=query,
                                                                limit=limit,
                                                                offset=offset)
-        print(page_start, page_end, page_size)
         for page_number in range(page_start, page_end):
             query["page_size"] = page_size
             query["page"] = page_number
@@ -111,14 +110,16 @@ class IrekuaRecording(RESTModel):
             if res.status_code != 200:
                 res = requests.get(self.target_url,
                                    params=query,
-                                   auth=self.auth,
-                                   hooks={'response': print_roundtrip})
+                                   auth=self.auth)
+                                   # hooks={'response': print_roundtrip})
                 raise ValueError(str(res))
 
             yield res.json()
 
     def _get_pagination(self, query=None, limit=None, offset=None):
         total_pages = self._total_pages(query)
+        if offset is not None:
+            offset = offset + 1
         if limit is None and offset is None:
             return 1, total_pages, self.page_size
         elif limit is None and offset is not None:
