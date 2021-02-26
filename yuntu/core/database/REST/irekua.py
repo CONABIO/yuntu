@@ -70,10 +70,8 @@ class IrekuaRecording(RESTModel):
 
         one_page = requests.get(self.target_url,
                                 params=query,
-                                auth=self.auth)
-        if len(one_page[self.target_attr]) == 0:
-            return 0
-        return one_page[0]["count"]
+                                auth=self.auth).json()
+        return one_page["count"]
 
     def iter_pages(self, query=None, limit=None, offset=None):
         query = self.validate_query(query)
