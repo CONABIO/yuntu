@@ -43,8 +43,10 @@ class IrekuaRESTCollection(Collection):
         return self.recordings_model.count()
 
     def get(self, key, with_metadata=True):
-        record = self.recordings(query={"id": key}, iterate=False)[0]
-        return self.build_audio(record, with_metadata=with_metadata)
+        matches = self.recordings(limit=1, offset=key, iterate=False)
+        if len(matches) == 0:
+            raise ValueError(f"Recording {key} not found.")
+        return self.build_audio(matches[0], with_metadata=with_metadata)
 
     def get_recording_dataframe(
             self,
