@@ -12,7 +12,7 @@ import httplib
 def patch_send():
     old_send= httplib.HTTPConnection.send
     def new_send( self, data ):
-        print data
+        print(data)
         return old_send(self, data) #return is not necessary, but never hurts, in case the library is changed
     httplib.HTTPConnection.send= new_send
 
