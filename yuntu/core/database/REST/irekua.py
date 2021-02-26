@@ -7,9 +7,7 @@ import datetime
 from yuntu.core.database.REST.base import RESTManager
 from yuntu.core.database.REST.models import RESTModel
 
-DUMMY_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
-}
+
 MODELS = [
     'recording',
 ]
@@ -27,6 +25,7 @@ class IrekuaRecording(RESTModel):
         self._auth = auth
         self._page_size = page_size
         self.bucket = bucket
+        self.session = requests.Session()
 
     def parse(self, datum):
         """Parse audio item from irekua REST api"""
@@ -82,11 +81,11 @@ class IrekuaRecording(RESTModel):
         query["page_size"] = 1
         query["page"] = 1
 
-        res = requests.get(self.target_url,
-                           params=query,
-                           auth=self.auth,
-                           headers=DUMMY_HEADERS
-                           )
+        res = self.session.get(self.target_url,
+                               params=query,
+                               auth=self.auth,
+                               headers=DUMMY_HEADERS
+                               )
 
         if res.status_code != 200:
             raise ValueError("Connection error!")
@@ -101,18 +100,14 @@ class IrekuaRecording(RESTModel):
         for page_number in range(page_start, page_end):
             query["page_size"] = page_size
             query["page"] = page_number
-            res = requests.get(self.target_url,
-                               params=query,
-                               auth=self.auth,
-                               headers=DUMMY_HEADERS
-                               )
+            res = self.session.get(self.target_url,
+                                   params=query,
+                                   auth=self.auth)
 
             if res.status_code != 200:
-                res = requests.get(self.target_url,
-                                   params=query,
-                                   auth=self.auth,
-                                   headers=DUMMY_HEADERS
-                                   )
+                res = self.session.get(self.target_url,
+                                       params=query,
+                                       auth=self.auth)
                 raise ValueError(str(res))
 
             yield res.json()
