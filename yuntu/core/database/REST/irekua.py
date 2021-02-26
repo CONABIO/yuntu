@@ -6,6 +6,7 @@ import datetime
 
 from yuntu.core.database.REST.base import RESTManager
 from yuntu.core.database.REST.models import RESTModel
+import textwrap
 
 
 def print_roundtrip(response, *args, **kwargs):
