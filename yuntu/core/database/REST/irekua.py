@@ -100,6 +100,7 @@ class IrekuaRecording(RESTModel):
         page_start, page_end, page_size = self._get_pagination(query=query,
                                                                limit=limit,
                                                                offset=offset)
+        print(page_start, page_end, page_size)
         for page_number in range(page_start, page_end):
             query["page_size"] = page_size
             query["page"] = page_number
