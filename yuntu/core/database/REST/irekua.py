@@ -13,7 +13,7 @@ MODELS = [
 
 Models = namedtuple('Models', MODELS)
 
-class IrekuaRecording(RestModel):
+class IrekuaRecording(RESTModel):
 
     def parse(self, meta):
         """Parse audio item from irekua REST api"""

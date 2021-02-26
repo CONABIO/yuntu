@@ -1,5 +1,6 @@
 import pandas as pd
 from yuntu.core.audio.audio import Audio
+from yuntu.collection.base import Collection
 
 class IrekuaRESTCollection(Collection):
     """Base class for all collections."""
@@ -9,7 +10,7 @@ class IrekuaRESTCollection(Collection):
         'config': {
             'recordings_url': None,
             'page_size': 1,
-            'target_attr': 'results'
+            'target_attr': 'results',
             'auth': None
         }
     }
