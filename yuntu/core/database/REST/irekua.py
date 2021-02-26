@@ -55,6 +55,7 @@ class IrekuaRecording(RESTModel):
     def validate_query(self, query):
         if query is None:
             return {}
+        print(query)
         if not isinstance(query, dict):
             raise ValueError("When using REST collections, queries should " +
                              "be specified with a dictionary that contains" +
