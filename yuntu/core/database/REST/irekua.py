@@ -29,7 +29,10 @@ class IrekuaRecording(RESTModel):
         """Parse audio item from irekua REST api"""
         # This is convenient, otherwise http requests are a bit slow
         # path = datum["item_file"]
-        path = f"s3://{self.bucket}/media"+datum["item_file"].split("media")[-1]
+        if self.bucket is None:
+            path = datum["item_file"]
+        else:
+            path = f"s3://{self.bucket}/media"+datum["item_file"].split("media")[-1]
         samplerate = datum["media_info"]["sampling_rate"]
         media_info = {
             'nchannels': datum["media_info"]["channels"],
