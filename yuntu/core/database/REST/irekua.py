@@ -7,6 +7,17 @@ import datetime
 from yuntu.core.database.REST.base import RESTManager
 from yuntu.core.database.REST.models import RESTModel
 
+import httplib
+
+def patch_send():
+    old_send= httplib.HTTPConnection.send
+    def new_send( self, data ):
+        print data
+        return old_send(self, data) #return is not necessary, but never hurts, in case the library is changed
+    httplib.HTTPConnection.send= new_send
+
+patch_send()
+
 MODELS = [
     'recording',
 ]
@@ -68,10 +79,14 @@ class IrekuaRecording(RESTModel):
         query["page_size"] = 1
         query["page"] = 0
 
-        one_page = requests.get(self.target_url,
-                                params=query,
-                                auth=self.auth).json()
+        res = requests.get(self.target_url,
+                           params=query,
+                           auth=self.auth)
+
         print(one_page)
+        if res.status_code != 200:
+            raise ValueError("Connection error!")
+
         return one_page["count"]
 
     def iter_pages(self, query=None, limit=None, offset=None):
