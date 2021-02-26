@@ -12,7 +12,7 @@ Models = namedtuple('Models', MODELS)
         'config': {
             'recordings_url': None,
             'page_size': 1,
-            'target_attr': 'results'
+            'target_attr': 'results',
             'auth': None
         }
     }
