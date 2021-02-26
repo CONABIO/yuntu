@@ -21,7 +21,7 @@ class IrekuaRESTCollection(Collection):
     def __getitem__(self, key):
 
         if isinstance(key, int):
-            matches = self.recordings(query={"id": key}, iterate=False)
+            matches = self.recordings(limit=1, offset=key, iterate=False)
             if len(matches) == 0:
                 raise ValueError(f"Recording {key} not found.")
             return self.build_audio(matches[0])
@@ -33,8 +33,7 @@ class IrekuaRESTCollection(Collection):
             return []
 
         return ([self.build_audio(recording)
-                for recording in self.recordings(query={"id": key},
-                                                 limit=limit,
+                for recording in self.recordings(limit=limit,
                                                  offset=key[0])])
     def __iter__(self):
         for recording in self.recordings():
