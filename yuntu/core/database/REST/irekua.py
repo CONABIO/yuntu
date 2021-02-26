@@ -1,10 +1,17 @@
 import math
-from yuntu.core.database.REST.base import RESTManager
-from yuntu.core.database.REST.models import RESTModel
-
+from collections import namedtuple
 import requests
 import dateutil.parser
 import datetime
+
+from yuntu.core.database.REST.base import RESTManager
+from yuntu.core.database.REST.models import RESTModel
+
+MODELS = [
+    'recording',
+]
+
+Models = namedtuple('Models', MODELS)
 
 class IrekuaRecording(RestModel):
 
@@ -90,6 +97,14 @@ class IrekuaRecording(RestModel):
 
 
 def IrekuaREST(RESTManager):
+
+    def build_models(self):
+        """Construct all database entities."""
+        recording = self.build_recording_model()
+        models = {
+            'recording': recording,
+        }
+        return Models(**models)
 
     def build_recording_model(self):
         """Build REST recording model"""

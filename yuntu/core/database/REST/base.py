@@ -1,12 +1,6 @@
 from abc import ABC
 from abc import abstractmethod
 
-MODELS = [
-    'recording',
-]
-
-Models = namedtuple('Models', MODELS)
-
 
 class RESTManager(ABC):
     """Managet to fetch information on the fly from irekua REST api"""
@@ -43,14 +37,6 @@ class RESTManager(ABC):
     @abstractmethod
     def build_models(self):
         """Construct all database entities."""
-        recording = self.build_recording_model()
-        annotation = self.build_annotation_model()
-
-        models = {
-            'recording': recording,
-        }
-
-        return Models(**models)
 
     @abstractmethod
     def build_recording_model(self):
