@@ -85,7 +85,6 @@ class IrekuaRecording(RESTModel):
         headers = urllib3.make_headers(basic_auth=self.auth)
         res = self.http.request('GET',self.target_url,
                                 fields=query,
-                                auth=self.auth,
                                 headers=headers
                                 )
 
@@ -106,14 +105,12 @@ class IrekuaRecording(RESTModel):
             headers = urllib3.make_headers(basic_auth=self.auth)
             res = self.http.request('GET',self.target_url,
                                     fields=query,
-                                    auth=self.auth,
                                     headers=headers
                                     )
 
             if res.status != 200:
                 res = self.http.request('GET',self.target_url,
                                         fields=query,
-                                        auth=self.auth,
                                         headers=headers
                                         )
                 if res.status != 200:
