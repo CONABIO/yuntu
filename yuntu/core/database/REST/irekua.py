@@ -55,7 +55,7 @@ class IrekuaRecording(RESTModel):
     def validate_query(self, query):
         if query is None:
             return {}
-        print(query)
+
         if not isinstance(query, dict):
             raise ValueError("When using REST collections, queries should " +
                              "be specified with a dictionary that contains " +
@@ -71,7 +71,7 @@ class IrekuaRecording(RESTModel):
         one_page = requests.get(self.target_url,
                                 params=query,
                                 auth=self.auth)
-        if len(one_page) == 0:
+        if len(one_page[self.target_attr]) == 0:
             return 0
         return one_page[0]["count"]
 
