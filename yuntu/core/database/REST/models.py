@@ -47,6 +47,10 @@ class RESTModel(ABC):
                     break
 
     @abstractmethod
+    def validate_query(self):
+        """Validate input query."""
+
+    @abstractmethod
     def iter_pages(self, query=None, limit=None, offset=None):
         """Iterate rest pages and return json response"""
 

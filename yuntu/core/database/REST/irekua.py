@@ -56,8 +56,9 @@ class IrekuaRecording(RESTModel):
         if query is None:
             return {}
         if not isinstance(query, dict):
-            raise ValueError("'query' should be a dictionary " +
-                             "that specifies url parameters")
+            raise ValueError("When using REST collections, queries should " +
+                             "be specified with a dictionary that contains" +
+                             "url parameters.")
         return query
 
     def count(self, query=None):
