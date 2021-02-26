@@ -7,15 +7,6 @@ MODELS = [
 
 Models = namedtuple('Models', MODELS)
 
-    db_config = {
-        'provider': 'irekua_REST',
-        'config': {
-            'recordings_url': None,
-            'page_size': 1,
-            'target_attr': 'results',
-            'auth': None
-        }
-    }
 
 class RESTManager(ABC):
     """Managet to fetch information on the fly from irekua REST api"""
