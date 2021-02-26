@@ -4,6 +4,7 @@ from abc import abstractmethod
 MODELS = [
     'recording',
 ]
+
 Models = namedtuple('Models', MODELS)
 
     db_config = {
@@ -15,6 +16,7 @@ Models = namedtuple('Models', MODELS)
             'auth': None
         }
     }
+
 class RESTManager(ABC):
     """Managet to fetch information on the fly from irekua REST api"""
 

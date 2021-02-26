@@ -1,6 +1,6 @@
-
-from yuntu.core.database.base import RESTManager
-from yuntu.core.database.models import RESTModel
+import math
+from yuntu.core.database.REST.base import RESTManager
+from yuntu.core.database.REST.models import RESTModel
 
 import requests
 import dateutil.parser
@@ -47,21 +47,23 @@ class IrekuaRecording(RestModel):
 
     def count(self, query=None):
         """Request results count"""
-        if query is None:
-            query = {}
-        query["page_size"] = 1
-        result = list(self.select(query))
+        result = list(self.iter_pages(query, limit=1))
         if len(result) == 0:
             return 0
-        return result["count"]
+        return result[0]["count"]
 
     def iter_pages(self, query=None, limit=None, offset=None):
         page_start, page_end, page_size = self._get_pagination(limit, offset)
         for page_number in range(page_start, page_end):
             params = {"page_size": page_size, "page": page_number}
-            res = requests.get(self.target_url, params=params, auth=self.auth)
+            res = requests.get(self.target_url,
+                               params=params,
+                               auth=self.auth)
+
             if res.status_code != 200:
-                res = requests.get(self.target_url, params=params, auth=self.auth)
+                res = requests.get(self.target_url,
+                                   params=params,
+                                   auth=self.auth)
                 raise ValueError(str(res))
 
             res_json = res.json()
@@ -69,7 +71,6 @@ class IrekuaRecording(RestModel):
                 'page_size': page_size,
                 'page_number': page_number
             }
-
             yield res_json
 
     def _get_pagination(self, query=None, limit=None, offset=None):
@@ -78,6 +79,8 @@ class IrekuaRecording(RestModel):
             return 0, total_pages, self.page_size
         elif limit is None and offset is not None:
             return offset, total_pages, 1
+        elif limit is not None and offset is None:
+            return 0, limit, 1
         else:
             return offset, offset + limit, 1
 
