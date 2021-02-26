@@ -50,10 +50,6 @@ class IrekuaRecording(RESTModel):
             'duration': datum["media_info"]["duration"]
         }
         spectrum = 'ultrasonic' if samplerate > 50000 else 'audible'
-        metadata = {
-            'item_url': datum["url"],
-            'page_conf': datum["page_conf"]
-        }
 
         dtime_zone = datum["captured_on_timezone"]
         dtime = parse(datum["captured_on"])
@@ -66,7 +62,7 @@ class IrekuaRecording(RESTModel):
             'hash': datum["hash"],
             'timeexp': 1,
             'media_info': media_info,
-            'metadata': metadata,
+            'metadata': meta,
             'spectrum': spectrum,
             'time_raw': dtime_raw,
             'time_format': dtime_format,
@@ -92,8 +88,7 @@ class IrekuaRecording(RESTModel):
 
         res = requests.get(self.target_url,
                            params=query,
-                           auth=self.auth,
-                           hooks={'response': print_roundtrip})
+                           auth=self.auth)
 
         if res.status_code != 200:
             raise ValueError("Connection error!")
@@ -107,7 +102,7 @@ class IrekuaRecording(RESTModel):
                                                                offset=offset)
         for page_number in range(page_start, page_end):
             query["page_size"] = page_size
-            query["page"] = page
+            query["page"] = page_number
             res = requests.get(self.target_url,
                                params=query,
                                auth=self.auth)
@@ -118,12 +113,7 @@ class IrekuaRecording(RESTModel):
                                    auth=self.auth)
                 raise ValueError(str(res))
 
-            res_json = res.json()
-            res_json["page_conf"] = {
-                'page_size': page_size,
-                'page_number': page_number
-            }
-            yield res_json
+            yield res.json()
 
     def _get_pagination(self, query=None, limit=None, offset=None):
         total_pages = self._total_pages(query)
