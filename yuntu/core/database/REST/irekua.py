@@ -7,16 +7,26 @@ import datetime
 from yuntu.core.database.REST.base import RESTManager
 from yuntu.core.database.REST.models import RESTModel
 
-import httplib
 
-def patch_send():
-    old_send= httplib.HTTPConnection.send
-    def new_send( self, data ):
-        print(data)
-        return old_send(self, data) #return is not necessary, but never hurts, in case the library is changed
-    httplib.HTTPConnection.send= new_send
+def print_roundtrip(response, *args, **kwargs):
+    format_headers = lambda d: '\n'.join(f'{k}: {v}' for k, v in d.items())
+    print(textwrap.dedent('''
+        ---------------- request ----------------
+        {req.method} {req.url}
+        {reqhdrs}
 
-patch_send()
+        {req.body}
+        ---------------- response ----------------
+        {res.status_code} {res.reason} {res.url}
+        {reshdrs}
+
+        {res.text}
+    ''').format(
+        req=response.request,
+        res=response,
+        reqhdrs=format_headers(response.request.headers),
+        reshdrs=format_headers(response.headers),
+    ))
 
 MODELS = [
     'recording',
@@ -81,13 +91,13 @@ class IrekuaRecording(RESTModel):
 
         res = requests.get(self.target_url,
                            params=query,
-                           auth=self.auth)
+                           auth=self.auth,
+                           hooks={'response': print_roundtrip})
 
-        print(one_page)
         if res.status_code != 200:
             raise ValueError("Connection error!")
 
-        return one_page["count"]
+        return res.json()["count"]
 
     def iter_pages(self, query=None, limit=None, offset=None):
         query = self.validate_query(query)
