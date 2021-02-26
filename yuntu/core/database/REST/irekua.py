@@ -83,8 +83,7 @@ class IrekuaRecording(RESTModel):
 
         res = self.session.get(self.target_url,
                                params=query,
-                               auth=self.auth,
-                               headers=DUMMY_HEADERS
+                               auth=self.auth
                                )
 
         if res.status_code != 200:
