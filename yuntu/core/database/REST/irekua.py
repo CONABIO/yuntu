@@ -71,6 +71,7 @@ class IrekuaRecording(RESTModel):
         one_page = requests.get(self.target_url,
                                 params=query,
                                 auth=self.auth).json()
+        print(one_page)
         return one_page["count"]
 
     def iter_pages(self, query=None, limit=None, offset=None):
