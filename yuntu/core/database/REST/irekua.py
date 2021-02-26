@@ -112,7 +112,6 @@ class IrekuaRecording(RESTModel):
                 res = requests.get(self.target_url,
                                    params=query,
                                    auth=self.auth)
-                                   # hooks={'response': print_roundtrip})
                 raise ValueError(str(res))
 
             yield res.json()
@@ -126,7 +125,9 @@ class IrekuaRecording(RESTModel):
         elif limit is None and offset is not None:
             return offset, total_pages, 1
         elif limit is not None and offset is None:
-            return 1, limit, 1
+            page_limit = math.ceil(float(limit)/float(self.page_size))
+            page_limit = max(1, page_limit)
+            return 1, page_limit, self.page_size
         else:
             return offset, offset + limit, 1
 

@@ -34,17 +34,25 @@ class RESTModel(ABC):
     def select(self, query=None, limit=None, offset=None):
         """Request results and return"""
         # Add limits to request and traverse pages
-        count = 0
-        for page in self.iter_pages(query, limit, offset):
-            meta_arr = []
-            meta_arr = page[self.target_attr]
-            for meta in meta_arr:
-                if count < limit:
+        if limit is not None:
+            count = 0
+            for page in self.iter_pages(query, limit, offset):
+                meta_arr = []
+                meta_arr = page[self.target_attr]
+                for meta in meta_arr:
+                    if count >= limit:
+                        break
                     parsed = self.parse(meta)
                     count += 1
                     yield as_object(parsed)
-                else:
-                    break
+        else:
+            for page in self.iter_pages(query, limit, offset):
+                meta_arr = []
+                meta_arr = page[self.target_attr]
+                for meta in meta_arr:
+                    parsed = self.parse(meta)
+                    yield as_object(parsed)
+
 
     @abstractmethod
     def validate_query(self):
