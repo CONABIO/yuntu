@@ -37,7 +37,7 @@ Models = namedtuple('Models', MODELS)
 
 class IrekuaRecording(RESTModel):
 
-    def parse(self, meta):
+    def parse(self, datum):
         """Parse audio item from irekua REST api"""
         path = datum["item_file"]
         samplerate = datum["media_info"]["sampling_rate"]
@@ -62,7 +62,7 @@ class IrekuaRecording(RESTModel):
             'hash': datum["hash"],
             'timeexp': 1,
             'media_info': media_info,
-            'metadata': meta,
+            'metadata': datum,
             'spectrum': spectrum,
             'time_raw': dtime_raw,
             'time_format': dtime_format,
