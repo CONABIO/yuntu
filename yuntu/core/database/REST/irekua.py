@@ -7,6 +7,9 @@ import datetime
 from yuntu.core.database.REST.base import RESTManager
 from yuntu.core.database.REST.models import RESTModel
 
+DUMMY_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
+}
 MODELS = [
     'recording',
 ]
@@ -27,12 +30,12 @@ class IrekuaRecording(RESTModel):
 
     def parse(self, datum):
         """Parse audio item from irekua REST api"""
-        # This is convenient, otherwise http requests are a bit slow
-        # path = datum["item_file"]
         if self.bucket is None:
             path = datum["item_file"]
         else:
-            path = f"s3://{self.bucket}/media"+datum["item_file"].split("media")[-1]
+            key = "media" + datum["item_file"].split("media")[-1]
+            path = f"s3://{self.bucket}/{key}"
+
         samplerate = datum["media_info"]["sampling_rate"]
         media_info = {
             'nchannels': datum["media_info"]["channels"],
@@ -81,7 +84,9 @@ class IrekuaRecording(RESTModel):
 
         res = requests.get(self.target_url,
                            params=query,
-                           auth=self.auth)
+                           auth=self.auth,
+                           headers=DUMMY_HEADERS
+                           )
 
         if res.status_code != 200:
             raise ValueError("Connection error!")
@@ -98,12 +103,16 @@ class IrekuaRecording(RESTModel):
             query["page"] = page_number
             res = requests.get(self.target_url,
                                params=query,
-                               auth=self.auth)
+                               auth=self.auth,
+                               headers=DUMMY_HEADERS
+                               )
 
             if res.status_code != 200:
                 res = requests.get(self.target_url,
                                    params=query,
-                                   auth=self.auth)
+                                   auth=self.auth,
+                                   headers=DUMMY_HEADERS
+                                   )
                 raise ValueError(str(res))
 
             yield res.json()
