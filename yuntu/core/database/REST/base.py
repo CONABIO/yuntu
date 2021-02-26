@@ -32,6 +32,10 @@ class RESTManager(ABC):
         return model_dict[model]
 
     @abstractmethod
+    def validate_query(self):
+        """Validate input query."""
+
+    @abstractmethod
     def build_models(self):
         """Construct all database entities."""
 

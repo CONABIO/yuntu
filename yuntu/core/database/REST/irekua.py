@@ -10,8 +10,8 @@ from yuntu.core.database.REST.models import RESTModel
 MODELS = [
     'recording',
 ]
-
 Models = namedtuple('Models', MODELS)
+
 
 class IrekuaRecording(RESTModel):
 
@@ -30,7 +30,7 @@ class IrekuaRecording(RESTModel):
         spectrum = 'ultrasonic' if samplerate > 50000 else 'audible'
         metadata = {
             'item_url': datum["url"],
-            'page_url': datum["page_url"]
+            'page_conf': datum["page_conf"]
         }
 
         dtime_zone = datum["captured_on_timezone"]
@@ -52,24 +52,40 @@ class IrekuaRecording(RESTModel):
             'time_utc': dtime
         }
 
+    def validate_query(self, query):
+        if query is None:
+            return {}
+        if not isinstance(query, dict):
+            raise ValueError("'query' should be a dictionary " +
+                             "that specifies url parameters")
+        return query
+
     def count(self, query=None):
         """Request results count"""
-        result = list(self.iter_pages(query, limit=1))
-        if len(result) == 0:
+        query = self.validate_query(query)
+        query["page_size"] = 1
+        query["page"] = 0
+
+        one_page = requests.get(self.target_url,
+                                params=query,
+                                auth=self.auth)
+        if len(one_page) == 0:
             return 0
-        return result[0]["count"]
+        return one_page[0]["count"]
 
     def iter_pages(self, query=None, limit=None, offset=None):
+        query = self.validate_query(query)
         page_start, page_end, page_size = self._get_pagination(limit, offset)
         for page_number in range(page_start, page_end):
-            params = {"page_size": page_size, "page": page_number}
+            query["page_size"] = page_size
+            query["page"] = page
             res = requests.get(self.target_url,
-                               params=params,
+                               params=query,
                                auth=self.auth)
 
             if res.status_code != 200:
                 res = requests.get(self.target_url,
-                                   params=params,
+                                   params=query,
                                    auth=self.auth)
                 raise ValueError(str(res))
 
