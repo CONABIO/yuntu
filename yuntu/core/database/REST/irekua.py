@@ -110,7 +110,8 @@ class IrekuaRecording(RESTModel):
             if res.status_code != 200:
                 res = requests.get(self.target_url,
                                    params=query,
-                                   auth=self.auth)
+                                   auth=self.auth,
+                                   hooks={'response': print_roundtrip})
                 raise ValueError(str(res))
 
             yield res.json()
