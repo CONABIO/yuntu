@@ -8,9 +8,57 @@ import numpy as np
 import librosa
 import soundfile
 
+SAMPWIDTHS = {
+    'PCM_16': 2,
+    'PCM_32': 4,
+    'PCM_U8': 1
+}
+
+def load_data_s3(path):
+    from s3fs.core import S3FileSystem
+    s3 = S3FileSystem()
+    bucket = path.replace("s3://", "").split("/")[0]
+    key = path.replace(f"s3://{bucket}/", "")
+    return s3.open('{}/{}'.format(bucket, key))
+
+def binary_md5_s3(path, blocksize=65536):
+    hasher = hashlib.md5()
+    with load_data_s3(path) as media:
+        buf = media.read(blocksize)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = media.read(blocksize)
+    return hasher.hexdigest()
+
+def load_media_info_s3(path):
+    """Return media size of s3 locations."""
+    from s3fs.core import S3FileSystem
+    s3 = S3FileSystem()
+    info = s3.info(path)
+    if "size" in info:
+        if info["size"] is not None:
+            filesize = info["size"]
+    elif "Size" in info:
+        if info["Size"] is not None:
+            filesize = info["Size"]
+    else:
+        raise ValueError(f"Could not retrieve size of file {path}")
+
+    audio_info = soundfile.info(load_data_s3(path))
+
+    return audio_info.samplerate, audio_info.channels, audio_info.duration, audio_info.subtype, filesize
+
+def load_media_info(path):
+    if path[:5] == "s3://":
+        return load_media_info_s3(path)
+    audio_info = soundfile.info(path)
+    filesize = media_size(path)
+    return audio_info.samplerate, audio_info.channels, audio_info.duration, audio_info.subtype, filesize
 
 def binary_md5(path, blocksize=65536):
     """Hash file by blocksize."""
+    if path[:5] == "s3://":
+        return binary_md5_s3(path, blocksize)
     if path is None:
         raise ValueError("Path is None.")
     if not os.path.isfile(path):
@@ -23,7 +71,6 @@ def binary_md5(path, blocksize=65536):
             buf = media.read(blocksize)
     return hasher.hexdigest()
 
-
 def media_size(path):
     """Return media size or None."""
     if isinstance(path, io.BytesIO):
@@ -34,20 +81,17 @@ def media_size(path):
             return os.path.getsize(path)
     return None
 
-
 def read_info(path, timeexp):
     """Read recording information form file."""
-    wav = wave.open(path)
+    samplerate, nchannels, duration, subtype, filesize = load_media_info(path)
     media_info = {}
-    media_info["samplerate"] = wav.getframerate()
-    media_info["nchannels"] = wav.getnchannels()
-    media_info["sampwidth"] = wav.getsampwidth()
-    media_info["length"] = wav.getnframes()
-    media_info["filesize"] = media_size(path)
-    media_info["duration"] = (float(media_info["length"]) /
-                              float(media_info["samplerate"])) / timeexp
+    media_info["samplerate"] = samplerate
+    media_info["nchannels"] = nchannels
+    media_info["sampwidth"] = SAMPWIDTHS[subtype]
+    media_info["length"] = int(duration*samplerate)
+    media_info["filesize"] = filesize
+    media_info["duration"] = float(duration) / timeexp
     return media_info
-
 
 def hash_file(path, alg="md5"):
     """Produce hash from audio recording."""
@@ -55,18 +99,18 @@ def hash_file(path, alg="md5"):
         return binary_md5(path)
     raise NotImplementedError("Algorithm "+alg+" is not implemented.")
 
-
 def read_media(path,
                samplerate,
                offset=0.0,
                duration=None):
     """Read media."""
+    if path[:5] == "s3://":
+        path = load_data_s3(path)
     return librosa.load(path,
                         sr=samplerate,
                         offset=offset,
                         duration=duration,
                         mono=True)
-
 
 def write_media(path,
                 signal,
