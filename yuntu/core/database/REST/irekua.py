@@ -35,8 +35,6 @@ class IrekuaRecording(RESTModel):
         else:
             key = "media" + datum["item_file"].split("media")[-1]
             path = f"s3://{self.bucket}/{key}"
-        print(datum)
-        print(datum["media_info"])
         samplerate = datum["media_info"]["sampling_rate"]
         media_info = {
             'nchannels': datum["media_info"]["channels"],
