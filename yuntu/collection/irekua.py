@@ -26,15 +26,24 @@ class IrekuaRESTCollection(Collection):
                 raise ValueError(f"Recording {key} not found.")
             return self.build_audio(matches[0])
 
-        limit = key[1] - key[0]
-        if limit < 0:
-            raise ValueError("Wrong keys.")
-        elif limit == 0:
-            return []
+        limit = None
+        offset = None
+        if key.start is not None:
+            offset = key.start
+            if key.stop is not None:
+                limit = key.stop - key.start
+        elif key.stop is not None:
+            limit = key.stop
+
+        if limit is not None:
+            if limit < 0:
+                raise ValueError("Wrong keys.")
+            elif limit == 0:
+                return []
 
         return ([self.build_audio(recording)
                 for recording in self.recordings(limit=limit,
-                                                 offset=key[0])])
+                                                 offset=offset)])
     def __iter__(self):
         for recording in self.recordings():
             yield self.build_audio(recording)
