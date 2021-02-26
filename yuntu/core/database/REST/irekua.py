@@ -20,13 +20,15 @@ class IrekuaRecording(RESTModel):
     def __init__(self, target_url,
                  target_attr="results",
                  page_size=1, auth=None,
-                 bucket='irekua'):
+                 bucket='irekua',
+                 base_filter={"mime_type": 49}):
         self.target_url = target_url
         self.target_attr = target_attr
         self._auth = auth
         self._page_size = page_size
         self.bucket = bucket
         self.http = urllib3.PoolManager()
+        self.base_filter=base_filter
 
     def parse(self, datum):
         """Parse audio item from irekua REST api"""
@@ -67,12 +69,15 @@ class IrekuaRecording(RESTModel):
 
     def validate_query(self, query):
         if query is None:
-            return {}
+            return self.base_filter
 
         if not isinstance(query, dict):
             raise ValueError("When using REST collections, queries should " +
                              "be specified with a dictionary that contains " +
                              "url parameters.")
+        for key in self.base_filter:
+            query[key] = self.base_filter[key]
+
         return query
 
     def count(self, query=None):
