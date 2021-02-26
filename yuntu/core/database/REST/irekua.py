@@ -58,7 +58,7 @@ class IrekuaRecording(RESTModel):
         print(query)
         if not isinstance(query, dict):
             raise ValueError("When using REST collections, queries should " +
-                             "be specified with a dictionary that contains" +
+                             "be specified with a dictionary that contains " +
                              "url parameters.")
         return query
 
@@ -77,7 +77,9 @@ class IrekuaRecording(RESTModel):
 
     def iter_pages(self, query=None, limit=None, offset=None):
         query = self.validate_query(query)
-        page_start, page_end, page_size = self._get_pagination(limit, offset)
+        page_start, page_end, page_size = self._get_pagination(query=query,
+                                                               limit=limit,
+                                                               offset=offset)
         for page_number in range(page_start, page_end):
             query["page_size"] = page_size
             query["page"] = page
