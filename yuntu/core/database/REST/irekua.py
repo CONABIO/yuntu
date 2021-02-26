@@ -15,9 +15,21 @@ Models = namedtuple('Models', MODELS)
 
 class IrekuaRecording(RESTModel):
 
+    def __init__(self, target_url,
+                 target_attr="results",
+                 page_size=1, auth=None,
+                 bucket='irekua'):
+        self.target_url = target_url
+        self.target_attr = target_attr
+        self._auth = auth
+        self._page_size = page_size
+        self.bucket = bucket
+
     def parse(self, datum):
         """Parse audio item from irekua REST api"""
-        path = datum["item_file"]
+        # This is convenient, otherwise http requests are a bit slow
+        # path = datum["item_file"]
+        path = f"s3://{bucket}/media"+datum["item_file"].split("media")[-1]
         samplerate = datum["media_info"]["sampling_rate"]
         media_info = {
             'nchannels': datum["media_info"]["channels"],

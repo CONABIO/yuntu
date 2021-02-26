@@ -18,6 +18,13 @@ class IrekuaRESTCollection(Collection):
 
     db_manager_class = IrekuaREST
 
+    def __init__(self, db_config=None):
+        """Initialize collection."""
+        if db_config is not None:
+            self.db_config = db_config
+
+        self.db_manager = self.get_db_manager()
+
     def __getitem__(self, key):
 
         if isinstance(key, int):
