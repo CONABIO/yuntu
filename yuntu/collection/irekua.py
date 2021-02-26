@@ -9,10 +9,10 @@ class IrekuaRESTCollection(Collection):
     db_config = {
         'provider': 'irekua',
         'config': {
-            'recordings_url': None,
+            'recordings_url': 'http://localhost:3000/api/items/v1/items/',
             'page_size': 1,
             'target_attr': 'results',
-            'auth': None
+            'auth': 'abc:xyz'
         }
     }
 

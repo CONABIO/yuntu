@@ -1,6 +1,7 @@
 import math
+import urllib3
+import json
 from collections import namedtuple
-import requests
 from dateutil.parser import parse as dateutil_parse
 import datetime
 
@@ -25,7 +26,7 @@ class IrekuaRecording(RESTModel):
         self._auth = auth
         self._page_size = page_size
         self.bucket = bucket
-        self.session = requests.Session()
+        self.http = urllib3.PoolManager()
 
     def parse(self, datum):
         """Parse audio item from irekua REST api"""
@@ -81,15 +82,18 @@ class IrekuaRecording(RESTModel):
         query["page_size"] = 1
         query["page"] = 1
 
-        res = self.session.get(self.target_url,
-                               params=query,
-                               auth=self.auth
-                               )
+        headers = urllib3.make_headers(basic_auth=self.auth)
+        res = self.http.request('GET',self.target_url,
+                                fields=query,
+                                auth=self.auth,
+                                headers=headers
+                                )
 
-        if res.status_code != 200:
+        if res.status != 200:
             raise ValueError("Connection error!")
 
-        return res.json()["count"]
+        res = json.loads(res.data.decode('utf-8'))
+        return res["count"]
 
     def iter_pages(self, query=None, limit=None, offset=None):
         query = self.validate_query(query)
@@ -99,17 +103,23 @@ class IrekuaRecording(RESTModel):
         for page_number in range(page_start, page_end):
             query["page_size"] = page_size
             query["page"] = page_number
-            res = self.session.get(self.target_url,
-                                   params=query,
-                                   auth=self.auth)
+            headers = urllib3.make_headers(basic_auth=self.auth)
+            res = self.http.request('GET',self.target_url,
+                                    fields=query,
+                                    auth=self.auth,
+                                    headers=headers
+                                    )
 
-            if res.status_code != 200:
-                res = self.session.get(self.target_url,
-                                       params=query,
-                                       auth=self.auth)
-                raise ValueError(str(res))
+            if res.status != 200:
+                res = self.http.request('GET',self.target_url,
+                                        fields=query,
+                                        auth=self.auth,
+                                        headers=headers
+                                        )
+                if res.status != 200:
+                    raise ValueError(str(res))
 
-            yield res.json()
+            yield json.loads(res.data.decode('utf-8'))
 
     def _get_pagination(self, query=None, limit=None, offset=None):
         total_pages = self._total_pages(query)
