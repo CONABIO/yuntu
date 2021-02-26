@@ -131,7 +131,7 @@ class IrekuaRecording(RESTModel):
             return offset, total_pages, 1
         elif limit is not None and offset is None:
             page_limit = math.ceil(float(limit)/float(self.page_size))
-            page_limit = max(1, page_limit)
+            page_limit = max(2, page_limit)
             return 1, page_limit, self.page_size
         else:
             return offset, offset + limit, 1
