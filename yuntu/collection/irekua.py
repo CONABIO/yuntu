@@ -1,6 +1,7 @@
 import pandas as pd
 from yuntu.core.audio.audio import Audio
 from yuntu.collection.base import Collection
+from yuntu.core.database.REST.irekua import IrekuaREST
 
 class IrekuaRESTCollection(Collection):
     """Base class for all collections."""
@@ -14,6 +15,8 @@ class IrekuaRESTCollection(Collection):
             'auth': None
         }
     }
+
+    db_manager_class = IrekuaREST
 
     def __getitem__(self, key):
 

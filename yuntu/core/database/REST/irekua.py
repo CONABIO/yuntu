@@ -96,7 +96,7 @@ class IrekuaRecording(RESTModel):
         return math.ceil(float(self.count(query))/float(self.page_size))
 
 
-def IrekuaREST(RESTManager):
+class IrekuaREST(RESTManager):
 
     def build_models(self):
         """Construct all database entities."""

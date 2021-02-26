@@ -1,7 +1,6 @@
 from abc import ABC
 from abc import abstractmethod
 
-
 class RESTManager(ABC):
     """Managet to fetch information on the fly from irekua REST api"""
 
