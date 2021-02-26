@@ -4,7 +4,7 @@ from abc import abstractmethod
 class as_object:
     def __init__(self, datum):
         for key in datum:
-            setattr(self, key, datum["key"])
+            setattr(self, key, datum[key])
 
     def to_dict(self):
         return self.__dict__
