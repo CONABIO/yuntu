@@ -6,28 +6,28 @@ import datetime
 
 from yuntu.core.database.REST.base import RESTManager
 from yuntu.core.database.REST.models import RESTModel
-# import textwrap
-#
-#
-# def print_roundtrip(response, *args, **kwargs):
-#     format_headers = lambda d: '\n'.join(f'{k}: {v}' for k, v in d.items())
-#     print(textwrap.dedent('''
-#         ---------------- request ----------------
-#         {req.method} {req.url}
-#         {reqhdrs}
-#
-#         {req.body}
-#         ---------------- response ----------------
-#         {res.status_code} {res.reason} {res.url}
-#         {reshdrs}
-#
-#         {res.text}
-#     ''').format(
-#         req=response.request,
-#         res=response,
-#         reqhdrs=format_headers(response.request.headers),
-#         reshdrs=format_headers(response.headers),
-#     ))
+import textwrap
+
+
+def print_roundtrip(response, *args, **kwargs):
+    format_headers = lambda d: '\n'.join(f'{k}: {v}' for k, v in d.items())
+    print(textwrap.dedent('''
+        ---------------- request ----------------
+        {req.method} {req.url}
+        {reqhdrs}
+
+        {req.body}
+        ---------------- response ----------------
+        {res.status_code} {res.reason} {res.url}
+        {reshdrs}
+
+        {res.text}
+    ''').format(
+        req=response.request,
+        res=response,
+        reqhdrs=format_headers(response.request.headers),
+        reshdrs=format_headers(response.headers),
+    ))
 
 MODELS = [
     'recording',
@@ -88,11 +88,12 @@ class IrekuaRecording(RESTModel):
         """Request results count"""
         query = self.validate_query(query)
         query["page_size"] = 1
-        query["page"] = 0
+        query["page"] = 1
 
         res = requests.get(self.target_url,
                            params=query,
-                           auth=self.auth)
+                           auth=self.auth,
+                           hooks={'response': print_roundtrip})
 
         if res.status_code != 200:
             raise ValueError("Connection error!")
