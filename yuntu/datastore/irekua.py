@@ -1,5 +1,5 @@
 import requests
-from dateutil.parser import parse
+from dateutil.parser import parse as dateutil_parse
 import datetime
 
 from yuntu.datastore.base import RemoteStorage
@@ -64,7 +64,7 @@ class IrekuaDatastore(RemoteStorage):
         }
 
         dtime_zone = datum["captured_on_timezone"]
-        dtime = parse(datum["captured_on"])
+        dtime = dateutil_parse(datum["captured_on"])
         dtime_format = "%H:%M:%S %d/%m/%Y (%z)"
         dtime_raw = datetime.datetime.strftime(dtime, format=dtime_format)
 

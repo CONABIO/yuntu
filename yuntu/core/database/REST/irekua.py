@@ -1,33 +1,34 @@
 import math
 from collections import namedtuple
 import requests
-import dateutil.parser
+from dateutil.parser import parse as dateutil_parse
 import datetime
 
 from yuntu.core.database.REST.base import RESTManager
 from yuntu.core.database.REST.models import RESTModel
-import textwrap
 
-
-def print_roundtrip(response, *args, **kwargs):
-    format_headers = lambda d: '\n'.join(f'{k}: {v}' for k, v in d.items())
-    print(textwrap.dedent('''
-        ---------------- request ----------------
-        {req.method} {req.url}
-        {reqhdrs}
-
-        {req.body}
-        ---------------- response ----------------
-        {res.status_code} {res.reason} {res.url}
-        {reshdrs}
-
-        {res.text}
-    ''').format(
-        req=response.request,
-        res=response,
-        reqhdrs=format_headers(response.request.headers),
-        reshdrs=format_headers(response.headers),
-    ))
+# import textwrap
+#
+#
+# def print_roundtrip(response, *args, **kwargs):
+#     format_headers = lambda d: '\n'.join(f'{k}: {v}' for k, v in d.items())
+#     print(textwrap.dedent('''
+#         ---------------- request ----------------
+#         {req.method} {req.url}
+#         {reqhdrs}
+#
+#         {req.body}
+#         ---------------- response ----------------
+#         {res.status_code} {res.reason} {res.url}
+#         {reshdrs}
+#
+#         {res.text}
+#     ''').format(
+#         req=response.request,
+#         res=response,
+#         reqhdrs=format_headers(response.request.headers),
+#         reshdrs=format_headers(response.headers),
+#     ))
 
 MODELS = [
     'recording',
@@ -52,7 +53,7 @@ class IrekuaRecording(RESTModel):
         spectrum = 'ultrasonic' if samplerate > 50000 else 'audible'
 
         dtime_zone = datum["captured_on_timezone"]
-        dtime = parse(datum["captured_on"])
+        dtime = dateutil_parse(datum["captured_on"])
         dtime_format = "%H:%M:%S %d/%m/%Y (%z)"
         dtime_raw = datetime.datetime.strftime(dtime, format=dtime_format)
 
