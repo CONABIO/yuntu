@@ -87,7 +87,8 @@ class IrekuaRecording(RESTModel):
                                 fields=query,
                                 headers=headers
                                 )
-
+        print(res.status)
+        print(res.data)
         if res.status != 200:
             raise ValueError("Connection error!")
 
