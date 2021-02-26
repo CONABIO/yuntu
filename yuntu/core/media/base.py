@@ -102,7 +102,7 @@ class Media(ABC, AnnotatedObjectMixin):
         if os.path.exists(self.path):
             return False
 
-        if path[:5] == 's3://':
+        if self.path[:5] == 's3://':
             return False
 
         parsed = urlparse(self.path)
