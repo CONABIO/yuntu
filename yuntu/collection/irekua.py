@@ -68,7 +68,7 @@ class IrekuaRESTCollection(Collection):
             self,
             query=None,
             limit=None,
-            offset=0,
+            offset=None,
             with_metadata=False):
 
         recordings = self.recordings(query=query,
