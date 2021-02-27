@@ -40,7 +40,7 @@ class RESTModel(ABC):
                 meta_arr = []
                 meta_arr = page[self.target_attr]
                 for meta in meta_arr:
-                    if count >= limit:
+                    if count > limit:
                         break
                     parsed = self.parse(meta)
                     count += 1

@@ -38,7 +38,7 @@ class IrekuaRESTCollection(Collection):
         if key.start is not None:
             offset = key.start
             if key.stop is not None:
-                limit = key.stop - key.start
+                limit = (key.stop - key.start)+1
         elif key.stop is not None:
             limit = key.stop
 
@@ -73,8 +73,7 @@ class IrekuaRESTCollection(Collection):
 
         recordings = self.recordings(query=query,
                                      limit=limit,
-                                     offset=offset,
-                                     iterate=False)
+                                     offset=offset)
 
         records = []
         for recording in recordings:
