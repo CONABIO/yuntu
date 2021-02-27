@@ -1,61 +1,53 @@
 import json
 from collections import namedtuple
 from dateutil.parser import parse as dateutil_parse
+import urllib3
 import datetime
-import copy
 import math
-import nest_asyncio
-nest_asyncio.apply()
-import aiohttp
-import asyncio
-from aiohttp_retry import RetryClient
-
 
 from yuntu.core.database.REST.base import RESTManager
 from yuntu.core.database.REST.models import RESTModel
 
-
 MODELS = [
     'recording',
 ]
-
-MAX_PAGE_SIZE = 2000
-MAX_PARALLEL_REQUESTS = 10
+MAX_PAGE_SIZE = 5000
 Models = namedtuple('Models', MODELS)
 
-async def get_async(client, url, params=None, headers=None):
-    retry_client = RetryClient(client)
-    async with retry_client.get(url, params=params, headers=headers,
-                                retry_attempts=100, retry_for_statuses=[504]) as resp:
-        assert resp.status == 200
-        resp = await resp.json()
-        resp["params"] = params
-        return resp
+def get_sync(client, url, params=None, auth=None):
+    headers=None
+    if auth is not None:
+        headers = urllib3.make_headers(basic_auth=auth)
+    res = client.request('GET',  url,
+                         fields=params,
+                         headers=headers
+                         )
+    if res.status != 200:
+        res = client.request('GET', url,
+                             fields=params,
+                             headers=headers
+                             )
+        if res.status != 200:
+            raise ValueError(f"Server error {res.status}")
 
-async def fetch_multi_async(url, configs, auth=None):
-    async with aiohttp.ClientSession(auth=auth) as session:
-        tasks = []
-        for conf in configs:
-            task = asyncio.ensure_future(get_async(session, url, conf["params"], conf["headers"]))
-            tasks.append(task)
-        resp = await asyncio.gather(*tasks, return_exceptions=True)
-        return sorted(resp, key=lambda k: k["params"]["page"])
+    return res.json()
+
 
 class IrekuaRecording(RESTModel):
-
     def __init__(self, target_url,
                  target_attr="results",
                  page_size=1, auth=None,
-                 bucket='irekua',
-                 base_filter={"mime_type": 49},
-                 batch_size=10):
+                 base_filter=None,
+                 bucket='irekua'):
         self.target_url = target_url
         self.target_attr = target_attr
-        self._auth = aiohttp.BasicAuth(auth[0], auth[1])
+        self._auth = auth
         self._page_size = min(page_size, MAX_PAGE_SIZE)
+        self._http = urllib3.PoolManager()
         self.bucket = bucket
-        self.base_filter = base_filter
-        self.batch_size = min(batch_size, MAX_PARALLEL_REQUESTS)
+        self.base_filter = {}
+        if base_filter is not None:
+            self.base_filter = base_filter
 
     def parse(self, datum):
         """Parse audio item from irekua REST api"""
@@ -112,44 +104,25 @@ class IrekuaRecording(RESTModel):
         query = self.validate_query(query)
         return self._count(query)
 
-
-    def batch_pages(self, query=None, limit=None, offset=None):
+    def iter_pages(self, query=None, limit=None, offset=None):
         query = self.validate_query(query)
         page_start, page_end, page_size = self._get_pagination(query=query,
                                                                limit=limit,
                                                                offset=offset)
-        pages = list(range(page_start, page_end))
-        batched_page_numbers = ([pages[i:i+self.batch_size]
-                                for i in range(0, len(pages), self.batch_size)])
+        for page in range(page_start, page_end):
+            params = {key: query[key] for key in query}
+            params.update({"page": page, "page_size": page_size})
 
-        for pnumbers in batched_page_numbers:
-            batch = []
-            for page in pnumbers:
-                params = copy.deepcopy(query)
-                params.update({"page": page, "page_size": page_size})
-                batch.append({"params": params, "headers": None})
-            yield batch
-
-    def iter_pages(self, query=None, limit=None, offset=None):
-        page_batches = self.batch_pages(query, limit, offset)
-
-        for batch in page_batches:
-            results = (asyncio.get_event_loop()
-                       .run_until_complete(
-                           fetch_multi_async(self.target_url, batch, self.auth)))
-            for page in results:
-                yield page
+            yield get_sync(self._http, self.target_url, params=params, auth=self.auth)
 
     def _count(self, query=None):
         query["page_size"] = 1
         query["page"] = 1
 
         config = {"params": query, "headers": None}
-        res = (asyncio.get_event_loop()
-               .run_until_complete(
-                   fetch_multi_async(self.target_url, [config], self.auth)))
+        res = get_sync(self._http, self.target_url, params=query, auth=self.auth)
 
-        return res[0]["count"]
+        return res["count"]
 
     def _get_pagination(self, query=None, limit=None, offset=None):
         total_pages = self._total_pages(query)
@@ -188,4 +161,5 @@ class IrekuaREST(RESTManager):
         return IrekuaRecording(target_url=self.recordings_url,
                                target_attr="results",
                                page_size=self.page_size,
-                               auth=self.auth)
+                               auth=self.auth,
+                               bucket=self.bucket)

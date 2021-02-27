@@ -11,9 +11,10 @@ class as_object:
 
 class RESTModel(ABC):
 
-    def __init__(self, target_url, target_attr="results", page_size=1, auth=None):
+    def __init__(self, target_url, target_attr="results", page_size=1, auth=None, bucket=None):
         self.target_url = target_url
         self.target_attr = target_attr
+        self.bucket = bucket
         self._auth = auth
         self._page_size = page_size
 
@@ -37,7 +38,6 @@ class RESTModel(ABC):
         if limit is not None:
             count = 0
             for page in self.iter_pages(query, limit, offset):
-                meta_arr = []
                 meta_arr = page[self.target_attr]
                 for meta in meta_arr:
                     if count > limit:
@@ -47,7 +47,6 @@ class RESTModel(ABC):
                     yield as_object(parsed)
         else:
             for page in self.iter_pages(query, limit, offset):
-                meta_arr = []
                 meta_arr = page[self.target_attr]
                 for meta in meta_arr:
                     parsed = self.parse(meta)

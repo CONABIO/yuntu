@@ -3,12 +3,19 @@ from abc import abstractmethod
 
 class RESTManager(ABC):
     """Managet to fetch information on the fly from irekua REST api"""
+    bucket = None
 
     def __init__(self, provider, config):
         self.provider = provider
-        self.recordings_url = config["recordings_url"]
+        self.api_url = config["api_url"]
+        self.version = config["version"]
         self.page_size = config["page_size"]
         self.auth = config["auth"]
+
+        if "bucket" in config:
+            self.bucket = config["bucket"]
+
+        self.recordings_url = f"{self.api_url}items/{self.version}/items/"
         self.models = self.build_models()
 
     def select(self, query=None, limit=None, offset=None, model="recording"):
