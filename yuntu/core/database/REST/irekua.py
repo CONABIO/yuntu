@@ -110,7 +110,7 @@ class IrekuaRecording(RESTModel):
 
         for page in range(npages):
             params = {key: query[key] for key in query}
-            params.update({"offset": page*self.page_size,
+            params.update({"offset": offset + page*self.page_size,
                            "limit": self.page_size})
             yield get_sync(self._http, self.target_url, params=params, auth=self.auth)
 
