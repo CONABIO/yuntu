@@ -73,7 +73,8 @@ class IrekuaRESTCollection(Collection):
 
         recordings = self.recordings(query=query,
                                      limit=limit,
-                                     offset=offset)
+                                     offset=offset,
+                                     iterate=False)
 
         records = []
         for recording in recordings:
