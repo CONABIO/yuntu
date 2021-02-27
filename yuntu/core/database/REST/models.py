@@ -38,16 +38,13 @@ class RESTModel(ABC):
             count = 0
             for page in self.iter_pages(query, limit, offset):
                 meta_arr = []
-                try:
-                    meta_arr = page[self.target_attr]
-                    for meta in meta_arr:
-                        if count > limit:
-                            break
-                        parsed = self.parse(meta)
-                        count += 1
-                        yield as_object(parsed)
-                except:
-                    print(page)
+                meta_arr = page[self.target_attr]
+                for meta in meta_arr:
+                    if count > limit:
+                        break
+                    parsed = self.parse(meta)
+                    count += 1
+                    yield as_object(parsed)
         else:
             for page in self.iter_pages(query, limit, offset):
                 meta_arr = []

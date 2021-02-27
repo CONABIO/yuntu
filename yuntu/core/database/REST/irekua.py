@@ -148,6 +148,8 @@ class IrekuaRecording(RESTModel):
         total_pages = self._total_pages(query)
         if offset is not None:
             offset = offset + 1
+        if limit is not None:
+            limit = limit + 1
         if limit is None and offset is None:
             return 1, total_pages, self.page_size
         elif limit is None and offset is not None:

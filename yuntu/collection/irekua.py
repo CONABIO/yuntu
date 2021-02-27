@@ -38,7 +38,7 @@ class IrekuaRESTCollection(Collection):
         if key.start is not None:
             offset = key.start
             if key.stop is not None:
-                limit = (key.stop - key.start)+1
+                limit = key.stop - key.start
         elif key.stop is not None:
             limit = key.stop
 
