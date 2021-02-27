@@ -18,12 +18,16 @@ from yuntu.core.database.REST.models import RESTModel
 MODELS = [
     'recording',
 ]
+
+MAX_PAGE_SIZE = 2000
+MAX_PARALLEL_REQUESTS = 10
 Models = namedtuple('Models', MODELS)
 
 async def get_async(client, url, params=None, headers=None):
     retry_client = RetryClient(client)
     async with retry_client.get(url, params=params, headers=headers,
                                 retry_attempts=100, retry_for_statuses=[504]) as resp:
+        assert resp.status == 200
         resp = await resp.json()
         resp["params"] = params
         return resp
@@ -48,10 +52,10 @@ class IrekuaRecording(RESTModel):
         self.target_url = target_url
         self.target_attr = target_attr
         self._auth = aiohttp.BasicAuth(auth[0], auth[1])
-        self._page_size = page_size
+        self._page_size = min(page_size, MAX_PAGE_SIZE)
         self.bucket = bucket
         self.base_filter = base_filter
-        self.batch_size = batch_size
+        self.batch_size = min(batch_size, MAX_PARALLEL_REQUESTS)
 
     def parse(self, datum):
         """Parse audio item from irekua REST api"""
