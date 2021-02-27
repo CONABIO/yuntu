@@ -10,7 +10,7 @@ class IrekuaRESTCollection(Collection):
         'provider': 'irekua',
         'config': {
             'api_url': 'http://localhost:3000/api/',
-            'version': 'v1'
+            'version': 'v1',
             'page_size': 1000,
             'target_attr': 'results',
             'auth': 'abc:xyz',
