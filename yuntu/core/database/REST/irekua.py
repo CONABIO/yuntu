@@ -18,7 +18,7 @@ MODELS = [
 Models = namedtuple('Models', MODELS)
 
 async def get_async(session, url, params=None, headers=None):
-    async with session.get(url, params=params) as resp:
+    async with session.get(url, params=params, headers=headers) as resp:
         assert resp.status == 200
         resp = await resp.json()
         resp["params"] = params
@@ -27,7 +27,7 @@ async def get_async(session, url, params=None, headers=None):
 async def fetch_multi_async(url, configs, auth=None):
     async with aiohttp.ClientSession(auth=auth) as session:
         tasks = []
-        for conf in params:
+        for conf in configs:
             task = asyncio.ensure_future(get_async(session, url, conf["params"], conf["headers"]))
             tasks.append(task)
         return await asyncio.gather(*tasks, return_exceptions=True)
@@ -38,13 +38,15 @@ class IrekuaRecording(RESTModel):
                  target_attr="results",
                  page_size=1, auth=None,
                  bucket='irekua',
-                 base_filter={"mime_type": 49}):
+                 base_filter={"mime_type": 49},
+                 batch_size=10):
         self.target_url = target_url
         self.target_attr = target_attr
         self._auth = aiohttp.BasicAuth(auth[0], auth[1])
         self._page_size = page_size
         self.bucket = bucket
-        self.base_filter=base_filter
+        self.base_filter = base_filter
+        self.batch_size = batch_size
 
     def parse(self, datum):
         """Parse audio item from irekua REST api"""
@@ -102,14 +104,14 @@ class IrekuaRecording(RESTModel):
         return self._count(query)
 
 
-    def batch_pages(self, query=None, limit=None, offset=None, batch_size=10):
+    def batch_pages(self, query=None, limit=None, offset=None):
         query = self.validate_query(query)
         page_start, page_end, page_size = self._get_pagination(query=query,
                                                                limit=limit,
                                                                offset=offset)
         pages = list(range(page_start, page_end))
-        batched_page_numbers = ([pages[i:i+batch_size]
-                                for i in range(0, len(pages), batch_size)])
+        batched_page_numbers = ([pages[i:i+self.batch_size]
+                                for i in range(0, len(pages), self.batch_size)])
 
         for pnumbers in batched_page_numbers:
             batch = []
@@ -119,8 +121,8 @@ class IrekuaRecording(RESTModel):
                 batch.append({"params": params, "headers": None})
             yield batch
 
-    def iter_pages(self, query=None, limit=None, offset=None, batch_size=10):
-        page_batches = self.batch_pages(query, limit, offset, batch_size)
+    def iter_pages(self, query=None, limit=None, offset=None):
+        page_batches = self.batch_pages(query, limit, offset)
 
         for batch in page_batches:
             results = (asyncio.get_event_loop()
