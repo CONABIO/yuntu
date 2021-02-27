@@ -32,7 +32,8 @@ async def fetch_multi_async(url, configs, auth=None):
         for conf in configs:
             task = asyncio.ensure_future(get_async(session, url, conf["params"], conf["headers"]))
             tasks.append(task)
-        return await asyncio.gather(*tasks, return_exceptions=True)
+        resp = await asyncio.gather(*tasks, return_exceptions=True)
+        return sorted(resp, key=lambda k: k["params"]["page"])
 
 class IrekuaRecording(RESTModel):
 
