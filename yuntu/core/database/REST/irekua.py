@@ -6,9 +6,9 @@ import copy
 import math
 import nest_asyncio
 nest_asyncio.apply()
-import aiohtt
-from aiohttp_retry import RetryClient
+import aiohttp
 import asyncio
+from aiohttp_retry import RetryClient
 
 
 from yuntu.core.database.REST.base import RESTManager
