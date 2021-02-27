@@ -11,6 +11,7 @@ class RESTManager(ABC):
         self.version = config["version"]
         self.page_size = config["page_size"]
         self.auth = config["auth"]
+        self.base_filter = conf["base_filter"]
 
         if "bucket" in config:
             self.bucket = config["bucket"]

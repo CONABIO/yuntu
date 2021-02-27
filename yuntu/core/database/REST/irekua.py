@@ -94,6 +94,7 @@ class IrekuaRecording(RESTModel):
             raise ValueError("When using REST collections, queries should " +
                              "be specified with a dictionary that contains " +
                              "url parameters.")
+
         for key in self.base_filter:
             query[key] = self.base_filter[key]
 
@@ -136,5 +137,6 @@ class IrekuaREST(RESTManager):
         return IrekuaRecording(target_url=self.recordings_url,
                                target_attr="results",
                                page_size=self.page_size,
+                               base_filter=self.base_filter,
                                auth=self.auth,
                                bucket=self.bucket)
