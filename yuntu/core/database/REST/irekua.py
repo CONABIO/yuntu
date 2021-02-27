@@ -21,7 +21,7 @@ Models = namedtuple('Models', MODELS)
 
 async def get_async(session, url, params=None, headers=None):
     async with session.get(url, params=params, headers=headers) as resp:
-        assert resp.status == 200
+        assert resp.status == 200, print(resp.status, resp.json())
         resp = await resp.json()
         resp["params"] = params
         return resp
