@@ -106,41 +106,19 @@ class IrekuaRecording(RESTModel):
 
     def iter_pages(self, query=None, limit=None, offset=None):
         query = self.validate_query(query)
-        page_start, page_end, page_size = self._get_pagination(query=query,
-                                                               limit=limit,
-                                                               offset=offset)
-        for page in range(page_start, page_end):
-            params = {key: query[key] for key in query}
-            params.update({"page": page, "page_size": page_size})
+        npages = math.ceil(float(limit)/float(self.page_size))
 
+        for page in range(npages):
+            params = {key: query[key] for key in query}
+            params.update({"offset": page*self.page_size,
+                           "limit": self.page_size})
             yield get_sync(self._http, self.target_url, params=params, auth=self.auth)
 
     def _count(self, query=None):
-        query["page_size"] = 1
-        query["page"] = 1
+        query["limit"] = 1
         return get_sync(self._http, self.target_url,
                         params=query, auth=self.auth)["count"]
 
-    def _get_pagination(self, query=None, limit=None, offset=None):
-        total_pages = self._total_pages(query)
-        if offset is not None:
-            offset = offset + 1
-        if limit is not None:
-            limit = limit + 1
-        if limit is None and offset is None:
-            return 1, total_pages, self.page_size
-        elif limit is None and offset is not None:
-            return offset, total_pages, 1
-        elif limit is not None and offset is None:
-            page_limit = math.ceil(float(limit)/float(self.page_size))
-            page_limit = max(2, page_limit)
-            return 1, page_limit, self.page_size
-        else:
-            return offset, offset + limit, 1
-
-    def _total_pages(self, query=None):
-        """Request results count"""
-        return math.ceil(float(self._count(query))/float(self.page_size))
 
 
 class IrekuaREST(RESTManager):
