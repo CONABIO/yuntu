@@ -140,7 +140,7 @@ class IrekuaRecording(RESTModel):
                .run_until_complete(
                    fetch_multi_async(self.target_url, [config], self.auth)))
 
-        return res["count"]
+        return res[0]["count"]
 
     def _get_pagination(self, query=None, limit=None, offset=None):
         total_pages = self._total_pages(query)
