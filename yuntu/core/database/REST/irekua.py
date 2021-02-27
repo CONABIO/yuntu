@@ -30,7 +30,7 @@ def get_sync(client, url, params=None, auth=None):
         if res.status != 200:
             raise ValueError(f"Server error {res.status}")
 
-    return res.json()
+    return json.loads(res.data.decode('utf-8'))
 
 
 class IrekuaRecording(RESTModel):
@@ -118,11 +118,8 @@ class IrekuaRecording(RESTModel):
     def _count(self, query=None):
         query["page_size"] = 1
         query["page"] = 1
-
-        config = {"params": query, "headers": None}
-        res = get_sync(self._http, self.target_url, params=query, auth=self.auth)
-
-        return res["count"]
+        return get_sync(self._http, self.target_url,
+                        params=query, auth=self.auth)["count"]
 
     def _get_pagination(self, query=None, limit=None, offset=None):
         total_pages = self._total_pages(query)
