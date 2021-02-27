@@ -6,7 +6,8 @@ import copy
 import math
 import nest_asyncio
 nest_asyncio.apply()
-import aiohttp
+import aiohtt
+from aiohttp_retry import RetryClient
 import asyncio
 
 
@@ -19,9 +20,11 @@ MODELS = [
 ]
 Models = namedtuple('Models', MODELS)
 
-async def get_async(session, url, params=None, headers=None):
-    async with session.get(url, params=params, headers=headers) as resp:
-        assert resp.status == 200, print(resp.status, resp.json())
+async def get_async(client, url, params=None, headers=None):
+    retry_client = RetryClient(client)
+    async with retry_client.get(url, params=params, headers=headers,
+                                retry_attempts=100, retry_for_statuses=[504]) as resp:
+        assert resp.status == 200
         resp = await resp.json()
         resp["params"] = params
         return resp
