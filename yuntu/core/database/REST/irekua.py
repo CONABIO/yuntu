@@ -1,5 +1,8 @@
 import math
-import urllib3
+import nest_asyncio
+nest_asyncio.apply()
+import aiohttp
+import asyncio
 import json
 from collections import namedtuple
 from dateutil.parser import parse as dateutil_parse
@@ -14,6 +17,20 @@ MODELS = [
 ]
 Models = namedtuple('Models', MODELS)
 
+async def get_async(session, url, params=None, headers=None):
+    async with session.get(url, params=params) as resp:
+        assert resp.status == 200
+        resp = await resp.json()
+        resp["params"] = params
+        return resp
+
+async def fetch_multi_async(url, configs, auth=None):
+    async with aiohttp.ClientSession(auth=auth) as session:
+        tasks = []
+        for conf in params:
+            task = asyncio.ensure_future(get_async(session, url, conf["params"], conf["headers"]))
+            tasks.append(task)
+        return await asyncio.gather(*tasks, return_exceptions=True)
 
 class IrekuaRecording(RESTModel):
 
@@ -24,10 +41,9 @@ class IrekuaRecording(RESTModel):
                  base_filter={"mime_type": 49}):
         self.target_url = target_url
         self.target_attr = target_attr
-        self._auth = auth
+        self._auth = aiohttp.BasicAuth(auth[0], auth[1])
         self._page_size = page_size
         self.bucket = bucket
-        self.http = urllib3.PoolManager()
         self.base_filter=base_filter
 
     def parse(self, datum):
@@ -83,43 +99,46 @@ class IrekuaRecording(RESTModel):
     def count(self, query=None):
         """Request results count"""
         query = self.validate_query(query)
-        query["page_size"] = 1
-        query["page"] = 1
+        return self._count(query)
 
-        headers = urllib3.make_headers(basic_auth=self.auth)
-        res = self.http.request('GET',self.target_url,
-                                fields=query,
-                                headers=headers
-                                )
-        if res.status != 200:
-            raise ValueError("Connection error!")
 
-        res = json.loads(res.data.decode('utf-8'))
-        return res["count"]
-
-    def iter_pages(self, query=None, limit=None, offset=None):
+    def batch_pages(self, query=None, limit=None, offset=None, batch_size=10):
         query = self.validate_query(query)
         page_start, page_end, page_size = self._get_pagination(query=query,
                                                                limit=limit,
                                                                offset=offset)
-        for page_number in range(page_start, page_end):
-            query["page_size"] = page_size
-            query["page"] = page_number
-            headers = urllib3.make_headers(basic_auth=self.auth)
-            res = self.http.request('GET',self.target_url,
-                                    fields=query,
-                                    headers=headers
-                                    )
+        pages = list(range(page_start, page_end))
+        batched_page_numbers = ([pages[i:i+batch_size]
+                                for i in range(0, len(pages), batch_size)])
 
-            if res.status != 200:
-                res = self.http.request('GET',self.target_url,
-                                        fields=query,
-                                        headers=headers
-                                        )
-                if res.status != 200:
-                    raise ValueError(str(res))
+        for pnumbers in batched_page_numbers:
+            batch = []
+            for page in pnumbers:
+                params = copy.deepcopy(query)
+                params.update({"page": page, "page_size": page_size})
+                batch.append({"params": params, "headers": None})
+            yield batch
 
-            yield json.loads(res.data.decode('utf-8'))
+    def iter_pages(self, query=None, limit=None, offset=None, batch_size=10):
+        page_batches = self.batch_pages(query, limit, offset, batch_size)
+
+        for batch in page_batches:
+            results = (asyncio.get_event_loop()
+                       .run_until_complete(
+                           fetch_multi_async(self.target_url, batch, self.auth)))
+            for page in results:
+                yield page
+
+    def _count(self, query=None):
+        query["page_size"] = 1
+        query["page"] = 1
+
+        config = {"params": query, "headers": None}
+        res = (asyncio.get_event_loop()
+               .run_until_complete(
+                   fetch_multi_async(self.target_url, [config], self.auth)))
+
+        return res["count"]
 
     def _get_pagination(self, query=None, limit=None, offset=None):
         total_pages = self._total_pages(query)
@@ -138,7 +157,7 @@ class IrekuaRecording(RESTModel):
 
     def _total_pages(self, query=None):
         """Request results count"""
-        return math.ceil(float(self.count(query))/float(self.page_size))
+        return math.ceil(float(self._count(query))/float(self.page_size))
 
 
 class IrekuaREST(RESTManager):
