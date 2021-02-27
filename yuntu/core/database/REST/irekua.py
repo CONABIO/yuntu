@@ -11,14 +11,13 @@ from yuntu.core.database.REST.models import RESTModel
 MODELS = [
     'recording',
 ]
-MAX_PAGE_SIZE = 5000
+MAX_PAGE_SIZE = 1000
 Models = namedtuple('Models', MODELS)
 
 def get_sync(client, url, params=None, auth=None):
     headers=None
     if auth is not None:
         headers = urllib3.make_headers(basic_auth=auth)
-    print(params)
     res = client.request('GET',  url,
                          fields=params,
                          headers=headers

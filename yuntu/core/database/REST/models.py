@@ -39,7 +39,6 @@ class RESTModel(ABC):
             count = 0
             for page in self.iter_pages(query, limit, offset):
                 meta_arr = page[self.target_attr]
-                print(len(meta_arr))
                 for meta in meta_arr:
                     if count > limit:
                         break
