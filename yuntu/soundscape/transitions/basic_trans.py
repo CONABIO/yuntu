@@ -51,9 +51,11 @@ def insert_datastore(dstore_config, col_config):
             keep=True, persist=True, is_output=True,
             signature=((DaskDataFramePlace, PickleablePlace, ScalarPlace),
                        (DaskDataFramePlace, )))
-def add_hash(dataframe, hasher, out_name="xhash"):
-    if not isinstance(hasher, Hasher):
-        raise ValueError("Argument 'hasher' must be of class Hasher.")
+def add_hash(dataframe, hasher_config, out_name="xhash"):
+    hasher_class = module_object(hasher_config["module"])
+    hasher_kwargs = hasher_config["kwargs"]
+    hasher = hasher_class(**hasher_kwargs)
+
     if not hasher.validate(dataframe):
         str_cols = str(hasher.columns)
         message = ("Input dataframe is incompatible with hasher."

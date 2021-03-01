@@ -9,8 +9,6 @@ from yuntu.soundscape.processors.indices.direct import EXAG
 from yuntu.soundscape.processors.indices.direct import INFORMATION
 from yuntu.soundscape.processors.indices.direct import CORE
 from yuntu.soundscape.processors.indices.direct import TOTAL
-from yuntu.soundscape.hashers.base import Hasher
-from yuntu.soundscape.hashers.methods import hasher
 
 from yuntu.soundscape.transitions.basic_trans import as_dd, add_hash
 from yuntu.soundscape.transitions.index_trans import slice_features
@@ -23,7 +21,12 @@ FEATURE_TYPE = 'spectrogram'
 FEATURE_CONFIG = {"n_fft": N_FFT,
                   "hop_length": HOP_LENGTH,
                   "window_function": WINDOW_FUNCTION}
-HASHER = hasher('crono')
+HASHER_CONFIG = {
+    "module":{
+        "object_name": "yuntu.soundscape.hashers.crono.CronoHasher"
+    },
+    "kwargs": {}
+}
 HASH_NAME = 'crono_hash'
 
 
@@ -90,7 +93,7 @@ class HashedSoundscape(Soundscape):
 
     def __init__(self,
                  *args,
-                 row_hasher=HASHER,
+                 hasher_config=HASHER_CONFIG,
                  hash_name=HASH_NAME,
                  **kwargs):
         if not isinstance(row_hasher, Hasher):
@@ -103,12 +106,12 @@ class HashedSoundscape(Soundscape):
         """Build soundscape processing pipeline."""
         super().build()
 
-        self['hasher'] = place(data=self.hasher,
-                               name='hasher',
-                               ptype='pickleable')
+        self['hasher_config'] = place(data=self.hasher_config,
+                                      name='hasher',
+                                      ptype='pickleable')
         self['hash_name'] = place(data=self.hash_name,
                                   name="hash_name",
                                   ptype='scalar')
         self['hashed_soundscape'] = add_hash(self['index_results'],
-                                             self['hasher'],
+                                             self['hasher_config'],
                                              self['hash_name'])
