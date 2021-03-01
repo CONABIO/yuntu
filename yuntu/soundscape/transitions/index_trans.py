@@ -1,13 +1,14 @@
 """Transitions for acoustic indices."""
 import numpy as np
 import pandas as pd
+import datetime
 
 from yuntu.core.pipeline.transitions.decorators import transition
 from yuntu.core.pipeline.places import PickleablePlace
 from yuntu.core.pipeline.places.extended import DaskDataFramePlace
 from yuntu.core.pipeline.places import *
 from yuntu.soundscape.dataframe import SoundscapeAccessor
-
+from yuntu.soundscape.utils import sice_windows, sliding_slice_windows, aware_time
 
 def feature_indices(row, indices):
     """Compute acoustic indices for one row."""
@@ -48,6 +49,82 @@ def feature_slices(row, audio, config, indices):
         new_row[index.name] = results
 
     return pd.Series(new_row)
+
+def write_timed_grid_slices(row, audio, slice_config, write_config):
+    """Produce slices from recording and configuration."""
+    cuts = sliding_slice_windows(audio.duration,
+                                 config["time_unit"],
+                                 config["time_hop"],
+                                 config["frequency_limits"],
+                                 config["frequency_unit"],
+                                 config["frequency_hop"])
+    feature = getattr(audio.features,
+                      config["feature_type"])(**config["feature_config"])
+    audio.clean()
+    feature_cuts = [feature.cut_array(cut) for cut in cuts]
+    feature.clean()
+
+    strtime = row["time_raw"]
+    timezone = row["time_zone"]
+    timeformat = row["time_format"]
+
+    atime = aware_time(strtime, timezone, timeformat)
+
+    include_meta = {}
+    if "include_meta" in slice_config:
+        include_meta = {key: np.array([str(row["metadata"][key])])
+                        for key in slice_config["include_meta"]}
+
+    write_results = []
+    recording_id = row["id"]
+    recording_path = row["path"]
+    basename, _ = os.path.splitext(os.path.basename(recording_path))
+    for n, cut in enumerate(cuts):
+        frequency_class = fbins[n]
+        start_time = cut.start
+        min_freq = cut.min
+        end_time = cut.end
+        max_freq = cut.max
+        bounds = [start_time, min_freq, end_time, max_freq]
+
+        start_datetime = atime + datetime.timedelta(seconds=start_time)
+        piece_time_raw = start_datetime.strftime(format=time_format)
+        chunck_basename = '%.2f_%.2f_%.2f_%.2f' % tuple(bounds)
+        chunck_file = f'{basename}_{chunck_basename}.npz'
+
+        npz_path = os.path.join(write_config["write_dir"], chunck_file)
+
+        output = {
+             "bounds": np.array(bounds),
+             "recording_path": np.array([recording_path]),
+             "time_raw": np.array([piece_time_raw]),
+             "time_format": np.array([time_format]),
+             "time_zone": np.array([time_zone]),
+             "array": feature_cuts[n]
+        }
+
+        output.update(include_meta)
+
+        np.savez_compressed(npz_path, **output)
+
+        new_row = {}
+        new_row["recording_id"] = recording_id
+        new_row["npz_path"] = npz_path
+        new_row['start_time'] = start_time
+        new_row['end_time'] = end_time
+        new_row['min_freq'] = max_freq
+        new_row['max_freq'] = min_freq
+        new_row['time_raw'] = piece_time_raw
+        new_row['time_format'] = time_format
+        new_row['time_zone'] = time_zone
+
+        write_results.append(new_row)
+
+    return pd.DataFrame(write_results, columns=["recording_id", "npz_path",
+                                                "start_time", "end_time",
+                                                "min_freq", "max_freq",
+                                                "time_raw", "time_format",
+                                                "time_zone"])
 
 
 @transition(name='slice_features', outputs=["feature_slices"], persist=True,
@@ -108,3 +185,25 @@ def apply_indices(slices, indices):
         slices[index.name] = results[index.name]
 
     return slices.drop(['feature_cut'], axis=1)
+
+
+@transition(name='slice_samples', outputs=["slice_results"], persist=True,
+            signature=((DaskDataFramePlace, DictPlace, DictPlace),
+                       (DaskDataFramePlace,)))
+def slice_timed_samples(recordings, slice_config, write_config):
+    """Produce feature slices dataframe."""
+
+    meta = [('recording_id', np.dtype(int)),
+            ('npz_path', np.dtype('<U')),
+            ('start_time', np.dtype('float64')),
+            ('end_time', np.dtype('float64')),
+            ('min_freq', np.dtype('float64')),
+            ('max_freq', np.dtype('float64')),
+            ('time_raw', np.dtype('<U')),
+            ('time_format', np.dtype('<U')),
+            ('time_zone', np.dtype('<U'))]
+
+    return recordings.audio.apply(write_timed_grid_slices,
+                                  meta=meta,
+                                  slice_config=slice_config,
+                                  write_config=write_config)

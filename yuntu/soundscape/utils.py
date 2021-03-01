@@ -76,6 +76,30 @@ def slice_windows(time_unit, duration, frequency_bins, frequency_limits):
     return windows, weights
 
 
+def sliding_slice_windows(duration, time_unit, time_hop,
+                          frequency_limits, frequency_unit, frequency_hop):
+    bounds = itertools.product([(t, t+time_unit)
+                                for t in np.arange(0, duration, time_hop)],
+                               [(f, f+frequency_unit)
+                                for f in np.arange(frequency_limits[0],
+                                                   frequency_limits[1],
+                                                   frequency_hop)])
+    windows = []
+    weights = []
+    for interval_t, interval_f in bounds:
+        start_time, end_time = interval_t
+        end_time = min(end_time, duration)
+        size_T = end_time - start_time
+        if size_T == time_unit:
+            min_frequency, max_frequency = interval_f
+            weights.append((end_time - start_time) / time_unit)
+            windows.append(TimeFrequencyWindow(start=start_time,
+                                               end=end_time,
+                                               min=min_frequency,
+                                               max=max_frequency))
+    return windows, weights
+
+
 def aware_time(strtime, tzone, time_format):
     dtime = datetime.datetime.strptime(strtime, time_format)
     if dtime.tzinfo is None or dtime.tzinfo.utcoffset(dtime) is None:

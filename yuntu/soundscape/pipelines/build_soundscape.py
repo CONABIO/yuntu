@@ -10,7 +10,7 @@ from yuntu.soundscape.processors.indices.direct import INFORMATION
 from yuntu.soundscape.processors.indices.direct import CORE
 from yuntu.soundscape.processors.indices.direct import TOTAL
 from yuntu.soundscape.hashers.base import Hasher
-from yuntu.soundscape.hashers.hasher import hasher
+from yuntu.soundscape.hashers.methods import hasher
 
 from yuntu.soundscape.transitions.basic_trans import as_dd, add_hash
 from yuntu.soundscape.transitions.index_trans import slice_features
