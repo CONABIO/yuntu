@@ -24,7 +24,7 @@ FEATURE_CONFIG = {"n_fft": N_FFT,
                   "hop_length": HOP_LENGTH,
                   "window_function": WINDOW_FUNCTION}
 HASHER = hasher('crono')
-HASH_COL = 'crono_hash'
+HASH_NAME = 'crono_hash'
 
 
 class Soundscape(Pipeline):
@@ -91,10 +91,12 @@ class HashedSoundscape(Soundscape):
     def __init__(self,
                  *args,
                  row_hasher=HASHER,
+                 hash_name=HASH_NAME,
                  **kwargs):
         if not isinstance(row_hasher, Hasher):
             raise ValueError("Argument 'hasher' must be of type Hasher.")
         self.hasher = row_hasher
+        self.hash_name = hash_name
         super().__init__(*args, **kwargs)
 
     def build(self):
@@ -104,7 +106,7 @@ class HashedSoundscape(Soundscape):
         self['hasher'] = place(data=self.hasher,
                                name='hasher',
                                ptype='pickleable')
-        self['hash_name'] = place(data="xhash",
+        self['hash_name'] = place(data=self.hash_name,
                                   name="hash_name",
                                   ptype='scalar')
         self['hashed_soundscape'] = add_hash(self['index_results'],

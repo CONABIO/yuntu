@@ -8,7 +8,7 @@ from yuntu.core.pipeline.places import PickleablePlace
 from yuntu.core.pipeline.places.extended import DaskDataFramePlace
 from yuntu.core.pipeline.places import *
 from yuntu.soundscape.dataframe import SoundscapeAccessor
-from yuntu.soundscape.utils import sice_windows, sliding_slice_windows, aware_time
+from yuntu.soundscape.utils import slice_windows, sliding_slice_windows, aware_time
 
 def feature_indices(row, indices):
     """Compute acoustic indices for one row."""
