@@ -96,9 +96,7 @@ class HashedSoundscape(Soundscape):
                  hasher_config=HASHER_CONFIG,
                  hash_name=HASH_NAME,
                  **kwargs):
-        if not isinstance(row_hasher, Hasher):
-            raise ValueError("Argument 'hasher' must be of type Hasher.")
-        self.hasher = row_hasher
+        self.hasher_config = hasher_config
         self.hash_name = hash_name
         super().__init__(*args, **kwargs)
 
