@@ -150,11 +150,7 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
                "time_zone"]
     for index in indices:
         columns.append(index.name)
-    return pd.DataFrame(write_results, columns=["recording_id", "npz_path",
-                                                "start_time", "end_time",
-                                                "min_freq", "max_freq",
-                                                "time_raw", "time_format",
-                                                "time_zone"])
+    return pd.DataFrame(write_results, columns=columns)
 
 
 @transition(name='slice_features', outputs=["feature_slices"], persist=True,
