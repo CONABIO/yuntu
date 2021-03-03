@@ -91,9 +91,9 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
         bounds = [start_time, min_freq, end_time, max_freq]
         frequency_class = int(min_freq/1000)
 
-        c1 = classes[[time_class], [frequency_class], [0]]
-        c2 = classes[[time_class], [frequency_class], [1]]
-        c3 = classes[[time_class], [frequency_class], [2]]
+        c1 = int(classes[[time_class], [frequency_class], [0]])
+        c2 = int(classes[[time_class], [frequency_class], [1]])
+        c3 = int(classes[[time_class], [frequency_class], [2]])
         soundscape_class = f"{c1}{c2}{c3}"
 
         start_datetime = atime + datetime.timedelta(seconds=start_time)
