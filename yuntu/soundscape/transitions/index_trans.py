@@ -117,12 +117,6 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
         output = {
              "bounds": np.array(bounds),
              "recording_path": np.array([recording_path]),
-             "time_class": np.array([time_class]),
-             "frequency_class": np.array([frequency_class]),
-             "soundscape_class": np.array([soundscape_class]),
-             "time_raw": np.array([piece_time_raw]),
-             "time_format": np.array([time_format]),
-             "time_zone": np.array([time_zone]),
              "array": feature_cuts[n]
         }
 
