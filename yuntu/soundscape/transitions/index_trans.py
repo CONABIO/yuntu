@@ -83,7 +83,6 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
     time_class = row["time_class"]
     basename, _ = os.path.splitext(os.path.basename(recording_path))
     for n, cut in enumerate(cuts):
-        frequency_class = fbins[n]
         start_time = cut.start
         min_freq = cut.min
         end_time = cut.end
