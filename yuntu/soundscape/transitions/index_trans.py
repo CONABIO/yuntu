@@ -141,6 +141,7 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
         new_row.update(indices)
 
         write_results.append(new_row)
+
     columns = ["recording_id", "npz_path",
                "time_class", "frequency_class",
                "soundscape_class",
@@ -148,9 +149,16 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
                "min_freq", "max_freq",
                "time_raw", "time_format",
                "time_zone"]
+
     for index in indices:
         columns.append(index.name)
-    return pd.DataFrame(write_results, columns=columns)
+
+    packed_results = {key:[] for key in columns}
+    for r in write_results:
+        for c in columns:
+            packed_results[c].append(r[c])
+
+    return pd.Series(packed_results)
 
 
 @transition(name='slice_features', outputs=["feature_slices"], persist=True,
@@ -239,8 +247,10 @@ def slice_timed_samples(hashed_dd, slice_config, write_config, indices):
 
     meta = meta + [(index.name, np.dtype('float64')) for index in indices]
 
-    return hashed_dd.audio.apply(write_timed_grid_slices,
-                                 meta=meta,
-                                 slice_config=slice_config,
-                                 write_config=write_config,
-                                 indices=indices)
+    results = hashed_dd.audio.apply(write_timed_grid_slices,
+                                    meta=meta,
+                                    slice_config=slice_config,
+                                    write_config=write_config,
+                                    indices=indices)
+
+    return results.explode() 
