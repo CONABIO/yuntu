@@ -96,7 +96,7 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
         soundscape_class = f"{c1}{c2}{c3}"
 
         start_datetime = atime + datetime.timedelta(seconds=start_time)
-        piece_time_raw = start_datetime.strftime(format=time_format)
+        piece_time_raw = start_datetime.strftime(format=timeformat)
         chunck_basename = '%.2f_%.2f_%.2f_%.2f' % tuple(bounds)
         chunck_file = f'{basename}_{chunck_basename}.npz'
 
