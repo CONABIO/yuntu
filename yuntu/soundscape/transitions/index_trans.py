@@ -126,10 +126,10 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
              "array": feature_cuts[n]
         }
 
-        indices = {}
+        index_results = {}
         for index in indices:
             index_result = index(feature_cuts[n])
-            indices[index.name] = index_result
+            index_results[index.name] = index_result
             output[index.name] = np.array([index_result])
 
         output.update(include_meta)
@@ -150,7 +150,7 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
         new_row['time_format'] = time_format
         new_row['time_zone'] = time_zone
 
-        new_row.update(indices)
+        new_row.update(index_results)
 
         for c in columns:
             packed_results[c].append(new_row[c])
