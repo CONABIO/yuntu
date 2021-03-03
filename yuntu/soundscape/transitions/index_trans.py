@@ -77,7 +77,20 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
                         for key in slice_config["include_meta"]}
 
     classes = np.load(slice_config["soundscape_classes"])
-    write_results = []
+
+    columns = ["recording_id", "npz_path",
+               "time_class", "frequency_class",
+               "soundscape_class",
+               "start_time", "end_time",
+               "min_freq", "max_freq",
+               "time_raw", "time_format",
+               "time_zone"]
+
+    for index in indices:
+        columns.append(index.name)
+
+    packed_results = {key:[] for key in columns}
+
     recording_id = row["id"]
     recording_path = row["path"]
     time_class = row["time_class"]
@@ -140,23 +153,8 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
 
         new_row.update(indices)
 
-        write_results.append(new_row)
-
-    columns = ["recording_id", "npz_path",
-               "time_class", "frequency_class",
-               "soundscape_class",
-               "start_time", "end_time",
-               "min_freq", "max_freq",
-               "time_raw", "time_format",
-               "time_zone"]
-
-    for index in indices:
-        columns.append(index.name)
-
-    packed_results = {key:[] for key in columns}
-    for r in write_results:
         for c in columns:
-            packed_results[c].append(r[c])
+            packed_results[c].append(new_row[c])
 
     return pd.Series(packed_results)
 
@@ -253,4 +251,4 @@ def slice_timed_samples(hashed_dd, slice_config, write_config, indices):
                                     write_config=write_config,
                                     indices=indices)
 
-    return results.explode() 
+    return results.explode()
