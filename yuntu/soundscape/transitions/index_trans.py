@@ -50,14 +50,14 @@ def feature_slices(row, audio, config, indices):
 
     return pd.Series(new_row)
 
-def write_timed_grid_slices(row, audio, slice_config, write_config):
+def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
     """Produce slices from recording and configuration."""
-    cuts = sliding_slice_windows(audio.duration,
-                                 config["time_unit"],
-                                 config["time_hop"],
-                                 config["frequency_limits"],
-                                 config["frequency_unit"],
-                                 config["frequency_hop"])
+    cuts, weights = sliding_slice_windows(audio.duration,
+                                          config["time_unit"],
+                                          config["time_hop"],
+                                          config["frequency_limits"],
+                                          config["frequency_unit"],
+                                          config["frequency_hop"])
     feature = getattr(audio.features,
                       config["feature_type"])(**config["feature_config"])
     audio.clean()
@@ -75,9 +75,11 @@ def write_timed_grid_slices(row, audio, slice_config, write_config):
         include_meta = {key: np.array([str(row["metadata"][key])])
                         for key in slice_config["include_meta"]}
 
+    classes = np.load(slice_config["soundscape_classes"])
     write_results = []
     recording_id = row["id"]
     recording_path = row["path"]
+    time_class = row["time_class"]
     basename, _ = os.path.splitext(os.path.basename(recording_path))
     for n, cut in enumerate(cuts):
         frequency_class = fbins[n]
@@ -86,22 +88,36 @@ def write_timed_grid_slices(row, audio, slice_config, write_config):
         end_time = cut.end
         max_freq = cut.max
         bounds = [start_time, min_freq, end_time, max_freq]
+        frequency_class = int(min_freq/1000)
+
+        c1 = classes[[time_class], [frequency_class], [0]]
+        c2 = classes[[time_class], [frequency_class], [1]]
+        c3 = classes[[time_class], [frequency_class], [2]]
+        soundscape_class = f"{c1}{c2}{c3}"
 
         start_datetime = atime + datetime.timedelta(seconds=start_time)
         piece_time_raw = start_datetime.strftime(format=time_format)
         chunck_basename = '%.2f_%.2f_%.2f_%.2f' % tuple(bounds)
         chunck_file = f'{basename}_{chunck_basename}.npz'
 
-        npz_path = os.path.join(write_config["write_dir"], chunck_file)
-
+        npz_path = os.path.join(write_config["write_dir"], soundscape_class, chunck_file)
         output = {
              "bounds": np.array(bounds),
              "recording_path": np.array([recording_path]),
+             "time_class": np.array([time_class]),
+             "frequency_class": np.array([frequency_class]),
+             "soundscape_class": np.array([soundscape_class]),
              "time_raw": np.array([piece_time_raw]),
              "time_format": np.array([time_format]),
              "time_zone": np.array([time_zone]),
              "array": feature_cuts[n]
         }
+
+        indices = {}
+        for index in indices:
+            index_result = index(feature_cuts[n])
+            indices[index.name] = index_result
+            output[index.name] = np.array([index_result])
 
         output.update(include_meta)
 
@@ -110,6 +126,9 @@ def write_timed_grid_slices(row, audio, slice_config, write_config):
         new_row = {}
         new_row["recording_id"] = recording_id
         new_row["npz_path"] = npz_path
+        new_row["time_class"] = time_class
+        new_row["frequency_class"] = frequency_class
+        new_row["soundscape_class"] = soundscape_class
         new_row['start_time'] = start_time
         new_row['end_time'] = end_time
         new_row['min_freq'] = max_freq
@@ -117,6 +136,8 @@ def write_timed_grid_slices(row, audio, slice_config, write_config):
         new_row['time_raw'] = piece_time_raw
         new_row['time_format'] = time_format
         new_row['time_zone'] = time_zone
+
+        new_row.update(indices)
 
         write_results.append(new_row)
 
@@ -188,13 +209,21 @@ def apply_indices(slices, indices):
 
 
 @transition(name='slice_samples', outputs=["slice_results"], persist=True,
-            signature=((DaskDataFramePlace, DictPlace, DictPlace),
+            signature=((DaskDataFramePlace, DictPlace, DictPlace, DynamicPlace),
                        (DaskDataFramePlace,)))
-def slice_timed_samples(recordings, slice_config, write_config):
+def slice_timed_samples(hashed_dd, slice_config, write_config, indices):
     """Produce feature slices dataframe."""
+    if not os.path.exists(write_config["write_dir"]):
+        for i in range(3):
+            for j in range(3):
+                for k in range(3):
+                    os.makedirs(os.path.join(write_config["write_dir"], f"{i}{j}{k}"))
 
     meta = [('recording_id', np.dtype(int)),
             ('npz_path', np.dtype('<U')),
+            ('time_class', np.dtype(int)),
+            ('frequency_class', np.dtype(int)),
+            ('soundscape_class', np.dtype('<U')),
             ('start_time', np.dtype('float64')),
             ('end_time', np.dtype('float64')),
             ('min_freq', np.dtype('float64')),
@@ -203,7 +232,10 @@ def slice_timed_samples(recordings, slice_config, write_config):
             ('time_format', np.dtype('<U')),
             ('time_zone', np.dtype('<U'))]
 
-    return recordings.audio.apply(write_timed_grid_slices,
-                                  meta=meta,
-                                  slice_config=slice_config,
-                                  write_config=write_config)
+    meta = meta + [(index.name, np.dtype('float64')) for index in indices]
+
+    return hashed_dd.audio.apply(write_timed_grid_slices,
+                                 meta=meta,
+                                 slice_config=slice_config,
+                                 write_config=write_config,
+                                 indices=indices)
