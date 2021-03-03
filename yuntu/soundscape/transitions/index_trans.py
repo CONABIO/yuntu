@@ -60,7 +60,7 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
                                           slice_config["frequency_unit"],
                                           slice_config["frequency_hop"])
     feature = getattr(audio.features,
-                      config["feature_type"])(**config["feature_config"])
+                      slice_config["feature_type"])(**slice_config["feature_config"])
     audio.clean()
     feature_cuts = [feature.cut_array(cut) for cut in cuts]
     feature.clean()
