@@ -54,11 +54,11 @@ def feature_slices(row, audio, config, indices):
 def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
     """Produce slices from recording and configuration."""
     cuts, weights = sliding_slice_windows(audio.duration,
-                                          config["time_unit"],
-                                          config["time_hop"],
-                                          config["frequency_limits"],
-                                          config["frequency_unit"],
-                                          config["frequency_hop"])
+                                          slice_config["time_unit"],
+                                          slice_config["time_hop"],
+                                          slice_config["frequency_limits"],
+                                          slice_config["frequency_unit"],
+                                          slice_config["frequency_hop"])
     feature = getattr(audio.features,
                       config["feature_type"])(**config["feature_config"])
     audio.clean()
