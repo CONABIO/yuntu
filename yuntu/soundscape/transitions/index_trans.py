@@ -66,10 +66,10 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
     feature.clean()
 
     strtime = row["time_raw"]
-    timezone = row["time_zone"]
-    timeformat = row["time_format"]
+    time_zone = row["time_zone"]
+    time_format = row["time_format"]
 
-    atime = aware_time(strtime, timezone, timeformat)
+    atime = aware_time(strtime, time_zone, time_format)
 
     include_meta = {}
     if "include_meta" in slice_config:
@@ -97,7 +97,7 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
         soundscape_class = f"{c1}{c2}{c3}"
 
         start_datetime = atime + datetime.timedelta(seconds=start_time)
-        piece_time_raw = start_datetime.strftime(format=timeformat)
+        piece_time_raw = start_datetime.strftime(format=time_format)
         chunck_basename = '%.2f_%.2f_%.2f_%.2f' % tuple(bounds)
         chunck_file = f'{basename}_{chunck_basename}.npz'
 
