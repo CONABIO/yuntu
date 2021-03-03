@@ -243,4 +243,12 @@ def slice_timed_samples(hashed_dd, slice_config, write_config, indices):
                                     slice_config=slice_config,
                                     write_config=write_config,
                                     indices=indices)
-    return results.explode('recording_id')
+    hdd = hashed_dd[["path"]]
+    hdd["recording_id"] = results["recording_id"]
+    slices = hdd.explode('recording_id')
+
+    for obj in meta:
+        if obj[0] != "recording_id":
+            slices[obj[0]] = results[obj[0]].explode()
+
+    return slices
