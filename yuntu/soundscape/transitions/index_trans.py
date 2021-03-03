@@ -81,6 +81,7 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
     recording_id = row["id"]
     recording_path = row["path"]
     time_class = row["time_class"]
+    columns = []
     basename, _ = os.path.splitext(os.path.basename(recording_path))
     for n, cut in enumerate(cuts):
         start_time = cut.start
@@ -140,7 +141,15 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
         new_row.update(indices)
 
         write_results.append(new_row)
-
+    columns = ["recording_id", "npz_path",
+               "time_class", "frequency_class",
+               "soundscape_class",
+               "start_time", "end_time",
+               "min_freq", "max_freq",
+               "time_raw", "time_format",
+               "time_zone"]
+    for index in indices:
+        columns.append(index.name)
     return pd.DataFrame(write_results, columns=["recording_id", "npz_path",
                                                 "start_time", "end_time",
                                                 "min_freq", "max_freq",
