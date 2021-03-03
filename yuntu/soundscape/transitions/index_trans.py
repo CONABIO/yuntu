@@ -90,7 +90,6 @@ def write_timed_grid_slices(row, audio, slice_config, write_config, indices):
         columns.append(index.name)
 
     packed_results = {key:[] for key in columns}
-
     recording_id = row["id"]
     recording_path = row["path"]
     time_class = row["time_class"]
@@ -250,5 +249,4 @@ def slice_timed_samples(hashed_dd, slice_config, write_config, indices):
                                     slice_config=slice_config,
                                     write_config=write_config,
                                     indices=indices)
-
-    return results.explode()
+    return results.explode('recording_id')
