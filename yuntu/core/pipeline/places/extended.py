@@ -941,7 +941,9 @@ for meth in DASK_BAG_METHOD_SPECS:
     setattr(
         DaskBagMixin,
         meth,
-        _build_method(meth, Transition, DASK_BAG_METHOD_SPECS[meth]["out_sig"]),
+        _build_method(
+            meth, Transition, DASK_BAG_METHOD_SPECS[meth]["out_sig"]
+        ),
     )
 
 

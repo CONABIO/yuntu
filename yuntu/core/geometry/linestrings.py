@@ -120,7 +120,8 @@ class MultiLineString(MultiGeometryMixin, Geometry2DMixin, Geometry):
         if geometry is None:
             if linestrings is None:
                 message = (
-                    "Linestrings must be provided if no geometry " "is supplied"
+                    "Linestrings must be provided if no geometry "
+                    "is supplied"
                 )
                 raise ValueError(message)
 

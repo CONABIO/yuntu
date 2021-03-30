@@ -62,7 +62,9 @@ class CustomStruct(OrderedDict):
 
 chunk_t = CustomStruct([("id", RIFF_FORMAT), ("size", uint32_t)])
 
-icmt_t = CustomStruct([("icmt", chunk_t), ("comment", f"{LENGTH_OF_COMMENT}s")])
+icmt_t = CustomStruct(
+    [("icmt", chunk_t), ("comment", f"{LENGTH_OF_COMMENT}s")]
+)
 
 wavFormat_t = CustomStruct(
     [

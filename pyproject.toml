@@ -1,5 +1,5 @@
 [tool.black]
-line_length=80
+line_length=79
 
 [tool.poetry]
 name = "yuntu"

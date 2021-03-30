@@ -246,7 +246,9 @@ class TimeMediaMixin:
             if window is None:
                 end_time = current_end
             else:
-                end_time = window.end if window.end is not None else current_end
+                end_time = (
+                    window.end if window.end is not None else current_end
+                )
 
         if end_time < start_time:
             message = "Window is empty"

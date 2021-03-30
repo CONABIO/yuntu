@@ -27,7 +27,9 @@ class ProbeAnnotate(Pipeline):
         self.build()
 
     def build(self):
-        self["col_config"] = place(self.collection_config, "dict", "col_config")
+        self["col_config"] = place(
+            self.collection_config, "dict", "col_config"
+        )
         self["query"] = place(self.query, "dynamic", "query")
         self["npartitions"] = place(1, "scalar", "npartitions")
         self["batch_size"] = place(200, "scalar", "batch_size")

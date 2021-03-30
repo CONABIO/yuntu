@@ -122,7 +122,14 @@ def insert_probe_annotations(
     outputs=["write_result"],
     persist=True,
     signature=(
-        (DynamicPlace, DictPlace, DictPlace, DictPlace, ScalarPlace, BoolPlace),
+        (
+            DynamicPlace,
+            DictPlace,
+            DictPlace,
+            DictPlace,
+            ScalarPlace,
+            BoolPlace,
+        ),
         (DaskDataFramePlace,),
     ),
 )

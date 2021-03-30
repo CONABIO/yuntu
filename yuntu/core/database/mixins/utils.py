@@ -124,7 +124,9 @@ def pg_drop_db(
             + "FROM pg_stat_activity WHERE datname={}"
         ).format(sql.Identifier(database))
     )
-    cursor.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(database)))
+    cursor.execute(
+        sql.SQL("DROP DATABASE {}").format(sql.Identifier(database))
+    )
     print(f"Database '{database}' droped!")
 
     # except:

@@ -44,12 +44,14 @@ def transition(
                 if not isinstance(outputs, list):
                     message = "Argument 'outputs' must be a tuple or a list."
                     raise ValueError(message)
+
                 if not len(outputs) == len(signature[1]):
                     message = (
                         "Outputs length must be equal to the length "
                         + " of the second element of 'signature'."
                     )
                     raise ValueError(message)
+
                 for ind, out in enumerate(outputs):
                     if not isinstance(out, str):
                         if not isinstance(out, signature[1][ind]):

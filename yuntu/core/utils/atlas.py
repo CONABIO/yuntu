@@ -670,7 +670,9 @@ def geometry_to_mask(geom, shape, transformX=None, transformY=None):
     raise NotImplementedError(message)
 
 
-def point_neighbourhood(array, point, bins=1, transformX=None, transformY=None):
+def point_neighbourhood(
+    array, point, bins=1, transformX=None, transformY=None
+):
     """Get neighbourhood values at point with bin buffer.
 
     Parameters

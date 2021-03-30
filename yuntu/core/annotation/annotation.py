@@ -146,8 +146,12 @@ class Annotation(ABC):
 
         return self.geometry.intersects(other)
 
-    def add_label(self, value=None, key=None, type=None, data=None, label=None):
-        self.labels.add(value=value, key=key, type=type, data=data, label=label)
+    def add_label(
+        self, value=None, key=None, type=None, data=None, label=None
+    ):
+        self.labels.add(
+            value=value, key=key, type=type, data=data, label=label
+        )
 
     def to_dict(self):
         data = {
@@ -399,7 +403,9 @@ class FrequencyIntervalAnnotationMixin:
         return FrequencyLineAnnotation(**data)
 
 
-class FrequencyIntervalAnnotation(FrequencyIntervalAnnotationMixin, Annotation):
+class FrequencyIntervalAnnotation(
+    FrequencyIntervalAnnotationMixin, Annotation
+):
     name = Annotation.Types.FREQUENCY_INTERVAL
     geometry_class = geom.FrequencyInterval
 
@@ -477,6 +483,8 @@ class PolygonAnnotation(Annotation2DMixin, Annotation):
 
     def __init__(self, wkt=None, shell=None, holes=None, **kwargs):
         if "geometry" not in kwargs:
-            kwargs["geometry"] = geom.Polygon(wkt=wkt, shell=shell, holes=holes)
+            kwargs["geometry"] = geom.Polygon(
+                wkt=wkt, shell=shell, holes=holes
+            )
 
         super().__init__(**kwargs)

@@ -12,7 +12,12 @@ class DatastoreLoad(Pipeline):
     _partitions = None
 
     def __init__(
-        self, name, datastore_configs, collection_config, admin_config, **kwargs
+        self,
+        name,
+        datastore_configs,
+        collection_config,
+        admin_config,
+        **kwargs
     ):
         if not isinstance(collection_config, dict):
             raise ValueError(

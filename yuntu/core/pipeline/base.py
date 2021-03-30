@@ -57,20 +57,28 @@ class Node(ABC):
 
     @property
     def meta(self):
-        meta = {"key": self.key, "name": self.name, "node_type": self.node_type}
+        meta = {
+            "key": self.key,
+            "name": self.name,
+            "node_type": self.node_type,
+        }
         return meta
 
     def refresh_index(self):
         """Retrieve index from pipeline if exists and update."""
         if self.pipeline is None:
             self._index = None
+
         elif self._index is not None:
             if self._index >= len(self.pipeline):
                 self._index = None
+
             elif self.pipeline[self._index] != self:
                 self._index = None
+
         else:
             keys = list(self.pipeline.nodes.keys())
+
             for i in range(len(keys)):
                 if self.pipeline.nodes[keys[i]] == self:
                     self._index = i
@@ -79,11 +87,14 @@ class Node(ABC):
         """Retrieve key from pipeline if exists and update."""
         if self.pipeline is None:
             self._key = None
+
         elif self._key is not None:
             if self._key not in self.pipeline.nodes:
                 self._key = None
+
             elif self.pipeline.nodes[self._key] != self:
                 self._key = None
+
         else:
             for key in self.pipeline.keys():
                 if self.pipeline.nodes[key] == self:
@@ -111,10 +122,12 @@ class Node(ABC):
                 + " assign a pipeline using method 'set_pipeline'."
             )
             raise ValueError(message)
+
         if self.key not in self.pipeline:
             self.pipeline.add_node(self)
             self.refresh_key()
             self.refresh_index()
+
         elif self.pipeline[self.key] != self:
             self.pipeline[self.key] = self
 
@@ -122,18 +135,22 @@ class Node(ABC):
         """Validate data."""
         if data is None:
             return True
+
         if self.data_class is None:
             return True
+
         return isinstance(data, self.data_class)
 
     def plot(self, **kwargs):
         if self.pipeline is None:
             raise ValueError("No pipeline context. Set pipeline first.")
+
         nodes = [self.key]
         if "nodes" in kwargs:
             if not isinstance(kwargs["nodes"], (tuple, list)):
                 raise ValueError("Argument 'nodes' must be a list or a tuple")
             nodes = list(set(nodes + list(kwargs["nodes"])))
+
         return self.pipeline.plot(nodes=nodes, **kwargs)
 
     def __rshift__(self, other):
@@ -143,6 +160,7 @@ class Node(ABC):
         """
         if not isinstance(other, Node):
             raise ValueError("Both operands must be nodes.")
+
         other.pipeline.merge(self.pipeline)
         return other
 
@@ -153,6 +171,7 @@ class Node(ABC):
         """
         if not isinstance(other, Node):
             raise ValueError("Both operands must be nodes.")
+
         self.pipeline.merge(other.pipeline)
         return self
 
@@ -166,7 +185,13 @@ class Node(ABC):
 
     @abstractmethod
     def compute(
-        self, feed=None, read=None, write=None, keep=None, force=False, **kwargs
+        self,
+        feed=None,
+        read=None,
+        write=None,
+        keep=None,
+        force=False,
+        **kwargs,
     ):
         """Compute self."""
 
@@ -1051,7 +1076,9 @@ class MetaPipeline(ABC):
                                     new_child.set_parent(val_parent)
                                     new_child.attach()
                                     value.set_parent(curr_parent)
-                                    self.nodes_up[value.key] = [curr_parent.key]
+                                    self.nodes_up[value.key] = [
+                                        curr_parent.key
+                                    ]
                                     for ind, node in enumerate(
                                         val_parent_children
                                     ):

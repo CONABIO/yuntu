@@ -149,11 +149,22 @@ class Place(Node, ABC):
                 del feed[self.key]
 
         return self.pipeline.get_node(
-            self.key, feed=feed, read=read, force=force, compute=False, **kwargs
+            self.key,
+            feed=feed,
+            read=read,
+            force=force,
+            compute=False,
+            **kwargs,
         )
 
     def compute(
-        self, feed=None, read=None, write=None, keep=None, force=False, **kwargs
+        self,
+        feed=None,
+        read=None,
+        write=None,
+        keep=None,
+        force=False,
+        **kwargs,
     ):
         """Compute self."""
         if self.pipeline is None:

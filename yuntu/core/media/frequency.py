@@ -89,7 +89,8 @@ class FrequencyMediaMixin:
         minimum = self._get_min()
         if freq < minimum:
             message = (
-                "Frequency less than minimum or window minimum " "was requested"
+                "Frequency less than minimum or window minimum "
+                "was requested"
             )
             raise ValueError(message)
 
@@ -141,15 +142,22 @@ class FrequencyMediaMixin:
             size = None
         return self.frequency_axis.get_bins(window=self.window, size=size)
 
-    def resample(self, resolution: int, lazy: Optional[bool] = False, **kwargs):
+    def resample(
+        self, resolution: int, lazy: Optional[bool] = False, **kwargs
+    ):
         """Get a new FrequencyMedia object with the resampled data."""
         data_kwargs = self._copy_dict()
         data_kwargs["lazy"] = lazy
-        data_kwargs["frequency_axis"] = self.frequency_axis.resample(resolution)
+        data_kwargs["frequency_axis"] = self.frequency_axis.resample(
+            resolution
+        )
 
         if not self.path_exists():
             data = resample(
-                self.array, self.frequency_axis.resolution, resolution, **kwargs
+                self.array,
+                self.frequency_axis.resolution,
+                resolution,
+                **kwargs
             )
             data_kwargs["array"] = data
 

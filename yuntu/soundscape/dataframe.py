@@ -59,7 +59,9 @@ class SoundscapeAccessor:
         self.index_columns = list(set(self.index_columns))
 
         if len(self.index_columns) == 0:
-            message = "Could not find any column to treat as an acoustic index."
+            message = (
+                "Could not find any column to treat as an acoustic index."
+            )
             raise ValueError(message)
 
         self._is_crono = True

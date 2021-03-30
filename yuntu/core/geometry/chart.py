@@ -78,7 +78,10 @@ class Atlas:
     def __init__(
         self, time_win, time_hop, freq_win, freq_hop, bounds, center=None
     ):
-        if time_win > bounds[1] - bounds[0] or freq_win > bounds[3] - bounds[2]:
+        if (
+            time_win > bounds[1] - bounds[0]
+            or freq_win > bounds[3] - bounds[2]
+        ):
             raise ValueError("Window larger than bounds.")
         if center is not None:
             if (

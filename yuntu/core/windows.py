@@ -169,7 +169,10 @@ class FrequencyWindow(Window):
 
     # pylint: disable=redefined-builtin
     def __init__(
-        self, min: Optional[float] = None, max: Optional[float] = None, **kwargs
+        self,
+        min: Optional[float] = None,
+        max: Optional[float] = None,
+        **kwargs,
     ):
         """Construct a frequency window.
 

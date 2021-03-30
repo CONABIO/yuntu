@@ -78,7 +78,9 @@ class Soundscape(Pipeline):
         self["indices"] = place(
             data=self.indices, name="indices", ptype="pickleable"
         )
-        self["npartitions"] = place(data=10, name="npartitions", ptype="scalar")
+        self["npartitions"] = place(
+            data=10, name="npartitions", ptype="scalar"
+        )
         self["recordings_dd"] = as_dd(self["recordings"], self["npartitions"])
         self["index_results"] = slice_features(
             self["recordings_dd"], self["slice_config"], self["indices"]
