@@ -8,9 +8,9 @@ class TimeLine(Non2DGeometryMixin, Geometry):
 
     def __init__(self, time=None, geometry=None):
         if geometry is None:
-            geometry = utils.linestring_geometry([
-                (time, 0),
-                (time, utils.INFINITY)])
+            geometry = utils.linestring_geometry(
+                [(time, 0), (time, utils.INFINITY)]
+            )
 
         super().__init__(geometry=geometry)
 
@@ -19,7 +19,7 @@ class TimeLine(Non2DGeometryMixin, Geometry):
 
     def to_dict(self):
         data = super().to_dict()
-        data['time'] = self.time
+        data["time"] = self.time
         return data
 
     @property
@@ -29,15 +29,13 @@ class TimeLine(Non2DGeometryMixin, Geometry):
     def buffer(self, buffer=None, **kwargs):
         from yuntu.core.geometry.intervals import TimeInterval
 
-        time = utils._parse_args(buffer, 'buffer', 'time', **kwargs)
+        time = utils._parse_args(buffer, "buffer", "time", **kwargs)
         start_time = self.time - time
         end_time = self.time + time
-        return TimeInterval(
-            start_time=start_time,
-            end_time=end_time)
+        return TimeInterval(start_time=start_time, end_time=end_time)
 
     def shift(self, shift=None, **kwargs):
-        time = utils._parse_args(shift, 'shift', 'time', **kwargs)
+        time = utils._parse_args(shift, "shift", "time", **kwargs)
         time = self.time + time
         return TimeLine(time=time)
 
@@ -53,10 +51,11 @@ class TimeLine(Non2DGeometryMixin, Geometry):
 
         ax.axvline(
             self.time,
-            linewidth=kwargs.get('linewidth', None),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', None),
-            label=kwargs.get('label', None))
+            linewidth=kwargs.get("linewidth", None),
+            linestyle=kwargs.get("linestyle", "--"),
+            color=kwargs.get("color", None),
+            label=kwargs.get("label", None),
+        )
 
         return ax
 
@@ -66,9 +65,9 @@ class FrequencyLine(Non2DGeometryMixin, Geometry):
 
     def __init__(self, freq=None, geometry=None):
         if geometry is None:
-            geometry = utils.linestring_geometry([
-                (0, freq),
-                (utils.INFINITY, freq)])
+            geometry = utils.linestring_geometry(
+                [(0, freq), (utils.INFINITY, freq)]
+            )
 
         super().__init__(geometry=geometry)
 
@@ -77,7 +76,7 @@ class FrequencyLine(Non2DGeometryMixin, Geometry):
 
     def to_dict(self):
         data = super().to_dict()
-        data['freq'] = self.freq
+        data["freq"] = self.freq
         return data
 
     @property
@@ -87,15 +86,13 @@ class FrequencyLine(Non2DGeometryMixin, Geometry):
     def buffer(self, buffer=None, **kwargs):
         from yuntu.core.geometry.intervals import FrequencyInterval
 
-        freq = utils._parse_args(buffer, 'buffer', 'freq', index=1, **kwargs)
+        freq = utils._parse_args(buffer, "buffer", "freq", index=1, **kwargs)
         min_freq = self.freq - freq
         max_freq = self.freq + freq
-        return FrequencyInterval(
-            min_freq=min_freq,
-            max_freq=max_freq)
+        return FrequencyInterval(min_freq=min_freq, max_freq=max_freq)
 
     def shift(self, shift=None, **kwargs):
-        freq = utils._parse_args(shift, 'shift', 'freq', index=1, **kwargs)
+        freq = utils._parse_args(shift, "shift", "freq", index=1, **kwargs)
         freq = self.freq + freq
         return FrequencyLine(freq=freq)
 
@@ -111,9 +108,10 @@ class FrequencyLine(Non2DGeometryMixin, Geometry):
 
         ax.axhline(
             self.freq,
-            linewidth=kwargs.get('linewidth', None),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', None),
-            label=kwargs.get('label', None))
+            linewidth=kwargs.get("linewidth", None),
+            linestyle=kwargs.get("linestyle", "--"),
+            color=kwargs.get("color", None),
+            label=kwargs.get("label", None),
+        )
 
         return ax

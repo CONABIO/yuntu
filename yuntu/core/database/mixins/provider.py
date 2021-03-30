@@ -8,13 +8,13 @@ from yuntu.core.database.mixins.utils import pg_create_db
 class SqliteMixin:
     """Bind SQLite database provider."""
 
-    provider = 'sqlite'
+    provider = "sqlite"
 
 
 class PostgresqlMixin:
     """Bind PostgreSQL database provider."""
 
-    provider = 'postgres'
+    provider = "postgres"
 
     def prepare_db(self, admin_user, admin_password, admin_db):
         pg_create_db(self.config, admin_user, admin_password, admin_db)
@@ -23,10 +23,10 @@ class PostgresqlMixin:
 class OracleMixin:
     """Bind oracle database provider."""
 
-    provider = 'oracle'
+    provider = "oracle"
 
 
 class MysqlMixin:
     """Bind MySQL database provider."""
 
-    provider = 'mysql'
+    provider = "mysql"

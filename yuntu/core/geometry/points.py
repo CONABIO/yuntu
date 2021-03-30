@@ -18,7 +18,7 @@ class Point(Geometry):
 
     def __getitem__(self, key):
         if not isinstance(key, int):
-            message = f'Index must be integer not {type(key)}'
+            message = f"Index must be integer not {type(key)}"
             raise ValueError(message)
 
         if key < 0 or key > 1:
@@ -31,8 +31,8 @@ class Point(Geometry):
 
     def to_dict(self):
         data = super().to_dict()
-        data['time'] = self.time
-        data['freq'] = self.freq
+        data["time"] = self.time
+        data["freq"] = self.freq
         return data
 
     def plot(self, ax=None, **kwargs):
@@ -41,18 +41,16 @@ class Point(Geometry):
         ax.scatter(
             [self.time],
             [self.freq],
-            s=kwargs.get('size', None),
-            color=kwargs.get('color', None),
-            marker=kwargs.get('marker', None),
-            label=kwargs.get('label', None))
+            s=kwargs.get("size", None),
+            color=kwargs.get("color", None),
+            marker=kwargs.get("marker", None),
+            label=kwargs.get("label", None),
+        )
 
         return ax
 
 
-class MultiPoint(
-        MultiGeometryMixin,
-        Geometry2DMixin,
-        Geometry):
+class MultiPoint(MultiGeometryMixin, Geometry2DMixin, Geometry):
     """Point collection geometry."""
 
     name = Geometry.Types.MultiPoint
@@ -60,7 +58,7 @@ class MultiPoint(
     def __init__(self, points=None, geometry=None):
         if geometry is None:
             if points is None:
-                message = 'Points must be provided if no geometry is supplied'
+                message = "Points must be provided if no geometry is supplied"
                 raise ValueError(message)
 
             geoms = []
@@ -72,8 +70,9 @@ class MultiPoint(
                 elif isinstance(geom, (list, tuple)):
                     geoms.append(shapely_geometry.Point(*geom))
                 else:
-                    raise ValueError("All elements of input points list"
-                                     " must be points.")
+                    raise ValueError(
+                        "All elements of input points list" " must be points."
+                    )
 
             geometry = shapely_geometry.MultiPoint(geoms)
 

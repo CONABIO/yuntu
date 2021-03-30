@@ -3,10 +3,12 @@
 An atlas is a collection of charts with a reference system over time and
 frequency.
 """
-from yuntu.core.utils.atlas import bbox_to_polygon, \
-                                   plot_geometry, \
-                                   reference_system, \
-                                   build_multigeometry
+from yuntu.core.utils.atlas import (
+    bbox_to_polygon,
+    plot_geometry,
+    reference_system,
+    build_multigeometry,
+)
 
 
 class Chart:
@@ -24,7 +26,7 @@ class Chart:
 
     def __repr__(self):
         """Repr chart."""
-        return f'Chart: ({self.wkt})'
+        return f"Chart: ({self.wkt})"
 
     def __str__(self):
         """Chart as string."""
@@ -32,17 +34,23 @@ class Chart:
 
     def to_dict(self):
         """Chart to dict."""
-        return {"start_time": self.start_time,
-                "end_time": self.end_time,
-                "min_freq": self.min_freq,
-                "max_freq": self.max_freq}
+        return {
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "min_freq": self.min_freq,
+            "max_freq": self.max_freq,
+        }
 
     @property
     def bbox(self):
         """Return bounding box of chart."""
         if self._bbox is None:
-            self._bbox = (self.start_time, self.end_time,
-                          self.min_freq, self.max_freq)
+            self._bbox = (
+                self.start_time,
+                self.end_time,
+                self.min_freq,
+                self.max_freq,
+            )
         return self._bbox
 
     @property
@@ -67,21 +75,18 @@ class Chart:
 class Atlas:
     """A collection of compatible charts within boundaries."""
 
-    def __init__(self,
-                 time_win,
-                 time_hop,
-                 freq_win,
-                 freq_hop,
-                 bounds,
-                 center=None):
-        if time_win > bounds[1] - bounds[0] or \
-           freq_win > bounds[3] - bounds[2]:
+    def __init__(
+        self, time_win, time_hop, freq_win, freq_hop, bounds, center=None
+    ):
+        if time_win > bounds[1] - bounds[0] or freq_win > bounds[3] - bounds[2]:
             raise ValueError("Window larger than bounds.")
         if center is not None:
-            if center[0] < bounds[0] or \
-               center[1] < bounds[2] or \
-               center[0] > bounds[1] or \
-               center[1] > bounds[3]:
+            if (
+                center[0] < bounds[0]
+                or center[1] < bounds[2]
+                or center[0] > bounds[1]
+                or center[1] > bounds[3]
+            ):
                 raise ValueError("Center outside bounds.")
         self._bbox = None
         self._geometry = None
@@ -121,8 +126,13 @@ class Atlas:
         time_hop = min(self.time_hop, other.time_hop)
         freq_hop = min(self.freq_hop, other.freq_hop)
 
-        return Atlas(time_win, time_hop, freq_win, freq_hop,
-                     (start_time, end_time, min_freq, max_freq))
+        return Atlas(
+            time_win,
+            time_hop,
+            freq_win,
+            freq_hop,
+            (start_time, end_time, min_freq, max_freq),
+        )
 
     def __or__(self, other):
         """Return atlas union.
@@ -143,18 +153,24 @@ class Atlas:
         time_hop = max(self.time_hop, other.time_hop)
         freq_hop = max(self.freq_hop, other.freq_hop)
 
-        return Atlas(time_win, time_hop, freq_win, freq_hop,
-                     (start_time, end_time, min_freq, max_freq))
+        return Atlas(
+            time_win,
+            time_hop,
+            freq_win,
+            freq_hop,
+            (start_time, end_time, min_freq, max_freq),
+        )
 
     def build(self):
         """Build system of charts based on input parameters."""
-        ref_system, self.shape, \
-            self.xrange, self.yrange = reference_system(self.time_win,
-                                                        self.time_hop,
-                                                        self.freq_win,
-                                                        self.freq_hop,
-                                                        self.bounds,
-                                                        self.center)
+        ref_system, self.shape, self.xrange, self.yrange = reference_system(
+            self.time_win,
+            self.time_hop,
+            self.freq_win,
+            self.freq_hop,
+            self.bounds,
+            self.center,
+        )
         for coords in ref_system:
             self._atlas[coords] = Chart(*ref_system[coords])
 
@@ -188,9 +204,11 @@ class Atlas:
         charts: list
             List of matching charts.
         """
-        return [(self._atlas[coords], coords)
-                for coords in self._atlas
-                if self._atlas[coords].geometry.intersects(geometry)]
+        return [
+            (self._atlas[coords], coords)
+            for coords in self._atlas
+            if self._atlas[coords].geometry.intersects(geometry)
+        ]
 
     def within(self, geometry):
         """Return charts that lie within geometry.
@@ -205,9 +223,11 @@ class Atlas:
         charts: list
             List of matching charts.
         """
-        return [(self._atlas[coords], coords)
-                for coords in self._atlas
-                if self._atlas[coords].geometry.within(geometry)]
+        return [
+            (self._atlas[coords], coords)
+            for coords in self._atlas
+            if self._atlas[coords].geometry.within(geometry)
+        ]
 
     def contains(self, geometry):
         """Return charts that contain geometry.
@@ -222,9 +242,11 @@ class Atlas:
         charts: list
             List of matching charts.
         """
-        return [(self._atlas[coords], coords)
-                for coords in self._atlas
-                if self._atlas[coords].geometry.contains(geometry)]
+        return [
+            (self._atlas[coords], coords)
+            for coords in self._atlas
+            if self._atlas[coords].geometry.contains(geometry)
+        ]
 
     @property
     def bbox(self):
@@ -237,8 +259,7 @@ class Atlas:
     def geometry(self):
         """Return atlas geometry as MultiPolygon."""
         if self._geometry is None:
-            geom_arr = [self._atlas[coords].geometry
-                        for coords in self._atlas]
+            geom_arr = [self._atlas[coords].geometry for coords in self._atlas]
             self._geometry = build_multigeometry(geom_arr, "Polygon")
         return self._geometry
 
@@ -248,5 +269,9 @@ class Atlas:
         ncharts = len(all_coords)
         for i in range(ncharts - 1):
             plot_geometry(self._atlas[all_coords[i]].geometry, ax, **kwargs)
-        plot_geometry(self._atlas[all_coords[ncharts - 1]].geometry,
-                      ax=ax, outpath=outpath, **kwargs)
+        plot_geometry(
+            self._atlas[all_coords[ncharts - 1]].geometry,
+            ax=ax,
+            outpath=outpath,
+            **kwargs,
+        )

@@ -8,11 +8,11 @@ from .places import place
 from .transitions import transition
 
 __all__ = [
-    'Pipeline',
-    'merge',
-    'union',
-    'knit',
-    'are_compatible',
-    'place',
-    'transition',
+    "Pipeline",
+    "merge",
+    "union",
+    "knit",
+    "are_compatible",
+    "place",
+    "transition",
 ]

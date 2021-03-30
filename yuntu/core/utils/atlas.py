@@ -18,7 +18,7 @@ import shapely.affinity as shapely_affinity
 import shapely.ops as shapely_ops
 
 
-INFINITY = 10e+15
+INFINITY = 10e15
 
 
 def point_geometry(x, y):
@@ -75,7 +75,7 @@ def linestring_set_zcoords(geom, zcoords):
         dimension have wrong length.
     """
     if not isinstance(geom, LineString):
-        message = 'Input geometry must be of type LineString'
+        message = "Input geometry must be of type LineString"
         raise ValueError(message)
     x, y = geom.xy
     if len(x) != len(zcoords):
@@ -120,10 +120,8 @@ def buffer_geometry(geom, buffer):
     """
     ratio = buffer[1] / buffer[0]
     geometry = shapely_affinity.scale(geom, xfact=ratio, origin=(0, 0))
-    geometry = geometry.buffer(buffer[1],
-                               cap_style=1,
-                               join_style=1)
-    return shapely_affinity.scale(geometry, xfact=1/ratio, origin=(0, 0))
+    geometry = geometry.buffer(buffer[1], cap_style=1, join_style=1)
+    return shapely_affinity.scale(geometry, xfact=1 / ratio, origin=(0, 0))
 
 
 def geom_from_wkt(wkt):
@@ -179,11 +177,15 @@ def bbox_to_polygon(bbox):
     polygon: shapely.geometry.polygon.Polygon
         Corresponding polygon.
     """
-    return Polygon([[bbox[0], bbox[2]],
-                    [bbox[0], bbox[3]],
-                    [bbox[1], bbox[3]],
-                    [bbox[1], bbox[2]],
-                    [bbox[0], bbox[2]]])
+    return Polygon(
+        [
+            [bbox[0], bbox[2]],
+            [bbox[0], bbox[3]],
+            [bbox[1], bbox[3]],
+            [bbox[1], bbox[2]],
+            [bbox[0], bbox[2]],
+        ]
+    )
 
 
 def build_multigeometry(geom_arr, geom_type="Polygon"):
@@ -262,7 +264,7 @@ def translate_geometry(geom, xoff=0.0, yoff=0.0, zoff=0.0):
     return shapely_affinity.translate(geom, xoff, yoff, zoff)
 
 
-def scale_geometry(geom, xfact=1.0, yfact=1.0, origin='center'):
+def scale_geometry(geom, xfact=1.0, yfact=1.0, origin="center"):
     """Scale geometry by the specified factor on each dimension.
 
     Parameters
@@ -287,7 +289,7 @@ def scale_geometry(geom, xfact=1.0, yfact=1.0, origin='center'):
     return shapely_affinity.scale(geom, xfact, yfact, origin=origin)
 
 
-def rotate_geometry(geom, angle, origin='center', use_radians=False):
+def rotate_geometry(geom, angle, origin="center", use_radians=False):
     """Returns a rotated geometry on a 2D plane.
 
     The angle of rotation can be specified in either degrees (default) or
@@ -317,10 +319,8 @@ def rotate_geometry(geom, angle, origin='center', use_radians=False):
         The rotated geometry.
     """
     return shapely_affinity.rotate(
-        geom,
-        angle,
-        origin=origin,
-        use_radians=use_radians)
+        geom, angle, origin=origin, use_radians=use_radians
+    )
 
 
 def transform_geometry(geom, func):
@@ -346,10 +346,7 @@ def transform_geometry(geom, func):
     return shapely_ops.transform(func, geom)
 
 
-def point_to_mask(geom,
-                  shape,
-                  transformX=None,
-                  transformY=None):
+def point_to_mask(geom, shape, transformX=None, transformY=None):
     """Rasterize point to binary mask of shape 'shape'.
 
     Parameters
@@ -385,10 +382,7 @@ def point_to_mask(geom,
     return mask
 
 
-def linestring_to_mask(geom,
-                       shape,
-                       transformX=None,
-                       transformY=None):
+def linestring_to_mask(geom, shape, transformX=None, transformY=None):
     """Rasterize linestring to binary mask of shape 'shape'.
 
     Parameters
@@ -416,17 +410,14 @@ def linestring_to_mask(geom,
         y = np.array([transformY(z) for z in y])
 
     mask = np.zeros(shape, dtype=bool)
-    for i in range(0, len(x)-1):
-        rr, cc = line(y[i], x[i], y[i+1], x[i+1])
+    for i in range(0, len(x) - 1):
+        rr, cc = line(y[i], x[i], y[i + 1], x[i + 1])
         mask[rr, cc] = True
 
     return mask
 
 
-def polygon_to_mask(geom,
-                    shape,
-                    transformX=None,
-                    transformY=None):
+def polygon_to_mask(geom, shape, transformX=None, transformY=None):
     """Rasterize polygon to binary mask of shape 'shape'.
 
     Parameters
@@ -467,10 +458,7 @@ def polygon_to_mask(geom,
     return mask
 
 
-def multipoint_to_mask(geom,
-                       shape,
-                       transformX=None,
-                       transformY=None):
+def multipoint_to_mask(geom, shape, transformX=None, transformY=None):
     """Rasterize multipoint to binary mask of shape 'shape'.
 
     Parameters
@@ -491,19 +479,18 @@ def multipoint_to_mask(geom,
     """
     mask = np.zeros(shape, dtype=bool)
     for sgeom in geom.geoms:
-        smask = point_to_mask(geom=sgeom,
-                              shape=shape,
-                              transformX=transformX,
-                              transformY=transformY)
+        smask = point_to_mask(
+            geom=sgeom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
         mask = np.logical_or(mask, smask)
 
     return mask
 
 
-def multilinestring_to_mask(geom,
-                            shape,
-                            transformX=None,
-                            transformY=None):
+def multilinestring_to_mask(geom, shape, transformX=None, transformY=None):
     """Rasterize linestring to binary mask of shape 'shape'.
 
     Parameters
@@ -525,19 +512,18 @@ def multilinestring_to_mask(geom,
 
     mask = np.zeros(shape, dtype=bool)
     for sgeom in geom.geoms:
-        smask = linestring_to_mask(geom=sgeom,
-                                   shape=shape,
-                                   transformX=transformX,
-                                   transformY=transformY)
+        smask = linestring_to_mask(
+            geom=sgeom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
         mask = np.logical_or(mask, smask)
 
     return mask
 
 
-def multipolygon_to_mask(geom,
-                         shape,
-                         transformX=None,
-                         transformY=None):
+def multipolygon_to_mask(geom, shape, transformX=None, transformY=None):
     """Rasterize multipolygon to binary mask of shape 'shape'.
 
     Parameters
@@ -558,19 +544,18 @@ def multipolygon_to_mask(geom,
     """
     mask = np.zeros(shape, dtype=bool)
     for sgeom in geom.geoms:
-        smask = polygon_to_mask(geom=sgeom,
-                                shape=shape,
-                                transformX=transformX,
-                                transformY=transformY)
+        smask = polygon_to_mask(
+            geom=sgeom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
         mask = np.logical_or(mask, smask)
 
     return mask
 
 
-def geometry_collection_to_mask(geom,
-                                shape,
-                                transformX=None,
-                                transformY=None):
+def geometry_collection_to_mask(geom, shape, transformX=None, transformY=None):
     """Rasterize geometry collection to binary mask of shape 'shape'.
 
     Parameters
@@ -591,19 +576,18 @@ def geometry_collection_to_mask(geom,
     """
     mask = np.zeros(shape, dtype=bool)
     for sgeom in geom.geoms:
-        smask = geometry_to_mask(geom=sgeom,
-                                 shape=shape,
-                                 transformX=transformX,
-                                 transformY=transformY)
+        smask = geometry_to_mask(
+            geom=sgeom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
         mask = np.logical_or(mask, smask)
 
     return mask
 
 
-def geometry_to_mask(geom,
-                     shape,
-                     transformX=None,
-                     transformY=None):
+def geometry_to_mask(geom, shape, transformX=None, transformY=None):
     """Rasterize geometry.
 
     Parameters
@@ -626,54 +610,67 @@ def geometry_to_mask(geom,
         return np.zeros(shape, dtype=bool)
 
     if isinstance(geom, Point):
-        return point_to_mask(geom=geom,
-                             shape=shape,
-                             transformX=transformX,
-                             transformY=transformY)
-    if isinstance(geom, MultiPoint):
-        return multipoint_to_mask(geom=geom,
-                                  shape=shape,
-                                  transformX=transformX,
-                                  transformY=transformY)
-    if isinstance(geom, Polygon):
-        return polygon_to_mask(geom=geom,
-                               shape=shape,
-                               transformX=transformX,
-                               transformY=transformY)
-    if isinstance(geom, MultiPolygon):
-        return multipolygon_to_mask(geom=geom,
-                                    shape=shape,
-                                    transformX=transformX,
-                                    transformY=transformY)
-    if isinstance(geom, LineString):
-        return linestring_to_mask(geom=geom,
-                                  shape=shape,
-                                  transformX=transformX,
-                                  transformY=transformY)
-    if isinstance(geom, MultiLineString):
-        return multilinestring_to_mask(geom=geom,
-                                       shape=shape,
-                                       transformX=transformX,
-                                       transformY=transformY)
-    if isinstance(geom, GeometryCollection):
-        return geometry_collection_to_mask(geom=geom,
-                                           shape=shape,
-                                           transformX=transformX,
-                                           transformY=transformY)
+        return point_to_mask(
+            geom=geom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
 
-    message = (
-        "Method not implemented for type: "
-        f"({type(geom)})"
-    )
+    if isinstance(geom, MultiPoint):
+        return multipoint_to_mask(
+            geom=geom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
+
+    if isinstance(geom, Polygon):
+        return polygon_to_mask(
+            geom=geom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
+
+    if isinstance(geom, MultiPolygon):
+        return multipolygon_to_mask(
+            geom=geom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
+
+    if isinstance(geom, LineString):
+        return linestring_to_mask(
+            geom=geom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
+
+    if isinstance(geom, MultiLineString):
+        return multilinestring_to_mask(
+            geom=geom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
+
+    if isinstance(geom, GeometryCollection):
+        return geometry_collection_to_mask(
+            geom=geom,
+            shape=shape,
+            transformX=transformX,
+            transformY=transformY,
+        )
+
+    message = "Method not implemented for type: " f"({type(geom)})"
 
     raise NotImplementedError(message)
 
 
-def point_neighbourhood(array,
-                        point,
-                        bins=1,
-                        transformX=None,
-                        transformY=None):
+def point_neighbourhood(array, point, bins=1, transformX=None, transformY=None):
     """Get neighbourhood values at point with bin buffer.
 
     Parameters
@@ -695,16 +692,16 @@ def point_neighbourhood(array,
         Values of all entries within the neighbourhood.
     """
     if not isinstance(point, (tuple, list)):
-        message = 'Point argument must be a tuple or a list'
+        message = "Point argument must be a tuple or a list"
         raise ValueError(message)
     if not len(point) == 2:
-        message = 'Point argument should be two dimensional'
+        message = "Point argument should be two dimensional"
         raise ValueError(message)
     if not isinstance(bins, int):
-        message = 'Bins argument should be of type integer'
+        message = "Bins argument should be of type integer"
         raise ValueError(message)
     if bins <= 0:
-        message = 'Bins argument must be greater than 0'
+        message = "Bins argument must be greater than 0"
         raise ValueError(message)
 
     if transformX is not None and transformY is not None:
@@ -719,11 +716,9 @@ def point_neighbourhood(array,
     return array[rr, cc]
 
 
-def geometry_neighbourhood(array,
-                           geom,
-                           bins=0,
-                           transformX=None,
-                           transformY=None):
+def geometry_neighbourhood(
+    array, geom, bins=0, transformX=None, transformY=None
+):
     """Get neighbourhood values from geometry.
 
     Parameters
@@ -747,26 +742,23 @@ def geometry_neighbourhood(array,
     if bins is None:
         bins = 0
 
-    mask = geometry_to_mask(geom,
-                            array.shape,
-                            transformX,
-                            transformY)
+    mask = geometry_to_mask(geom, array.shape, transformX, transformY)
 
     if bins != 0:
         if not isinstance(bins, int):
-            message = 'Bins argument should be of type integer'
+            message = "Bins argument should be of type integer"
             raise ValueError(message)
         if bins < 0:
-            message = 'Bins argument must be non negative'
+            message = "Bins argument must be non negative"
             raise ValueError(message)
         kernel = np.ones([bins, bins])
-        mask = convolve2d(mask, kernel, mode='same') > 0
+        mask = convolve2d(mask, kernel, mode="same") > 0
     return array[mask]
 
 
-def reference_system(time_win, time_hop,
-                     freq_win, freq_hop,
-                     bounds, center=None):
+def reference_system(
+    time_win, time_hop, freq_win, freq_hop, bounds, center=None
+):
     """Produce abstract reference system.
 
     Using specified time and frequency windows and hops, build a regular grid
@@ -808,8 +800,8 @@ def reference_system(time_win, time_hop,
     ref_sys = {}
     boxes = []
     if center is None:
-        tsteps = math.ceil((bounds[1] - bounds[0])/time_hop)
-        fsteps = math.ceil((bounds[1] - bounds[0])/freq_hop)
+        tsteps = math.ceil((bounds[1] - bounds[0]) / time_hop)
+        fsteps = math.ceil((bounds[1] - bounds[0]) / freq_hop)
         for tstep in range(tsteps):
             start_time = bounds[0] + tstep * time_hop
             end_time = min(start_time + time_win, bounds[1])
@@ -821,10 +813,10 @@ def reference_system(time_win, time_hop,
                     boxes.append(limits)
                     ref_sys[(tstep, fstep)] = limits
     else:
-        tsteps_l = math.ceil((center[0] - bounds[0])/time_hop)
-        tsteps_r = math.ceil((bounds[1] - center[0])/time_hop)
-        fsteps_b = math.ceil((center[1] - bounds[2])/freq_hop)
-        fsteps_t = math.ceil((bounds[3] - center[1])/freq_hop)
+        tsteps_l = math.ceil((center[0] - bounds[0]) / time_hop)
+        tsteps_r = math.ceil((bounds[1] - center[0]) / time_hop)
+        fsteps_b = math.ceil((center[1] - bounds[2]) / freq_hop)
+        fsteps_t = math.ceil((bounds[3] - center[1]) / freq_hop)
         for tstep in range(-tsteps_l, tsteps_r + 1):
             start_time = max(bounds[0], center[0] + tstep * time_hop)
             end_time = min(start_time + time_win, bounds[1])
@@ -840,8 +832,12 @@ def reference_system(time_win, time_hop,
     cells = np.array(list(ref_sys.keys()))
     max_cells = np.amax(cells, axis=0)
     min_cells = np.amin(cells, axis=0)
-    return ref_sys, cells.shape, (min_cells[0], max_cells[0]), \
-                                 (min_cells[1], max_cells[1])
+    return (
+        ref_sys,
+        cells.shape,
+        (min_cells[0], max_cells[0]),
+        (min_cells[1], max_cells[1]),
+    )
 
 
 def point_buffer(time, freq, buffer):
@@ -850,7 +846,7 @@ def point_buffer(time, freq, buffer):
         buffer = [buffer, buffer]
 
     if not isinstance(buffer, (tuple, list)):
-        message = 'The buffer argument must be a number, a tuple or a list'
+        message = "The buffer argument must be a number, a tuple or a list"
         raise ValueError(message)
 
     point = Point(time, freq)
@@ -861,8 +857,9 @@ def _parse_args(arg, method, argname, index=0, **kwargs):
     if arg is None:
         if argname not in kwargs:
             message = (
-                f'Either {method} or {argname} arguments must '
-                f'be supplied to the {method} method.')
+                f"Either {method} or {argname} arguments must "
+                f"be supplied to the {method} method."
+            )
             raise ValueError(message)
         freq = kwargs[argname]
 
@@ -873,8 +870,7 @@ def _parse_args(arg, method, argname, index=0, **kwargs):
         freq = arg[index]
 
     else:
-        message = (
-            f'The {method} argument should be a number of a tuple/list')
+        message = f"The {method} argument should be a number of a tuple/list"
         raise ValueError(message)
 
     return freq
@@ -885,12 +881,12 @@ def _parse_tf(arg, method, default=0, **kwargs):
         arg = [arg, arg]
 
     try:
-        time = _parse_args(arg, method, 'time', **kwargs)
+        time = _parse_args(arg, method, "time", **kwargs)
     except ValueError:
         time = default
 
     try:
-        freq = _parse_args(arg, method, 'freq', index=1, **kwargs)
+        freq = _parse_args(arg, method, "freq", index=1, **kwargs)
     except ValueError:
         freq = default
 

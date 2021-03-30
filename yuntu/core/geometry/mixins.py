@@ -5,7 +5,7 @@ class Non2DGeometryMixin:
         return geometry_collections.GeometryCollection([self, other])
 
     def rotate(self, *args, **kwargs):
-        message = f'Geometry of type {type(self)} cannot rotate.'
+        message = f"Geometry of type {type(self)} cannot rotate."
         raise ValueError(message)
 
 
@@ -56,17 +56,13 @@ class Geometry2DMixin(TimeIntervalMixin, FrequencyIntervalMixin):
         from yuntu.core.geometry.intervals import TimeInterval
 
         start_time, _, end_time, _ = self.bounds
-        return TimeInterval(
-            start_time=start_time,
-            end_time=end_time)
+        return TimeInterval(start_time=start_time, end_time=end_time)
 
     def to_freq_interval(self):
         from yuntu.core.geometry.intervals import FrequencyInterval
 
         _, min_freq, _, max_freq = self.bounds
-        return FrequencyInterval(
-            min_freq=min_freq,
-            max_freq=max_freq)
+        return FrequencyInterval(min_freq=min_freq, max_freq=max_freq)
 
     def to_center(self):
         from yuntu.core.geometry.points import Point
@@ -84,7 +80,8 @@ class Geometry2DMixin(TimeIntervalMixin, FrequencyIntervalMixin):
             start_time=start_time,
             min_freq=min_freq,
             end_time=end_time,
-            max_freq=max_freq)
+            max_freq=max_freq,
+        )
 
 
 class MultiGeometryMixin:

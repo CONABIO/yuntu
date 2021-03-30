@@ -3,17 +3,18 @@ from yuntu.core.audio.audio import Audio
 from yuntu.collection.base import Collection
 from yuntu.core.database.REST.irekua import IrekuaREST
 
+
 class IrekuaRESTCollection(Collection):
     """Base class for all collections."""
 
     db_config = {
-        'provider': 'irekua',
-        'config': {
-            'recordings_url': 'http://localhost:3000/api/items/v1/items/',
-            'page_size': 1,
-            'target_attr': 'results',
-            'auth': 'abc:xyz'
-        }
+        "provider": "irekua",
+        "config": {
+            "recordings_url": "http://localhost:3000/api/items/v1/items/",
+            "page_size": 1,
+            "target_attr": "results",
+            "auth": "abc:xyz",
+        },
     }
 
     db_manager_class = IrekuaREST
@@ -48,9 +49,11 @@ class IrekuaRESTCollection(Collection):
             elif limit == 0:
                 return []
 
-        return ([self.build_audio(recording)
-                for recording in self.recordings(limit=limit,
-                                                 offset=offset)])
+        return [
+            self.build_audio(recording)
+            for recording in self.recordings(limit=limit, offset=offset)
+        ]
+
     def __iter__(self):
         for recording in self.recordings():
             yield self.build_audio(recording)
@@ -65,34 +68,27 @@ class IrekuaRESTCollection(Collection):
         return self.build_audio(matches[0], with_metadata=with_metadata)
 
     def get_recording_dataframe(
-            self,
-            query=None,
-            limit=None,
-            offset=0,
-            with_metadata=False):
+        self, query=None, limit=None, offset=0, with_metadata=False
+    ):
 
-        recordings = self.recordings(query=query,
-                                     limit=limit,
-                                     offset=offset)
+        recordings = self.recordings(query=query, limit=limit, offset=offset)
 
         records = []
         for recording in recordings:
             data = recording.to_dict()
-            media_info = data.pop('media_info')
+            media_info = data.pop("media_info")
             data.update(media_info)
 
             if not with_metadata:
-                data.pop('metadata')
+                data.pop("metadata")
 
             records.append(data)
 
         return pd.DataFrame(records)
 
-    def get_annotation_dataframe(self,
-                                 query=None,
-                                 limit=None,
-                                 offset=0,
-                                 with_metadata=None):
+    def get_annotation_dataframe(
+        self, query=None, limit=None, offset=0, with_metadata=None
+    ):
         pass
 
     def get_db_manager(self):
@@ -132,7 +128,9 @@ class IrekuaRESTCollection(Collection):
 
     def recordings(self, query=None, limit=None, offset=None, iterate=True):
         """Retrieve audio objects."""
-        matches = self.db_manager.select(query, limit=limit, offset=offset, model="recording")
+        matches = self.db_manager.select(
+            query, limit=limit, offset=offset, model="recording"
+        )
         if iterate:
             return matches
         return list(matches)
@@ -149,7 +147,8 @@ class IrekuaRESTCollection(Collection):
             timeexp=recording.timeexp,
             metadata=metadata,
             annotations=annotations,
-            lazy=True)
+            lazy=True,
+        )
 
     def pull(self, datastore):
         """Pull data from datastore and insert into collection."""

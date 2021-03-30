@@ -1,6 +1,7 @@
 from abc import ABC
 from abc import abstractmethod
 
+
 class RESTManager(ABC):
     """Managet to fetch information on the fly from irekua REST api"""
 
@@ -24,10 +25,11 @@ class RESTManager(ABC):
 
         if model not in model_dict:
             options = model_dict.keys()
-            options_str = ', '.join(options)
+            options_str = ", ".join(options)
             message = (
-                f'The model {model} is not available in this REST database. '
-                f'Admisible options: {options_str}')
+                f"The model {model} is not available in this REST database. "
+                f"Admisible options: {options_str}"
+            )
             raise NotImplementedError(message)
         return model_dict[model]
 

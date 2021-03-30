@@ -12,14 +12,14 @@ from yuntu.core.database.datastores import build_storage_model
 from yuntu.core.database.datastores import build_remote_storage_model
 
 MODELS = [
-    'recording',
-    'annotation',
-    'datastore',
-    'foreign_db_store',
-    'storage',
-    'remote_storage'
+    "recording",
+    "annotation",
+    "datastore",
+    "foreign_db_store",
+    "storage",
+    "remote_storage",
 ]
-Models = namedtuple('Models', MODELS)
+Models = namedtuple("Models", MODELS)
 
 
 class DatabaseManager:
@@ -31,7 +31,9 @@ class DatabaseManager:
 
     def __init__(self, provider, config=None):
         if provider == "irekua":
-             raise ValueError("'irekua' provider only works with irekuaREST manager")
+            raise ValueError(
+                "'irekua' provider only works with irekuaREST manager"
+            )
         self.provider = provider
         self.config = config
         self.db = Database()
@@ -55,12 +57,12 @@ class DatabaseManager:
 
         foreign, storage, remote = self.build_extra_datastores(datastore)
         models = {
-            'recording': recording,
-            'datastore': datastore,
-            'annotation': annotation,
-            'foreign_db_store': foreign,
-            'storage': storage,
-            'remote_storage': remote
+            "recording": recording,
+            "datastore": datastore,
+            "annotation": annotation,
+            "foreign_db_store": foreign,
+            "storage": storage,
+            "remote_storage": remote,
         }
         return Models(**models)
 
@@ -89,10 +91,11 @@ class DatabaseManager:
 
         if model not in model_dict:
             options = model_dict.keys()
-            options_str = ', '.join(options)
+            options_str = ", ".join(options)
             message = (
-                f'The model {model} is not installed in the database. '
-                f'Admisible options: {options_str}')
+                f"The model {model} is not installed in the database. "
+                f"Admisible options: {options_str}"
+            )
             raise NotImplementedError(message)
 
         return model_dict[model]
@@ -127,7 +130,6 @@ class DatabaseManager:
 
 
 class TimedDatabaseManager(DatabaseManager):
-
     def build_recording_model(self):
         recording = super().build_recording_model()
         return build_timed_recording_model(recording)

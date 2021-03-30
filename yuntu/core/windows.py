@@ -5,11 +5,12 @@ from abc import abstractmethod
 import yuntu.core.utils.atlas as geom_utils
 
 
-INFINITY = 10e+15
+INFINITY = 10e15
 
 
 class Window(ABC):
     """A window is an object used to select portions of data."""
+
     def __init__(self, geometry=None):
         self.geometry = geometry
 
@@ -34,9 +35,7 @@ class Window(ABC):
         return self.from_dict(self.to_dict())
 
     def to_dict(self):
-        return {
-            'type': type(self).__name__
-        }
+        return {"type": type(self).__name__}
 
     def is_trivial(self):
         return True
@@ -44,29 +43,30 @@ class Window(ABC):
     @classmethod
     def from_dict(cls, data):
         """Rebuild the window from dictionary data."""
-        if 'type' not in data:
-            raise ValueError('Window data does not have a type.')
+        if "type" not in data:
+            raise ValueError("Window data does not have a type.")
 
-        window_type = data.pop('type')
-        if window_type == 'TimeWindow':
+        window_type = data.pop("type")
+        if window_type == "TimeWindow":
             return TimeWindow(**data)
 
-        if window_type == 'FrequencyWindow':
+        if window_type == "FrequencyWindow":
             return FrequencyWindow(**data)
 
-        if window_type == 'TimeFrequencyWindow':
+        if window_type == "TimeFrequencyWindow":
             return TimeFrequencyWindow(**data)
 
         message = (
-            f'Window type {window_type} is incorrect. Valid options: '
-            'TimeWindow, FrequencyWindow, TimeFrequencyWindow')
+            f"Window type {window_type} is incorrect. Valid options: "
+            "TimeWindow, FrequencyWindow, TimeFrequencyWindow"
+        )
         raise ValueError(message)
 
     def __repr__(self):
         data = self.to_dict()
-        window_type = data.pop('type')
-        args = ', '.join([f'{key}={value}' for key, value in data.items()])
-        return f'{window_type}({args})'
+        window_type = data.pop("type")
+        args = ", ".join([f"{key}={value}" for key, value in data.items()])
+        return f"{window_type}({args})"
 
 
 class TimeWindow(Window):
@@ -76,10 +76,11 @@ class TimeWindow(Window):
     """
 
     def __init__(
-            self,
-            start: Optional[float] = None,
-            end: Optional[float] = None,
-            **kwargs):
+        self,
+        start: Optional[float] = None,
+        end: Optional[float] = None,
+        **kwargs,
+    ):
         """Construct a time window.
 
         Parameters
@@ -92,17 +93,16 @@ class TimeWindow(Window):
         self.start = start
         self.end = end
 
-        if 'geometry' not in kwargs:
+        if "geometry" not in kwargs:
             if start is None:
                 start = 0
 
             if end is None:
                 end = INFINITY
 
-            kwargs['geometry'] = geom_utils.bbox_to_polygon([
-                start, end,
-                0, INFINITY
-            ])
+            kwargs["geometry"] = geom_utils.bbox_to_polygon(
+                [start, end, 0, INFINITY]
+            )
 
         super().__init__(**kwargs)
 
@@ -111,26 +111,29 @@ class TimeWindow(Window):
         import matplotlib.pyplot as plt
 
         if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (15, 5)))
+            _, ax = plt.subplots(figsize=kwargs.get("figsize", (15, 5)))
 
         ax.axvline(
             self.start,
-            linewidth=kwargs.get('linewidth', 1),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', 'blue'))
+            linewidth=kwargs.get("linewidth", 1),
+            linestyle=kwargs.get("linestyle", "--"),
+            color=kwargs.get("color", "blue"),
+        )
 
         ax.axvline(
             self.end,
-            linewidth=kwargs.get('linewidth', 1),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', 'blue'))
+            linewidth=kwargs.get("linewidth", 1),
+            linestyle=kwargs.get("linestyle", "--"),
+            color=kwargs.get("color", "blue"),
+        )
 
-        if kwargs.get('fill', True):
+        if kwargs.get("fill", True):
             ax.axvspan(
                 self.start,
                 self.end,
-                alpha=kwargs.get('alpha', 0.2),
-                color=kwargs.get('color', 'blue'))
+                alpha=kwargs.get("alpha", 0.2),
+                color=kwargs.get("color", "blue"),
+            )
 
         return ax
 
@@ -145,11 +148,7 @@ class TimeWindow(Window):
 
     def to_dict(self):
         """Get dictionary representation of window."""
-        return {
-            'start': self.start,
-            'end': self.end,
-            **super().to_dict()
-        }
+        return {"start": self.start, "end": self.end, **super().to_dict()}
 
     def is_trivial(self):
         """Return if window is trivial."""
@@ -170,10 +169,8 @@ class FrequencyWindow(Window):
 
     # pylint: disable=redefined-builtin
     def __init__(
-            self,
-            min: Optional[float] = None,
-            max: Optional[float] = None,
-            **kwargs):
+        self, min: Optional[float] = None, max: Optional[float] = None, **kwargs
+    ):
         """Construct a frequency window.
 
         Parameters
@@ -186,17 +183,16 @@ class FrequencyWindow(Window):
         self.min = min
         self.max = max
 
-        if 'geometry' not in kwargs:
+        if "geometry" not in kwargs:
             if min is None:
                 min = 0
 
             if max is None:
                 max = INFINITY
 
-            kwargs['geometry'] = geom_utils.bbox_to_polygon([
-                0, INFINITY,
-                min, max
-            ])
+            kwargs["geometry"] = geom_utils.bbox_to_polygon(
+                [0, INFINITY, min, max]
+            )
 
         super().__init__(**kwargs)
 
@@ -214,36 +210,35 @@ class FrequencyWindow(Window):
         import matplotlib.pyplot as plt
 
         if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (15, 5)))
+            _, ax = plt.subplots(figsize=kwargs.get("figsize", (15, 5)))
 
         ax.axhline(
             self.min,
-            linewidth=kwargs.get('linewidth', 1),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', 'blue'))
+            linewidth=kwargs.get("linewidth", 1),
+            linestyle=kwargs.get("linestyle", "--"),
+            color=kwargs.get("color", "blue"),
+        )
 
         ax.axhline(
             self.max,
-            linewidth=kwargs.get('linewidth', 1),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', 'blue'))
+            linewidth=kwargs.get("linewidth", 1),
+            linestyle=kwargs.get("linestyle", "--"),
+            color=kwargs.get("color", "blue"),
+        )
 
-        if kwargs.get('fill', True):
+        if kwargs.get("fill", True):
             ax.axhspan(
                 self.min,
                 self.max,
-                alpha=kwargs.get('alpha', 0.2),
-                color=kwargs.get('color', 'blue'))
+                alpha=kwargs.get("alpha", 0.2),
+                color=kwargs.get("color", "blue"),
+            )
 
         return ax
 
     def to_dict(self):
         """Get dictionary representation of window."""
-        return {
-            'min': self.min,
-            'max': self.max,
-            **super().to_dict()
-        }
+        return {"min": self.min, "max": self.max, **super().to_dict()}
 
     def is_trivial(self):
         """Return if window is trivial."""
@@ -264,12 +259,13 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
 
     # pylint: disable=redefined-builtin
     def __init__(
-            self,
-            start: Optional[float] = None,
-            end: Optional[float] = None,
-            min: Optional[float] = None,
-            max: Optional[float] = None,
-            **kwargs):
+        self,
+        start: Optional[float] = None,
+        end: Optional[float] = None,
+        min: Optional[float] = None,
+        max: Optional[float] = None,
+        **kwargs,
+    ):
         """Construct a time frequency window.
 
         Parameters
@@ -283,15 +279,14 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
         max:
             Interval ending frequency in hertz.
         """
-        if 'geometry' not in kwargs:
+        if "geometry" not in kwargs:
             start_time = start if start is not None else 0
             end_time = end if end is not None else INFINITY
             min_freq = min if min is not None else 0
             max_freq = max if max is not None else INFINITY
-            kwargs['geometry'] = geom_utils.bbox_to_polygon([
-                start_time, end_time,
-                min_freq, max_freq
-            ])
+            kwargs["geometry"] = geom_utils.bbox_to_polygon(
+                [start_time, end_time, min_freq, max_freq]
+            )
 
         super().__init__(start=start, end=end, min=min, max=max, **kwargs)
 
@@ -317,7 +312,7 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
         import matplotlib.pyplot as plt
 
         if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', (15, 5)))
+            _, ax = plt.subplots(figsize=kwargs.get("figsize", (15, 5)))
 
         xcoords = [self.start, self.end, self.end, self.start, self.start]
         ycoords = [self.min, self.min, self.max, self.max, self.min]
@@ -325,16 +320,18 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
         ax.plot(
             xcoords,
             ycoords,
-            linewidth=kwargs.get('linewidth', 1),
-            linestyle=kwargs.get('linestyle', '--'),
-            color=kwargs.get('color', 'blue'))
+            linewidth=kwargs.get("linewidth", 1),
+            linestyle=kwargs.get("linestyle", "--"),
+            color=kwargs.get("color", "blue"),
+        )
 
-        if kwargs.get('fill', True):
+        if kwargs.get("fill", True):
             ax.fill(
                 xcoords,
                 ycoords,
                 linewidth=0,
-                alpha=kwargs.get('alpha', 0.2),
-                color=kwargs.get('color', 'blue'))
+                alpha=kwargs.get("alpha", 0.2),
+                color=kwargs.get("color", "blue"),
+            )
 
         return ax

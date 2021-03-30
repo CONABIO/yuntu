@@ -7,10 +7,10 @@ import pandas as pd
 from yuntu.core.annotation.annotation import Annotation
 
 
-GEOMETRY = 'geometry'
-TYPE = 'type'
-LABELS = 'labels'
-ID = 'id'
+GEOMETRY = "geometry"
+TYPE = "type"
+LABELS = "labels"
+ID = "id"
 REQUIRED_ANNOTATION_COLUMNS = [
     GEOMETRY,
     TYPE,
@@ -39,12 +39,13 @@ class AnnotationAccessor:
                 raise AttributeError(f"Must have column {column}")
 
     def _build_annotation(
-            self,
-            row,
-            type_column=None,
-            geometry_column=None,
-            labels_column=None,
-            id_column=None):
+        self,
+        row,
+        type_column=None,
+        geometry_column=None,
+        labels_column=None,
+        id_column=None,
+    ):
 
         if type_column is None:
             type_column = self.type_column
@@ -59,12 +60,10 @@ class AnnotationAccessor:
             id_column = self.id_column
 
         data = {
-            GEOMETRY: {
-                'wkt': getattr(row, geometry_column)
-            },
+            GEOMETRY: {"wkt": getattr(row, geometry_column)},
             TYPE: getattr(row, type_column),
             LABELS: getattr(row, labels_column, []),
-            ID: getattr(row, id_column, None)
+            ID: getattr(row, id_column, None),
         }
 
         return Annotation.from_dict(data)
@@ -74,17 +73,18 @@ class AnnotationAccessor:
             return self._build_annotation(self._obj.iloc[key])
 
         return [
-            self._build_annotation(row)
-            for row in self._obj[key].itertuples()]
+            self._build_annotation(row) for row in self._obj[key].itertuples()
+        ]
 
     def get(
-            self,
-            row=None,
-            id=None,
-            type_column=None,
-            geometry_column=None,
-            labels_column=None,
-            id_column=None):
+        self,
+        row=None,
+        id=None,
+        type_column=None,
+        geometry_column=None,
+        labels_column=None,
+        id_column=None,
+    ):
         if id_column is None:
             id_column = self.id_column
 
@@ -100,7 +100,8 @@ class AnnotationAccessor:
             type_column=type_column,
             geometry_column=geometry_column,
             labels_column=labels_column,
-            id_column=id_column)
+            id_column=id_column,
+        )
 
     def change_type_column(self, new_column):
         self.type_column = new_column

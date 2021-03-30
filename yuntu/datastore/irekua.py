@@ -4,9 +4,11 @@ import datetime
 
 from yuntu.datastore.base import RemoteStorage
 
-class IrekuaDatastore(RemoteStorage):
 
-    def __init__(self, *args, page_size=10, page_start=0, page_end=None, **kwargs):
+class IrekuaDatastore(RemoteStorage):
+    def __init__(
+        self, *args, page_size=10, page_start=0, page_end=None, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.page_start = page_start
         self.page_end = page_end
@@ -50,18 +52,15 @@ class IrekuaDatastore(RemoteStorage):
         path = datum["item_file"]
         samplerate = datum["media_info"]["sampling_rate"]
         media_info = {
-            'nchannels': datum["media_info"]["channels"],
-            'sampwidth': datum["media_info"]["sampwidth"],
-            'samplerate': samplerate,
-            'length': datum["media_info"]["frames"],
-            'filesize': datum["filesize"],
-            'duration': datum["media_info"]["duration"]
+            "nchannels": datum["media_info"]["channels"],
+            "sampwidth": datum["media_info"]["sampwidth"],
+            "samplerate": samplerate,
+            "length": datum["media_info"]["frames"],
+            "filesize": datum["filesize"],
+            "duration": datum["media_info"]["duration"],
         }
-        spectrum = 'ultrasonic' if samplerate > 50000 else 'audible'
-        metadata = {
-            'item_url': datum["url"],
-            'page_url': datum["page_url"]
-        }
+        spectrum = "ultrasonic" if samplerate > 50000 else "audible"
+        metadata = {"item_url": datum["url"], "page_url": datum["page_url"]}
 
         dtime_zone = datum["captured_on_timezone"]
         dtime = dateutil_parse(datum["captured_on"])
@@ -69,22 +68,19 @@ class IrekuaDatastore(RemoteStorage):
         dtime_raw = datetime.datetime.strftime(dtime, format=dtime_format)
 
         return {
-            'id': datum['id'],
-            'path': path,
-            'hash': datum["hash"],
-            'timeexp': 1,
-            'media_info': media_info,
-            'metadata': metadata,
-            'spectrum': spectrum,
-            'time_raw': dtime_raw,
-            'time_format': dtime_format,
-            'time_zone': dtime_zone,
-            'time_utc': dtime
+            "id": datum["id"],
+            "path": path,
+            "hash": datum["hash"],
+            "timeexp": 1,
+            "media_info": media_info,
+            "metadata": metadata,
+            "spectrum": spectrum,
+            "time_raw": dtime_raw,
+            "time_format": dtime_format,
+            "time_zone": dtime_zone,
+            "time_utc": dtime,
         }
 
     def get_metadata(self):
-        meta = {
-            "dir_path": self.dir_path,
-            "metadata_url": self.metadata_url
-        }
+        meta = {"dir_path": self.dir_path, "metadata_url": self.metadata_url}
         return meta

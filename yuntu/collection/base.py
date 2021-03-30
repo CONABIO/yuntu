@@ -9,13 +9,11 @@ from yuntu.core.annotation.annotation import Annotation
 
 def _parse_annotation(annotation):
     return {
-        'type': annotation.type,
-        'id': annotation.id,
-        'labels': annotation.labels,
-        'metadata': annotation.metadata,
-        'geometry': {
-            'wkt': annotation.geometry
-        }
+        "type": annotation.type,
+        "id": annotation.id,
+        "labels": annotation.labels,
+        "metadata": annotation.metadata,
+        "geometry": {"wkt": annotation.geometry},
     }
 
 
@@ -23,11 +21,8 @@ class Collection:
     """Base class for all collections."""
 
     db_config = {
-        'provider': 'sqlite',
-        'config': {
-            'filename': ':memory:',
-            'create_db': True
-        }
+        "provider": "sqlite",
+        "config": {"filename": ":memory:", "create_db": True},
     }
     audio_class = Audio
     annotation_class = Annotation
@@ -43,7 +38,7 @@ class Collection:
     def __getitem__(self, key):
         queryset = self.recordings()
         if isinstance(key, int):
-            return self.build_audio(queryset[key:key + 1][0])
+            return self.build_audio(queryset[key : key + 1][0])
 
         return [self.build_audio(recording) for recording in queryset[key]]
 
@@ -59,12 +54,13 @@ class Collection:
         return self.build_audio(record, with_metadata=with_metadata)
 
     def get_recording_dataframe(
-            self,
-            query=None,
-            limit=None,
-            offset=0,
-            with_metadata=False,
-            with_annotations=False):
+        self,
+        query=None,
+        limit=None,
+        offset=0,
+        with_metadata=False,
+        with_annotations=False,
+    ):
         if limit is None:
             query_slice = slice(offset, None)
         else:
@@ -74,27 +70,25 @@ class Collection:
         records = []
         for recording in recordings:
             data = recording.to_dict()
-            media_info = data.pop('media_info')
+            media_info = data.pop("media_info")
             data.update(media_info)
 
             if not with_metadata:
-                data.pop('metadata')
+                data.pop("metadata")
 
             if with_annotations:
-                data['annotations'] = [
+                data["annotations"] = [
                     _parse_annotation(annotation)
-                    for annotation in recording.annotations]
+                    for annotation in recording.annotations
+                ]
 
             records.append(data)
 
         return pd.DataFrame(records)
 
     def get_annotation_dataframe(
-            self,
-            query=None,
-            limit=None,
-            offset=0,
-            with_metadata=None):
+        self, query=None, limit=None, offset=0, with_metadata=None
+    ):
         if limit is None:
             query_slice = slice(offset, None)
         else:
@@ -104,15 +98,15 @@ class Collection:
         records = []
         for annotation in annotations:
             data = annotation.to_dict()
-            labels = data.pop('labels')
+            labels = data.pop("labels")
 
             if not with_metadata:
-                data.pop('metadata')
+                data.pop("metadata")
 
-            data['labels'] = labels
+            data["labels"] = labels
 
             for label in labels:
-                data[label['key']] = label['value']
+                data[label["key"]] = label["value"]
 
             records.append(data)
 
@@ -141,11 +135,11 @@ class Collection:
 
     def delete_recordings(self, query):
         """Delete matches."""
-        return self.db_manager.delete(query, model='recording')
+        return self.db_manager.delete(query, model="recording")
 
     def delete_annotations(self, query):
         """Delete matches."""
-        return self.db_manager.delete(query, model='annotation')
+        return self.db_manager.delete(query, model="annotation")
 
     @property
     def recordings_model(self):
@@ -185,7 +179,8 @@ class Collection:
             timeexp=recording.timeexp,
             metadata=metadata,
             annotations=annotations,
-            lazy=True)
+            lazy=True,
+        )
 
     def pull(self, datastore):
         """Pull data from datastore and insert into collection."""
@@ -203,4 +198,5 @@ class Collection:
 
 class TimedCollection(Collection):
     """Time aware collection."""
+
     db_manager_class = TimedDatabaseManager

@@ -24,17 +24,17 @@ class Polygon(Geometry2DMixin, Geometry):
 
     def to_dict(self):
         data = super().to_dict()
-        data['wkt'] = self.wkt
+        data["wkt"] = self.wkt
         return data
 
     def plot(self, ax=None, **kwargs):
         ax = super().plot(ax=ax, **kwargs)
 
-        lineplot, = ax.plot(
+        (lineplot,) = ax.plot(
             *self.geometry.exterior.xy,
-            linewidth=kwargs.get('linewidth', 1),
-            color=kwargs.get('color', None),
-            linestyle=kwargs.get('linestyle', '--'),
+            linewidth=kwargs.get("linewidth", 1),
+            color=kwargs.get("color", None),
+            linestyle=kwargs.get("linestyle", "--"),
         )
 
         color = lineplot.get_color()
@@ -42,11 +42,12 @@ class Polygon(Geometry2DMixin, Geometry):
         for interior in self.geometry.interiors:
             ax.plot(
                 *interior.xy,
-                linewidth=kwargs.get('linewidth', None),
+                linewidth=kwargs.get("linewidth", None),
                 color=color,
-                linestyle=kwargs.get('linestyle', '--'))
+                linestyle=kwargs.get("linestyle", "--"),
+            )
 
-        if kwargs.get('fill', True):
+        if kwargs.get("fill", True):
             if self.geometry.exterior.is_ccw:
                 coords = self.geometry.exterior.coords
             else:
@@ -73,17 +74,15 @@ class Polygon(Geometry2DMixin, Geometry):
                 xcoords,
                 ycoords,
                 color=color,
-                alpha=kwargs.get('alpha', 0.5),
+                alpha=kwargs.get("alpha", 0.5),
                 linewidth=0,
-                label=kwargs.get('label', None))
+                label=kwargs.get("label", None),
+            )
 
         return ax
 
 
-class MultiPolygon(
-        MultiGeometryMixin,
-        Geometry2DMixin,
-        Geometry):
+class MultiPolygon(MultiGeometryMixin, Geometry2DMixin, Geometry):
     """Polygon collection geometry."""
 
     name = Geometry.Types.MultiPolygon
@@ -98,7 +97,9 @@ class MultiPolygon(
                     elif isinstance(geom, shapely_geometry.Polygon):
                         geoms.append(geom)
                     else:
-                        raise ValueError("All elements of input polygon list"
-                                         " must be polygons.")
+                        raise ValueError(
+                            "All elements of input polygon list"
+                            " must be polygons."
+                        )
                 geometry = shapely_geometry.MultiPolygon(geoms)
         super().__init__(geometry)

@@ -26,6 +26,7 @@ class GriddedAudio(Audio):
     def __iter__(self):
         pass
 
+
 #
 #     twin = 0.01
 #     fwin = 50

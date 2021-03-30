@@ -12,13 +12,10 @@ class Label:
         return cls(**data)
 
     def to_dict(self):
-        data = {
-            'key': self.key,
-            'value': self.value
-        }
+        data = {"key": self.key, "value": self.value}
 
         if self.type is not None:
-            data['type'] = self.type
+            data["type"] = self.type
 
         return data
 
@@ -30,12 +27,12 @@ class Label:
 
     def __repr__(self):
         if self.type is None:
-            return f'Label(key={self.key}, value={self.value})'
+            return f"Label(key={self.key}, value={self.value})"
 
-        return f'Label(key={self.key}, value={self.value}, type={self.type})'
+        return f"Label(key={self.key}, value={self.value}, type={self.type})"
 
     def __str__(self):
-        return f'{self.key}: {self.value}'
+        return f"{self.key}: {self.value}"
 
 
 class Labels:
@@ -50,15 +47,12 @@ class Labels:
                 label = Label.from_dict(label)
 
             if label.key in self.labels_dict:
-                message = 'Label list has two values for the same key.'
+                message = "Label list has two values for the same key."
                 raise ValueError(message)
             self.labels_dict[label.key] = label
 
     def to_dict(self):
-        return [
-            label.to_dict()
-            for label in self.labels_dict.values()
-        ]
+        return [label.to_dict() for label in self.labels_dict.values()]
 
     @classmethod
     def from_dict(cls, data):
@@ -67,19 +61,16 @@ class Labels:
     def add(self, key=None, value=None, type=None, data=None, label=None):
         if label is None:
             if data is None:
-                data = {
-                    'key': key,
-                    'value': value,
-                    'type': type}
+                data = {"key": key, "value": value, "type": type}
 
             label = Label.from_dict(data)
 
         if not isinstance(label, Label):
-            message = 'The provided label is not of the correct type'
+            message = "The provided label is not of the correct type"
             raise ValueError(message)
 
         if label.key in self.labels_dict:
-            message = 'The provided label would overwrite another label'
+            message = "The provided label would overwrite another label"
             raise ValueError(message)
 
         self.labels_dict[label.key] = label
@@ -98,8 +89,7 @@ class Labels:
 
     def get_by_type(self, type=None):
         return [
-            label for label in self.labels_dict.values()
-            if label.is_type(type)
+            label for label in self.labels_dict.values() if label.is_type(type)
         ]
 
     def __contains__(self, key):
@@ -116,10 +106,13 @@ class Labels:
             return str(self)
 
         if isinstance(key, (tuple, list)):
-            return '\n'.join([
-                str(self.get(subkey)) for subkey in key
-                if subkey in self.labels_dict
-            ])
+            return "\n".join(
+                [
+                    str(self.get(subkey))
+                    for subkey in key
+                    if subkey in self.labels_dict
+                ]
+            )
 
         return self.get_value(key)
 
@@ -132,10 +125,8 @@ class Labels:
             yield label.value
 
     def __repr__(self):
-        arguments = ', '.join([
-            repr(label) for label in self
-        ])
-        return f'Labels([{arguments}])'
+        arguments = ", ".join([repr(label) for label in self])
+        return f"Labels([{arguments}])"
 
     def __str__(self):
-        return '\n'.join([str(label) for label in self])
+        return "\n".join([str(label) for label in self])

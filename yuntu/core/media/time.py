@@ -32,15 +32,11 @@ class TimeMediaMixin:
     time_item_class = TimeItem
     window_class = windows.TimeWindow
 
-    plot_xlabel = 'Time (s)'
+    plot_xlabel = "Time (s)"
 
     def __init__(
-            self,
-            start=0,
-            duration=None,
-            resolution=None,
-            time_axis=None,
-            **kwargs):
+        self, start=0, duration=None, resolution=None, time_axis=None, **kwargs
+    ):
 
         if time_axis is None:
             time_axis = self.time_axis_class(resolution=resolution, **kwargs)
@@ -49,10 +45,8 @@ class TimeMediaMixin:
             time_axis = self.time_axis_class.from_dict(time_axis)
         self.time_axis = time_axis
 
-        if 'window' not in kwargs:
-            kwargs['window'] = windows.TimeWindow(
-                start=start,
-                end=duration)
+        if "window" not in kwargs:
+            kwargs["window"] = windows.TimeWindow(start=start, end=duration)
 
         super().__init__(**kwargs)
 
@@ -80,30 +74,26 @@ class TimeMediaMixin:
         return self.time_axis.get_bins(window=self.window, size=size)
 
     def to_dict(self):
-        return {
-            'time_axis': self.time_axis.to_dict(),
-            **super().to_dict()
-        }
+        return {"time_axis": self.time_axis.to_dict(), **super().to_dict()}
 
     def get_index_from_time(self, time):
         """Get the index of the media array corresponding to the given time."""
         start = self._get_start()
         if time < start:
             message = (
-                'Time earlier that start of recording file or window start '
-                'was requested')
+                "Time earlier that start of recording file or window start "
+                "was requested"
+            )
             raise ValueError(message)
 
         if time > self._get_end():
             message = (
-                'Time earlier that start of recording file or window start '
-                'was requested')
+                "Time earlier that start of recording file or window start "
+                "was requested"
+            )
             raise ValueError(message)
 
-        return self.time_axis.get_index_from_value(
-            time,
-            window=self.window)
-
+        return self.time_axis.get_index_from_value(time, window=self.window)
 
     def _restrain_time_index(self, index):
         size = self.time_size
@@ -115,7 +105,7 @@ class TimeMediaMixin:
         return self.array.take(index, axis=self.time_axis_index)
 
     def get_time_item_kwargs(self, freq):
-        return {'window': self.window.copy()}
+        return {"window": self.window.copy()}
 
     def get_time_item(self, freq):
         index = self.get_index_from_time(freq)
@@ -129,30 +119,27 @@ class TimeMediaMixin:
             yield self.get_time_item(time)
 
     def resample(
-            self,
-            resolution=None,
-            samplerate=None,
-            lazy: Optional[bool] = False,
-            **kwargs):
+        self,
+        resolution=None,
+        samplerate=None,
+        lazy: Optional[bool] = False,
+        **kwargs
+    ):
         """Get a new TemporalMedia object with the resampled data."""
         if samplerate is None and resolution is None:
-            message = 'Either resolution or samplerate must be provided'
+            message = "Either resolution or samplerate must be provided"
             raise ValueError(message)
 
         if resolution is None:
             resolution = samplerate
 
         data = self._copy_dict()
-        data['lazy'] = lazy
-        data['time_axis'] = self.time_axis.resample(resolution)
+        data["lazy"] = lazy
+        data["time_axis"] = self.time_axis.resample(resolution)
 
         if not self.path_exists():
-            data = resample(
-                self.array,
-                self.resolution,
-                resolution,
-                **kwargs)
-            data['array'] = data
+            data = resample(self.array, self.resolution, resolution, **kwargs)
+            data["array"] = data
 
         return type(self)(**data)
 
@@ -195,7 +182,7 @@ class TimeMediaMixin:
             end = self._get_end()
 
         if start > end:
-            message = 'Read start should be less than read end.'
+            message = "Read start should be less than read end."
             raise ValueError(message)
 
         start_index = self.get_index_from_time(start)
@@ -214,14 +201,15 @@ class TimeMediaMixin:
         return mask
 
     def cut(
-            self,
-            start_time: float = None,
-            end_time: float = None,
-            window: windows.TimeWindow = None,
-            lazy=False,
-            pad=False,
-            pad_mode='constant',
-            constant_values=0):
+        self,
+        start_time: float = None,
+        end_time: float = None,
+        window: windows.TimeWindow = None,
+        lazy=False,
+        pad=False,
+        pad_mode="constant",
+        constant_values=0,
+    ):
         """Get a window to the media data.
 
         Parameters
@@ -251,37 +239,34 @@ class TimeMediaMixin:
                 start_time = current_start
             else:
                 start_time = (
-                    window.start
-                    if window.start is not None
-                    else current_start)
+                    window.start if window.start is not None else current_start
+                )
 
         if end_time is None:
             if window is None:
                 end_time = current_end
             else:
-                end_time = (
-                    window.end
-                    if window.end is not None
-                    else current_end)
+                end_time = window.end if window.end is not None else current_end
 
         if end_time < start_time:
-            message = 'Window is empty'
+            message = "Window is empty"
             raise ValueError(message)
 
         bounded_start_time = max(min(start_time, current_end), current_start)
         bounded_end_time = max(min(end_time, current_end), current_start)
 
         kwargs_dict = self._copy_dict()
-        kwargs_dict['window'] = windows.TimeWindow(
+        kwargs_dict["window"] = windows.TimeWindow(
             start=start_time if pad else bounded_start_time,
-            end=end_time if pad else bounded_end_time)
+            end=end_time if pad else bounded_end_time,
+        )
 
         if lazy:
             # TODO: No lazy cutting for now. The compute method does not take
             # into acount possible cuts and thus might not give the correct
             # result.
             lazy = False
-        kwargs_dict['lazy'] = lazy
+        kwargs_dict["lazy"] = lazy
 
         if not lazy:
             start = self.get_index_from_time(bounded_start_time)
@@ -292,30 +277,34 @@ class TimeMediaMixin:
 
             if pad:
                 start_pad = self.time_axis.get_bin_nums(
-                    start_time, bounded_start_time)
+                    start_time, bounded_start_time
+                )
                 end_pad = self.time_axis.get_bin_nums(
-                    bounded_end_time, end_time)
+                    bounded_end_time, end_time
+                )
                 pad_widths = self._build_pad_widths(start_pad, end_pad)
                 array = pad_array(
                     array,
                     pad_widths,
                     mode=pad_mode,
-                    constant_values=constant_values)
+                    constant_values=constant_values,
+                )
 
-            kwargs_dict['array'] = array
+            kwargs_dict["array"] = array
 
         return type(self)(**kwargs_dict)
 
     def get_aggr_value(
-            self,
-            time=None,
-            buffer=None,
-            bins=None,
-            window=None,
-            geometry=None,
-            aggr_func=np.mean):
+        self,
+        time=None,
+        buffer=None,
+        bins=None,
+        window=None,
+        geometry=None,
+        aggr_func=np.mean,
+    ):
         if bins is not None and buffer is not None:
-            message = 'Bins and buffer arguments are mutually exclusive.'
+            message = "Bins and buffer arguments are mutually exclusive."
             raise ValueError(message)
 
         if buffer is None and bins is not None:
@@ -327,8 +316,9 @@ class TimeMediaMixin:
 
             if geometry is None:
                 message = (
-                    'Either time, a window, or a geometry '
-                    'should be supplied.')
+                    "Either time, a window, or a geometry "
+                    "should be supplied."
+                )
                 raise ValueError(message)
 
             start_time, _, end_time, _ = geometry.bounds
@@ -356,7 +346,8 @@ class TimeMediaMixin:
             media=self,
             geometry=intersected,
             lazy=lazy,
-            time_axis=self.time_axis)
+            time_axis=self.time_axis,
+        )
 
     def grid(self, frame_length, hop_length=None, lazy=False):
         from yuntu.core.media.grided import TimeGridedMedia
@@ -366,7 +357,8 @@ class TimeMediaMixin:
             frame_length=frame_length,
             hop_length=hop_length,
             lazy=lazy,
-            window=self.window)
+            window=self.window,
+        )
 
     def _get_start(self):
         return self.time_axis.get_start(window=self.window)
@@ -375,10 +367,7 @@ class TimeMediaMixin:
         return self.time_axis.get_end(window=self.window)
 
     def _get_axis_info(self):
-        return {
-            'time_axis': self.time_axis,
-            **super()._get_axis_info()
-        }
+        return {"time_axis": self.time_axis, **super()._get_axis_info()}
 
     def _has_trivial_window(self):
         if self.window.start is not None:
@@ -406,10 +395,7 @@ class TimeMediaMixin:
         return widths
 
     def _copy_dict(self):
-        return {
-            'time_axis': self.time_axis.copy(),
-            **super()._copy_dict()
-        }
+        return {"time_axis": self.time_axis.copy(), **super()._copy_dict()}
 
 
 @masked.masks(TimeMediaMixin)
@@ -426,27 +412,30 @@ class TimeMaskedMedia(TimeMediaMixin, masked.MaskedMedia):
     def plot(self, ax=None, **kwargs):
         ax = super().plot(ax=ax, **kwargs)
 
-        if kwargs.get('mask', True):
+        if kwargs.get("mask", True):
             intervals = self._get_active_intervals()
             for (start, end) in intervals:
                 ax.axvline(
                     start,
-                    linewidth=kwargs.get('linewidth', 1),
-                    linestyle=kwargs.get('linestyle', '--'),
-                    color=kwargs.get('color', 'blue'))
+                    linewidth=kwargs.get("linewidth", 1),
+                    linestyle=kwargs.get("linestyle", "--"),
+                    color=kwargs.get("color", "blue"),
+                )
 
                 ax.axvline(
                     end,
-                    linewidth=kwargs.get('linewidth', 1),
-                    linestyle=kwargs.get('linestyle', '--'),
-                    color=kwargs.get('color', 'blue'))
+                    linewidth=kwargs.get("linewidth", 1),
+                    linestyle=kwargs.get("linestyle", "--"),
+                    color=kwargs.get("color", "blue"),
+                )
 
-                if kwargs.get('fill', True):
+                if kwargs.get("fill", True):
                     ax.axvspan(
                         start,
                         end,
-                        alpha=kwargs.get('alpha', 0.2),
-                        color=kwargs.get('color', 'blue'))
+                        alpha=kwargs.get("alpha", 0.2),
+                        color=kwargs.get("color", "blue"),
+                    )
 
         return ax
 

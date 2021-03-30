@@ -17,12 +17,12 @@ from yuntu.core.audio.utils import write_media
 import yuntu.core.audio.audio_features as features
 
 
-CHANNELS = 'nchannels'
-SAMPLE_WIDTH = 'sampwidth'
-SAMPLE_RATE = 'samplerate'
-LENGTH = 'length'
-FILE_SIZE = 'filesize'
-DURATION = 'duration'
+CHANNELS = "nchannels"
+SAMPLE_WIDTH = "sampwidth"
+SAMPLE_RATE = "samplerate"
+LENGTH = "length"
+FILE_SIZE = "filesize"
+DURATION = "duration"
 MEDIA_INFO_FIELDS = [
     CHANNELS,
     SAMPLE_WIDTH,
@@ -31,12 +31,9 @@ MEDIA_INFO_FIELDS = [
     FILE_SIZE,
     DURATION,
 ]
-REQUIRED_MEDIA_INFO_FIELDS = [
-    DURATION,
-    SAMPLE_RATE
-]
+REQUIRED_MEDIA_INFO_FIELDS = [DURATION, SAMPLE_RATE]
 
-MediaInfo = namedtuple('MediaInfo', MEDIA_INFO_FIELDS)
+MediaInfo = namedtuple("MediaInfo", MEDIA_INFO_FIELDS)
 MediaInfoType = Dict[str, Union[int, float]]
 
 
@@ -56,17 +53,18 @@ class Audio(TimeMedia):
 
     # pylint: disable=redefined-builtin, invalid-name
     def __init__(
-            self,
-            path: Optional[str] = None,
-            array: Optional[np.array] = None,
-            timeexp: Optional[int] = 1,
-            media_info: Optional[MediaInfoType] = None,
-            metadata: Optional[Dict[str, Any]] = None,
-            id: Optional[str] = None,
-            samplerate: Optional[int] = None,
-            duration: Optional[float] = None,
-            resolution: Optional[float] = None,
-            **kwargs):
+        self,
+        path: Optional[str] = None,
+        array: Optional[np.array] = None,
+        timeexp: Optional[int] = 1,
+        media_info: Optional[MediaInfoType] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        id: Optional[str] = None,
+        samplerate: Optional[int] = None,
+        duration: Optional[float] = None,
+        resolution: Optional[float] = None,
+        **kwargs,
+    ):
         """Construct an Audio object.
 
         Parameters
@@ -98,7 +96,7 @@ class Audio(TimeMedia):
             at read.
         """
         if path is None and array is None:
-            message = 'Either array or path must be supplied'
+            message = "Either array or path must be supplied"
             raise ValueError(message)
 
         self.path = path
@@ -121,8 +119,9 @@ class Audio(TimeMedia):
         if media_info is not None and isinstance(media_info, dict):
             if not media_info_is_complete(media_info):
                 message = (
-                    f'Media info is not complete. Provided media info'
-                    f'{media_info}. Required fields: {str(MEDIA_INFO_FIELDS)}')
+                    f"Media info is not complete. Provided media info"
+                    f"{media_info}. Required fields: {str(MEDIA_INFO_FIELDS)}"
+                )
                 raise ValueError(message)
             media_info = MediaInfo(**media_info)
 
@@ -144,7 +143,8 @@ class Audio(TimeMedia):
             path=self.path,
             duration=duration,
             resolution=resolution,
-            **kwargs)
+            **kwargs,
+        )
 
     @property
     def timeexp(self):
@@ -172,50 +172,58 @@ class Audio(TimeMedia):
 
     @classmethod
     def from_instance(
-            cls,
-            recording,
-            lazy: Optional[bool] = False,
-            samplerate: Optional[int] = None,
-            **kwargs):
+        cls,
+        recording,
+        lazy: Optional[bool] = False,
+        samplerate: Optional[int] = None,
+        **kwargs,
+    ):
         """Create a new Audio object from a database recording instance."""
         data = {
-            'path': recording.path,
-            'timeexp': recording.timeexp,
-            'media_info': recording.media_info,
-            'metadata': recording.metadata,
-            'lazy': lazy,
-            'samplerate': samplerate,
-            'id': recording.id,
-            **kwargs
+            "path": recording.path,
+            "timeexp": recording.timeexp,
+            "media_info": recording.media_info,
+            "metadata": recording.metadata,
+            "lazy": lazy,
+            "samplerate": samplerate,
+            "id": recording.id,
+            **kwargs,
         }
         return cls(**data)
 
     @classmethod
     def from_dict(
-            cls,
-            dictionary: Dict[Any, Any],
-            lazy: Optional[bool] = False,
-            samplerate: Optional[int] = None,
-            **kwargs):
+        cls,
+        dictionary: Dict[Any, Any],
+        lazy: Optional[bool] = False,
+        samplerate: Optional[int] = None,
+        **kwargs,
+    ):
         """Create a new Audio object from a dictionary of metadata."""
-        if 'path' not in dictionary:
-            message = 'No path was provided in the dictionary argument'
+        if "path" not in dictionary:
+            message = "No path was provided in the dictionary argument"
             raise ValueError(message)
 
-        dictionary['lazy'] = lazy
+        dictionary["lazy"] = lazy
 
         if samplerate is not None:
-            dictionary['samplerate'] = samplerate
+            dictionary["samplerate"] = samplerate
 
         return cls(**dictionary, **kwargs)
 
+    def get_channel(self, channel):
+        data = self.to_dict()
+        data["array"] = self.array[channel]
+        return type(self).from_dict(data)
+
     @classmethod
     def from_array(
-            cls,
-            array: np.array,
-            samplerate: int,
-            metadata: Optional[dict] = None,
-            **kwargs):
+        cls,
+        array: np.array,
+        samplerate: int,
+        metadata: Optional[dict] = None,
+        **kwargs,
+    ):
         """Create a new Audio object from a numpy array."""
         shape = array.shape
         if len(shape) == 1:
@@ -226,8 +234,9 @@ class Audio(TimeMedia):
             size = shape[1]
         else:
             message = (
-                f'The array has {len(shape)} dimensions. Could not be '
-                'interpreted as an audio array')
+                f"The array has {len(shape)} dimensions. Could not be "
+                "interpreted as an audio array"
+            )
             raise ValueError(message)
 
         media_info = {
@@ -236,7 +245,7 @@ class Audio(TimeMedia):
             CHANNELS: channels,
             LENGTH: size,
             FILE_SIZE: size * 16 * channels,
-            DURATION: size / samplerate
+            DURATION: size / samplerate,
         }
 
         return cls(
@@ -244,14 +253,15 @@ class Audio(TimeMedia):
             media_info=media_info,
             id=str(uuid4()),
             metadata=metadata,
-            **kwargs)
+            **kwargs,
+        )
 
     def _copy_dict(self, **kwargs):
         return {
-            'timeexp': self.timeexp,
-            'media_info': self.media_info,
-            'metadata': self.metadata,
-            'id': self.id,
+            "timeexp": self.timeexp,
+            "media_info": self.media_info,
+            "metadata": self.metadata,
+            "id": self.id,
             **super()._copy_dict(**kwargs),
         }
 
@@ -260,7 +270,9 @@ class Audio(TimeMedia):
             if self.is_remote():
                 path = self.remote_load()
                 self._buffer = path
-                return read_info(path, self.timeexp)
+                info = read_info(path, self.timeexp)
+                self._buffer.seek(0)
+                return info
 
             path = self.path
         return read_info(path, self.timeexp)
@@ -270,7 +282,7 @@ class Audio(TimeMedia):
         if path is None:
             path = self.path
 
-        if hasattr(self, '_buffer'):
+        if hasattr(self, "_buffer"):
             path = self._buffer
 
         start = self._get_start()
@@ -281,20 +293,28 @@ class Audio(TimeMedia):
             path,
             self.samplerate,
             offset=start,
-            duration=duration)
+            duration=duration,
+        )
 
-        if hasattr(self, '_buffer'):
+        if hasattr(self, "_buffer"):
             self._buffer.close()
             del self._buffer
 
         return signal
 
+    def remote_load(self):
+        if hasattr(self, "_buffer"):
+            return self._buffer
+
+        return super().remote_load()
+
     # pylint: disable=arguments-differ
     def write(
-            self,
-            path: str,
-            media_format: Optional[str] = "wav",
-            samplerate: Optional[int] = None):
+        self,
+        path: str,
+        media_format: Optional[str] = "wav",
+        samplerate: Optional[int] = None,
+    ):
         """Write media to path."""
         self.path = path
 
@@ -302,16 +322,19 @@ class Audio(TimeMedia):
         if samplerate is None:
             samplerate = self.samplerate
 
-        write_media(self.path,
-                    signal,
-                    samplerate,
-                    self.media_info.nchannels,
-                    media_format)
+        write_media(
+            self.path,
+            signal,
+            samplerate,
+            self.media_info.nchannels,
+            media_format,
+        )
 
     def listen(self, speed: Optional[float] = 1):
         """Return HTML5 audio element player of current audio."""
         # pylint: disable=import-outside-toplevel
         from IPython.display import Audio as HTMLAudio
+
         rate = self.samplerate * speed
         return HTMLAudio(data=self.array, rate=rate)
 
@@ -320,21 +343,22 @@ class Audio(TimeMedia):
         ax = super().plot(ax=ax, **kwargs)
 
         array = self.array.copy()
-        if 'vmax' in kwargs:
+        if "vmax" in kwargs:
             maximum = np.abs(array).max()
-            vmax = kwargs['vmax']
+            vmax = kwargs["vmax"]
             array *= vmax / maximum
 
-        if 'offset' in kwargs:
-            array += kwargs['offset']
+        if "offset" in kwargs:
+            array += kwargs["offset"]
 
         ax.plot(
             self.times,
             array,
-            c=kwargs.get('color', None),
-            linewidth=kwargs.get('linewidth', 1),
-            linestyle=kwargs.get('linestyle', None),
-            alpha=kwargs.get('alpha', 1))
+            c=kwargs.get("color", None),
+            linewidth=kwargs.get("linewidth", 1),
+            linestyle=kwargs.get("linestyle", None),
+            alpha=kwargs.get("alpha", 1),
+        )
 
         return ax
 
@@ -346,30 +370,30 @@ class Audio(TimeMedia):
             media_info = dict(self.media_info._asdict())
 
         return {
-            'timeexp': self.timeexp,
-            'media_info': media_info,
-            'metadata': self.metadata.copy(),
-            'id': self.id,
-            **super().to_dict()
+            "timeexp": self.timeexp,
+            "media_info": media_info,
+            "metadata": self.metadata.copy(),
+            "id": self.id,
+            **super().to_dict(),
         }
 
     def __repr__(self):
         """Return a representation of the audio object."""
         data = OrderedDict()
         if self.path is not None:
-            data['path'] = repr(self.path)
+            data["path"] = repr(self.path)
         else:
-            data['array'] = repr(self.array)
+            data["array"] = repr(self.array)
 
-        data['duration'] = self.duration
-        data['samplerate'] = self.samplerate
+        data["duration"] = self.duration
+        data["samplerate"] = self.samplerate
 
         if self.timeexp != 1:
-            data['timeexp'] = self.timeexp
+            data["timeexp"] = self.timeexp
 
         if not self._has_trivial_window():
-            data['window'] = repr(self.window)
+            data["window"] = repr(self.window)
 
-        args = [f'{key}={value}' for key, value in data.items()]
-        args_string = ', '.join(args)
-        return f'Audio({args_string})'
+        args = [f"{key}={value}" for key, value in data.items()]
+        args_string = ", ".join(args)
+        return f"Audio({args_string})"

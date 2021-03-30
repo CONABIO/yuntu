@@ -32,43 +32,42 @@ class FrequencyMediaMixin:
     frequency_item_class = FrequencyItem
     window_class = windows.FrequencyWindow
 
-    plot_ylabel = 'Frequency (Hz)'
+    plot_ylabel = "Frequency (Hz)"
 
     def __init__(
-            self,
-            min_freq=0,
-            max_freq=None,
-            resolution=None,
-            frequency_axis=None,
-            window=None,
-            **kwargs):
+        self,
+        min_freq=0,
+        max_freq=None,
+        resolution=None,
+        frequency_axis=None,
+        window=None,
+        **kwargs
+    ):
 
         if frequency_axis is None:
             frequency_axis = self.frequency_axis_class(
-                resolution=resolution,
-                **kwargs)
+                resolution=resolution, **kwargs
+            )
 
         if not isinstance(frequency_axis, self.frequency_axis_class):
-            frequency_axis = self.frequency_axis_class.from_dict(frequency_axis)  # noqa
+            frequency_axis = self.frequency_axis_class.from_dict(
+                frequency_axis
+            )  # noqa
 
         self.frequency_axis = frequency_axis
 
         if window is None:
-            window = windows.FrequencyWindow(
-                min=min_freq,
-                max=max_freq)
+            window = windows.FrequencyWindow(min=min_freq, max=max_freq)
 
         if not isinstance(window, windows.FrequencyWindow):
-            window = windows.FrequencyWindow(
-                min=min_freq,
-                max=max_freq)
+            window = windows.FrequencyWindow(min=min_freq, max=max_freq)
 
         super().__init__(window=window, **kwargs)
 
     def to_dict(self):
         return {
-            'frequency_axis': self.frequency_axis.to_dict(),
-            **super().to_dict()
+            "frequency_axis": self.frequency_axis.to_dict(),
+            **super().to_dict(),
         }
 
     @property
@@ -90,19 +89,20 @@ class FrequencyMediaMixin:
         minimum = self._get_min()
         if freq < minimum:
             message = (
-                'Frequency less than minimum or window minimum '
-                'was requested')
+                "Frequency less than minimum or window minimum " "was requested"
+            )
             raise ValueError(message)
 
         if freq > self._get_max():
             message = (
-                'Frequency greater than maximum frequency or window maximum '
-                'was requested')
+                "Frequency greater than maximum frequency or window maximum "
+                "was requested"
+            )
             raise ValueError(message)
 
         return self.frequency_axis.get_index_from_value(
-            freq,
-            window=self.window)
+            freq, window=self.window
+        )
 
     def _restrain_freq_index(self, index):
         size = self.frequency_size
@@ -114,7 +114,7 @@ class FrequencyMediaMixin:
         return self.array.take(index, axis=self.frequency_axis_index)
 
     def get_freq_item_kwargs(self, freq):
-        return {'window': self.window.copy()}
+        return {"window": self.window.copy()}
 
     def get_freq_item(self, freq):
         index = self.get_index_from_frequency(freq)
@@ -141,23 +141,17 @@ class FrequencyMediaMixin:
             size = None
         return self.frequency_axis.get_bins(window=self.window, size=size)
 
-    def resample(
-            self,
-            resolution: int,
-            lazy: Optional[bool] = False,
-            **kwargs):
+    def resample(self, resolution: int, lazy: Optional[bool] = False, **kwargs):
         """Get a new FrequencyMedia object with the resampled data."""
         data_kwargs = self._copy_dict()
-        data_kwargs['lazy'] = lazy
-        data_kwargs['frequency_axis'] = self.frequency_axis.resample(resolution)
+        data_kwargs["lazy"] = lazy
+        data_kwargs["frequency_axis"] = self.frequency_axis.resample(resolution)
 
         if not self.path_exists():
             data = resample(
-                self.array,
-                self.frequency_axis.resolution,
-                resolution,
-                **kwargs)
-            data_kwargs['array'] = data
+                self.array, self.frequency_axis.resolution, resolution, **kwargs
+            )
+            data_kwargs["array"] = data
 
         return type(self)(**data_kwargs)
 
@@ -200,7 +194,7 @@ class FrequencyMediaMixin:
             max_freq = self._get_max()
 
         if min_freq > max_freq:
-            message = 'Read min_freq should be less than read max_freq.'
+            message = "Read min_freq should be less than read max_freq."
             raise ValueError(message)
 
         start_index = self.get_index_from_frequency(min_freq)
@@ -209,14 +203,15 @@ class FrequencyMediaMixin:
         return self.array[self._build_slices(start_index, end_index + 1)]
 
     def cut(
-            self,
-            min_freq: float = None,
-            max_freq: float = None,
-            window: windows.TimeWindow = None,
-            lazy=False,
-            pad=False,
-            pad_mode='constant',
-            constant_values=0):
+        self,
+        min_freq: float = None,
+        max_freq: float = None,
+        window: windows.TimeWindow = None,
+        lazy=False,
+        pad=False,
+        pad_mode="constant",
+        constant_values=0,
+    ):
         """Get a window to the media data.
 
         Parameters
@@ -242,35 +237,30 @@ class FrequencyMediaMixin:
         current_max = self._get_max()
 
         if min_freq is None:
-            min_freq = (
-                window.min
-                if window.min is not None
-                else min_freq)
+            min_freq = window.min if window.min is not None else min_freq
 
         if max_freq is None:
-            max_freq = (
-                window.max
-                if window.max is not None
-                else max_freq)
+            max_freq = window.max if window.max is not None else max_freq
 
         if max_freq < min_freq:
-            message = 'Window is empty'
+            message = "Window is empty"
             raise ValueError(message)
 
         bounded_min_freq = max(min(min_freq, current_max), current_min)
         bounded_max_freq = max(min(max_freq, current_max), current_min)
 
         kwargs_dict = self._copy_dict()
-        kwargs_dict['window'] = windows.FrequencyWindow(
+        kwargs_dict["window"] = windows.FrequencyWindow(
             min=min_freq if pad else bounded_min_freq,
-            max=max_freq if pad else bounded_max_freq)
+            max=max_freq if pad else bounded_max_freq,
+        )
 
         if lazy:
             # TODO: No lazy cutting for now. The compute method does not take
             # into acount possible cuts and thus might not give the correct
             # result.
             lazy = False
-        kwargs_dict['lazy'] = lazy
+        kwargs_dict["lazy"] = lazy
 
         if not lazy:
             start = self.get_index_from_frequency(bounded_min_freq)
@@ -281,30 +271,34 @@ class FrequencyMediaMixin:
 
             if pad:
                 min_pad = self.frequency_axis.get_bin_nums(
-                    min_freq, bounded_min_freq)
+                    min_freq, bounded_min_freq
+                )
                 max_pad = self.frequency_axis.get_bin_nums(
-                    bounded_max_freq, max_freq)
+                    bounded_max_freq, max_freq
+                )
                 pad_widths = self._build_pad_widths(min_pad, max_pad)
                 array = pad_array(
                     array,
                     pad_widths,
                     mode=pad_mode,
-                    constant_values=constant_values)
+                    constant_values=constant_values,
+                )
 
-            kwargs_dict['array'] = array
+            kwargs_dict["array"] = array
 
         return type(self)(**kwargs_dict)
 
     def get_aggr_value(
-            self,
-            freq=None,
-            buffer=None,
-            bins=None,
-            window=None,
-            geometry=None,
-            aggr_func=np.mean):
+        self,
+        freq=None,
+        buffer=None,
+        bins=None,
+        window=None,
+        geometry=None,
+        aggr_func=np.mean,
+    ):
         if bins is not None and buffer is not None:
-            message = 'Bins and buffer arguments are mutually exclusive.'
+            message = "Bins and buffer arguments are mutually exclusive."
             raise ValueError(message)
 
         if buffer is None and bins is not None:
@@ -316,8 +310,9 @@ class FrequencyMediaMixin:
 
             if geometry is None:
                 message = (
-                    'Either freq, a window, or a geometry '
-                    'should be supplied.')
+                    "Either freq, a window, or a geometry "
+                    "should be supplied."
+                )
                 raise ValueError(message)
 
             _, min_freq, _, max_freq = geometry.bounds
@@ -345,7 +340,8 @@ class FrequencyMediaMixin:
             media=self,
             geometry=intersected,
             lazy=lazy,
-            frequency_axis=self.frequency_axis)
+            frequency_axis=self.frequency_axis,
+        )
 
     def _build_slices(self, start, end):
         slices = [slice(None, None) for _ in self.shape]
@@ -359,8 +355,8 @@ class FrequencyMediaMixin:
 
     def _copy_dict(self):
         return {
-            'frequency_axis': self.frequency_axis.copy(),
-            **super()._copy_dict()
+            "frequency_axis": self.frequency_axis.copy(),
+            **super()._copy_dict(),
         }
 
     def _get_min(self):
@@ -371,8 +367,8 @@ class FrequencyMediaMixin:
 
     def _get_axis_info(self):
         return {
-            'frequency_axis': self.frequency_axis.copy(),
-            **super()._get_axis_info()
+            "frequency_axis": self.frequency_axis.copy(),
+            **super()._get_axis_info(),
         }
 
     def _has_trivial_window(self):
@@ -405,27 +401,30 @@ class FrequencyMaskedMedia(FrequencyMediaMixin, masked.MaskedMedia):
     def plot(self, ax=None, **kwargs):
         ax = super().plot(ax=ax, **kwargs)
 
-        if kwargs.get('mask', True):
+        if kwargs.get("mask", True):
             intervals = self._get_active_intervals()
             for (start, end) in intervals:
                 ax.axhline(
                     start,
-                    linewidth=kwargs.get('linewidth', 1),
-                    linestyle=kwargs.get('linestyle', '--'),
-                    color=kwargs.get('color', 'blue'))
+                    linewidth=kwargs.get("linewidth", 1),
+                    linestyle=kwargs.get("linestyle", "--"),
+                    color=kwargs.get("color", "blue"),
+                )
 
                 ax.axhline(
                     end,
-                    linewidth=kwargs.get('linewidth', 1),
-                    linestyle=kwargs.get('linestyle', '--'),
-                    color=kwargs.get('color', 'blue'))
+                    linewidth=kwargs.get("linewidth", 1),
+                    linestyle=kwargs.get("linestyle", "--"),
+                    color=kwargs.get("color", "blue"),
+                )
 
-                if kwargs.get('fill', True):
+                if kwargs.get("fill", True):
                     ax.axhspan(
                         start,
                         end,
-                        alpha=kwargs.get('alpha', 0.2),
-                        color=kwargs.get('color', 'blue'))
+                        alpha=kwargs.get("alpha", 0.2),
+                        color=kwargs.get("color", "blue"),
+                    )
 
         return ax
 

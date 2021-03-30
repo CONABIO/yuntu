@@ -8,15 +8,19 @@ from yuntu.soundscape.transitions.probe_trans import probe_write
 class ProbeWrite(Pipeline):
     """Pipeline to build tfrecords from bat call annotations."""
 
-    def __init__(self,
-                 name,
-                 probe_config,
-                 collection_config,
-                 write_config,
-                 query=None,
-                 **kwargs):
+    def __init__(
+        self,
+        name,
+        probe_config,
+        collection_config,
+        write_config,
+        query=None,
+        **kwargs
+    ):
         if not isinstance(collection_config, dict):
-            raise ValueError("Argument 'collection_config' must be a dictionary.")
+            raise ValueError(
+                "Argument 'collection_config' must be a dictionary."
+            )
         if not isinstance(write_config, dict):
             raise ValueError("Argument 'write_config' must be a dictionary.")
         if not isinstance(probe_config, dict):
@@ -31,20 +35,22 @@ class ProbeWrite(Pipeline):
         self.build()
 
     def build(self):
-        self["col_config"] = place(self.collection_config, 'dict', 'col_config')
-        self["query"] = place(self.query, 'dynamic', 'query')
-        self["npartitions"] = place(1, 'scalar', 'npartitions')
+        self["col_config"] = place(self.collection_config, "dict", "col_config")
+        self["query"] = place(self.query, "dynamic", "query")
+        self["npartitions"] = place(1, "scalar", "npartitions")
         self["write_config"] = place(self.write_config, "dict", "write_config")
         self["overwrite"] = place(False, "dynamic", "overwrite")
-        self["batch_size"] = place(200, 'scalar', 'batch_size')
-        self["probe_config"] = place(self.probe_config, 'dict', 'probe_config')
+        self["batch_size"] = place(200, "scalar", "batch_size")
+        self["probe_config"] = place(self.probe_config, "dict", "probe_config")
 
-        self["partitions"] = get_partitions(self["col_config"],
-                                            self["query"],
-                                            self["npartitions"])
-        self["write_result"] = probe_write(self["partitions"],
-                                           self["probe_config"],
-                                           self["col_config"],
-                                           self["write_config"],
-                                           self["batch_size"],
-                                           self["overwrite"])
+        self["partitions"] = get_partitions(
+            self["col_config"], self["query"], self["npartitions"]
+        )
+        self["write_result"] = probe_write(
+            self["partitions"],
+            self["probe_config"],
+            self["col_config"],
+            self["write_config"],
+            self["batch_size"],
+            self["overwrite"],
+        )

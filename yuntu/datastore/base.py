@@ -12,10 +12,9 @@ from pony.orm import db_session
 
 
 class Datastore(ABC):
-
     def __init__(self):
         self._metadata = None
-        self.base_dir = '.'
+        self.base_dir = "."
 
     def get_abspath(self, path):
         return os.path.join(self.base_dir, path)
@@ -23,7 +22,6 @@ class Datastore(ABC):
     @abstractmethod
     def iter(self):
         """Return an iterator of the data to import."""
-
 
     @abstractmethod
     def iter_annotations(self, datum):
@@ -67,13 +65,13 @@ class Datastore(ABC):
         annotation_inserts = 0
         for datum in self.iter():
             meta = self.prepare_datum(datum)
-            meta['path'] = self.get_abspath(meta['path'])
-            meta['datastore'] = datastore_record
+            meta["path"] = self.get_abspath(meta["path"])
+            meta["datastore"] = datastore_record
             recording = collection.insert(meta)[0]
 
             for annotation in self.iter_annotations(datum):
                 annotation_meta = self.prepare_annotation(datum, annotation)
-                annotation_meta['recording'] = recording
+                annotation_meta["recording"] = recording
                 collection.annotate([annotation_meta])
                 annotation_inserts += 1
 
@@ -83,19 +81,18 @@ class Datastore(ABC):
 
 
 class Storage(Datastore, ABC):
-
     def __init__(self, dir_path):
         super().__init__()
         self.dir_path = dir_path
 
     def create_datastore_record(self, collection):
         """Register this datastore into the collection."""
-        return collection.db_manager.models.storage(metadata=self.metadata,
-                                                    dir_path=self.dir_path)
+        return collection.db_manager.models.storage(
+            metadata=self.metadata, dir_path=self.dir_path
+        )
 
 
 class RemoteStorage(Storage, ABC):
-
     def __init__(self, dir_path, metadata_url=None, auth=None):
         super().__init__(dir_path)
         self.metadata_url = metadata_url
@@ -103,5 +100,6 @@ class RemoteStorage(Storage, ABC):
 
     def create_datastore_record(self, collection):
         """Register this datastore into the collection."""
-        return collection.db_manager.models.remote_storage(metadata=self.metadata,
-                                                           dir_path=self.dir_path)
+        return collection.db_manager.models.remote_storage(
+            metadata=self.metadata, dir_path=self.dir_path
+        )

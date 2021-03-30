@@ -17,17 +17,18 @@ AWARE_START = aware_time(TIME_START, TIME_ZONE, TIME_FORMAT)
 
 
 class CronoHasher(Hasher):
-
-    def __init__(self,
-                 time_column=TIME_COLUMN,
-                 tzone_column=TIME_ZONE_COLUMN,
-                 format_column=TIME_FORMAT_COLUMN,
-                 aware_start=AWARE_START,
-                 start_time=TIME_START,
-                 start_tzone=TIME_ZONE,
-                 start_format=TIME_FORMAT,
-                 time_unit=TIME_UNIT,
-                 time_module=TIME_MODULE):
+    def __init__(
+        self,
+        time_column=TIME_COLUMN,
+        tzone_column=TIME_ZONE_COLUMN,
+        format_column=TIME_FORMAT_COLUMN,
+        aware_start=AWARE_START,
+        start_time=TIME_START,
+        start_tzone=TIME_ZONE,
+        start_format=TIME_FORMAT,
+        time_unit=TIME_UNIT,
+        time_module=TIME_MODULE,
+    ):
 
         if not isinstance(time_column, str):
             raise ValueError("Argument 'time_column' must be a string.")
@@ -45,8 +46,9 @@ class CronoHasher(Hasher):
 
         if aware_start is not None:
             if not isinstance(aware_start, datetime.datetime):
-                raise ValueError("Argument 'standard_start' must "
-                                 "be a datetime.")
+                raise ValueError(
+                    "Argument 'standard_start' must " "be a datetime."
+                )
             self.start = aware_start
 
         else:
@@ -78,7 +80,7 @@ class CronoHasher(Hasher):
 
         remainder = delta_from_start % self.module
         new_row = {}
-        new_row[out_name] = np.int64(int(round(remainder/self.unit)))
+        new_row[out_name] = np.int64(int(round(remainder / self.unit)))
 
         return pd.Series(new_row)
 
@@ -90,4 +92,4 @@ class CronoHasher(Hasher):
 
     @property
     def dtype(self):
-        return np.dtype('int64')
+        return np.dtype("int64")

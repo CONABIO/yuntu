@@ -5,7 +5,6 @@ from yuntu.core.geometry.base import Geometry
 from yuntu.core.geometry.mixins import Geometry2DMixin, MultiGeometryMixin
 
 
-
 class LineString(Geometry2DMixin, Geometry):
     name = Geometry.Types.LineString
 
@@ -19,8 +18,9 @@ class LineString(Geometry2DMixin, Geometry):
 
             else:
                 message = (
-                    'Either wkt or vertices must be supplied '
-                    'to create a LineString geometry.')
+                    "Either wkt or vertices must be supplied "
+                    "to create a LineString geometry."
+                )
                 raise ValueError(message)
 
         super().__init__(geometry=geometry)
@@ -49,7 +49,7 @@ class LineString(Geometry2DMixin, Geometry):
 
     def to_dict(self):
         data = super().to_dict()
-        data['wkt'] = self.wkt
+        data["wkt"] = self.wkt
         return data
 
     def interpolate(self, s, normalized=True, ratio=1):
@@ -58,17 +58,13 @@ class LineString(Geometry2DMixin, Geometry):
         geometry = self.geometry
         if ratio != 1:
             geometry = utils.scale_geometry(
-                geometry,
-                xfact=ratio,
-                origin=(0, 0))
+                geometry, xfact=ratio, origin=(0, 0)
+            )
 
         point = geometry.interpolate(s, normalized=normalized)
 
         if ratio != 1:
-            point = utils.scale_geometry(
-                point,
-                xfact=1/ratio,
-                origin=(0, 0))
+            point = utils.scale_geometry(point, xfact=1 / ratio, origin=(0, 0))
 
         return Point(point.x, point.y)
 
@@ -77,9 +73,8 @@ class LineString(Geometry2DMixin, Geometry):
 
         if ratio != 1:
             geometry = utils.scale_geometry(
-                geometry,
-                xfact=ratio,
-                origin=(0, 0))
+                geometry, xfact=ratio, origin=(0, 0)
+            )
 
         vertices = [
             geometry.interpolate(param, normalized=True)
@@ -88,10 +83,7 @@ class LineString(Geometry2DMixin, Geometry):
 
         if ratio != 1:
             vertices = [
-                utils.scale_geometry(
-                    point,
-                    xfact=1/ratio,
-                    origin=(0, 0))
+                utils.scale_geometry(point, xfact=1 / ratio, origin=(0, 0))
                 for point in vertices
             ]
         return LineString(vertices=vertices)
@@ -100,30 +92,26 @@ class LineString(Geometry2DMixin, Geometry):
         ax = super().plot(ax=ax, **kwargs)
 
         xcoords, ycoords = self.geometry.xy
-        lineplot, = ax.plot(
+        (lineplot,) = ax.plot(
             xcoords,
             ycoords,
-            linewidth=kwargs.get('linewidth', None),
-            color=kwargs.get('color', None),
-            linestyle=kwargs.get('linestyle', '--'),
-            label=kwargs.get('label', None))
+            linewidth=kwargs.get("linewidth", None),
+            color=kwargs.get("color", None),
+            linestyle=kwargs.get("linestyle", "--"),
+            label=kwargs.get("label", None),
+        )
 
         color = lineplot.get_color()
 
-        if kwargs.get('scatter', False):
+        if kwargs.get("scatter", False):
             ax.scatter(
-                xcoords,
-                ycoords,
-                color=color,
-                s=kwargs.get('size', None))
+                xcoords, ycoords, color=color, s=kwargs.get("size", None)
+            )
 
         return ax
 
 
-class MultiLineString(
-        MultiGeometryMixin,
-        Geometry2DMixin,
-        Geometry):
+class MultiLineString(MultiGeometryMixin, Geometry2DMixin, Geometry):
     """Linestring collection geometry."""
 
     name = Geometry.Types.MultiLineString
@@ -132,8 +120,8 @@ class MultiLineString(
         if geometry is None:
             if linestrings is None:
                 message = (
-                    'Linestrings must be provided if no geometry '
-                    'is supplied')
+                    "Linestrings must be provided if no geometry " "is supplied"
+                )
                 raise ValueError(message)
 
             geoms = []
@@ -143,8 +131,10 @@ class MultiLineString(
                 elif isinstance(geom, shapely_geometry.LineString):
                     geoms.append(geom)
                 else:
-                    raise ValueError("All elements of input linestring "
-                                     "list must be linestrings.")
+                    raise ValueError(
+                        "All elements of input linestring "
+                        "list must be linestrings."
+                    )
 
             geometry = shapely_geometry.MultiLineString(geoms)
 

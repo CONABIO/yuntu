@@ -15,9 +15,9 @@ class HistogramMediaMixin:
 
     def _get_axis_info(self):
         return {
-            'histogram_axis': self.histogram_axis,
-            'bins': self.bins.tolist(),
-            **super()._get_axis_info()
+            "histogram_axis": self.histogram_axis,
+            "bins": self.bins.tolist(),
+            **super()._get_axis_info(),
         }
 
 

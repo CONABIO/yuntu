@@ -1,6 +1,7 @@
 from yuntu.collection.base import Collection, TimedCollection
 from yuntu.collection.irekua import IrekuaRESTCollection
 
+
 def collection(col_type="simple", **kwargs):
     if col_type == "simple":
         return Collection(**kwargs)

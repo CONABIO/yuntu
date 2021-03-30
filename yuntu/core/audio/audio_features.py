@@ -24,109 +24,113 @@ class AudioFeatures:
     @staticmethod
     def list():
         return [
-            'spectrogram',
-            'power_spectrogram',
-            'db_spectrogram',
+            "spectrogram",
+            "power_spectrogram",
+            "db_spectrogram",
         ]
 
     def get_base_kwargs(self):
         return {
-            'window': self.audio.window,
-            'annotations': self.audio.annotations
+            "window": self.audio.window,
+            "annotations": self.audio.annotations,
         }
 
     def spectrum(self, lazy=False):
         kwargs = self.get_base_kwargs()
-        kwargs['lazy'] = lazy
+        kwargs["lazy"] = lazy
         return spectrum.Spectrum(audio=self.audio, **kwargs)
 
     def spectrogram(
-            self,
-            n_fft: Optional[int] = None,
-            hop_length: Optional[int] = None,
-            window_function: Optional[str] = None,
-            lazy: Optional[bool] = False):
+        self,
+        n_fft: Optional[int] = None,
+        hop_length: Optional[int] = None,
+        window_function: Optional[str] = None,
+        lazy: Optional[bool] = False,
+    ):
         """Get amplitude spectrogram."""
         kwargs = self.get_base_kwargs()
-        kwargs['lazy'] = lazy
+        kwargs["lazy"] = lazy
         if n_fft is not None:
-            kwargs['n_fft'] = n_fft
+            kwargs["n_fft"] = n_fft
 
         if hop_length is not None:
-            kwargs['hop_length'] = hop_length
+            kwargs["hop_length"] = hop_length
 
         if window_function is not None:
-            kwargs['window_function'] = window_function
+            kwargs["window_function"] = window_function
 
         return self.spectrogram_class(audio=self.audio, **kwargs)
 
     def power_spectrogram(
-            self,
-            n_fft: Optional[int] = None,
-            hop_length: Optional[int] = None,
-            window_function: Optional[str] = None,
-            lazy: Optional[bool] = False):
+        self,
+        n_fft: Optional[int] = None,
+        hop_length: Optional[int] = None,
+        window_function: Optional[str] = None,
+        lazy: Optional[bool] = False,
+    ):
         """Get power spectrogram."""
         kwargs = self.get_base_kwargs()
-        kwargs['lazy'] = lazy
+        kwargs["lazy"] = lazy
         if n_fft is not None:
-            kwargs['n_fft'] = n_fft
+            kwargs["n_fft"] = n_fft
 
         if hop_length is not None:
-            kwargs['hop_length'] = hop_length
+            kwargs["hop_length"] = hop_length
 
         if window_function is not None:
-            kwargs['window_function'] = window_function
+            kwargs["window_function"] = window_function
 
         return self.power_spectrogram_class(audio=self.audio, **kwargs)
 
     def db_spectrogram(
-            self,
-            n_fft: Optional[int] = None,
-            hop_length: Optional[int] = None,
-            window_function: Optional[str] = None,
-            lazy: Optional[bool] = False,
-            ref: Optional[float] = None,
-            amin: Optional[float] = None,
-            top_db: Optional[float] = None):
+        self,
+        n_fft: Optional[int] = None,
+        hop_length: Optional[int] = None,
+        window_function: Optional[str] = None,
+        lazy: Optional[bool] = False,
+        ref: Optional[float] = None,
+        amin: Optional[float] = None,
+        top_db: Optional[float] = None,
+    ):
         """Get decibel spectrogram."""
         kwargs = self.get_base_kwargs()
-        kwargs['lazy'] = lazy
+        kwargs["lazy"] = lazy
 
         if n_fft is not None:
-            kwargs['n_fft'] = n_fft
+            kwargs["n_fft"] = n_fft
 
         if hop_length is not None:
-            kwargs['hop_length'] = hop_length
+            kwargs["hop_length"] = hop_length
 
         if window_function is not None:
-            kwargs['window_function'] = window_function
+            kwargs["window_function"] = window_function
 
         if ref is not None:
-            kwargs['ref'] = ref
+            kwargs["ref"] = ref
 
         if amin is not None:
-            kwargs['amin'] = amin
+            kwargs["amin"] = amin
 
         if top_db is not None:
-            kwargs['top_db'] = top_db
+            kwargs["top_db"] = top_db
 
         return self.db_spectrogram_class(audio=self.audio, **kwargs)
 
     def zcr(
-            self,
-            threshold=zcr.THRESHOLD,
-            ref_magnitude=None,
-            frame_length=zcr.FRAME_LENGTH,
-            hop_length=zcr.HOP_LENGTH,
-            **kwargs):
+        self,
+        threshold=zcr.THRESHOLD,
+        ref_magnitude=None,
+        frame_length=zcr.FRAME_LENGTH,
+        hop_length=zcr.HOP_LENGTH,
+        **kwargs
+    ):
         kwargs = {
-            'threshold': threshold,
-            'ref_magnitude': ref_magnitude,
-            'frame_length': frame_length,
-            'hop_length': hop_length,
+            "threshold": threshold,
+            "ref_magnitude": ref_magnitude,
+            "frame_length": frame_length,
+            "hop_length": hop_length,
             **kwargs,
-            **self.get_base_kwargs()
+            **self.get_base_kwargs(),
         }
 
         return zcr.ZeroCrossingRate(audio=self.audio, **kwargs)

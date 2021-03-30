@@ -16,7 +16,7 @@ from yuntu.core.geometry.weak import Weak
 
 def geometry(geom):
     # Case when geom is a shapely geometry
-    if hasattr(geom, 'geomtype'):
+    if hasattr(geom, "geomtype"):
         return Geometry.from_geometry(geom)
 
     # Otherwise assume its a dictionary with geom data
@@ -24,19 +24,19 @@ def geometry(geom):
 
 
 __all__ = [
-    'geometry',
-    'Geometry',
-    'BBox',
-    'GeometryCollection',
-    'TimeInterval',
-    'FrequencyInterval',
-    'TimeLine',
-    'FrequencyLine',
-    'LineString',
-    'Point',
-    'MultiPoint',
-    'Polygon',
-    'MultiPolygon',
-    'MultiLineString',
-    'Weak',
+    "geometry",
+    "Geometry",
+    "BBox",
+    "GeometryCollection",
+    "TimeInterval",
+    "FrequencyInterval",
+    "TimeLine",
+    "FrequencyLine",
+    "LineString",
+    "Point",
+    "MultiPoint",
+    "Polygon",
+    "MultiPolygon",
+    "MultiLineString",
+    "Weak",
 ]

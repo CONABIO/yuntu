@@ -6,16 +6,11 @@ import numpy as np
 class Axis(abc.ABC):
 
     # pylint: disable=unused-argument
-    def __init__(
-            self,
-            resolution,
-            **kwargs):
+    def __init__(self, resolution, **kwargs):
         self.resolution = resolution
 
     def to_dict(self):
-        return {
-            'resolution': self.resolution
-        }
+        return {"resolution": self.resolution}
 
     @classmethod
     def from_dict(cls, data):
@@ -61,7 +56,7 @@ class Axis(abc.ABC):
 
     def resample(self, resolution):
         data = self.to_dict()
-        data['resolution'] = resolution
+        data["resolution"] = resolution
         return type(self)(**data)
 
     def copy(self):
@@ -74,7 +69,7 @@ class TimeAxis(Axis):
             assert start is not None
             return start
 
-        if getattr(window, 'start', None) is None:
+        if getattr(window, "start", None) is None:
             assert start is not None
             return start
 
@@ -85,7 +80,7 @@ class TimeAxis(Axis):
             assert end is not None
             return end
 
-        if getattr(window, 'end', None) is None:
+        if getattr(window, "end", None) is None:
             assert end is not None
             return end
 
@@ -98,7 +93,7 @@ class FrequencyAxis(Axis):
             assert start is not None
             return start
 
-        if getattr(window, 'min', None) is None:
+        if getattr(window, "min", None) is None:
             assert start is not None
             return start
 
@@ -109,7 +104,7 @@ class FrequencyAxis(Axis):
             assert end is not None
             return end
 
-        if getattr(window, 'max', None) is None:
+        if getattr(window, "max", None) is None:
             assert end is not None
             return end
 

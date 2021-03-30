@@ -2,6 +2,7 @@
 from abc import ABC
 from abc import abstractmethod
 
+
 class Hasher(ABC):
     columns = "__all__"
 
@@ -35,16 +36,19 @@ class Hasher(ABC):
 class GenericHasher(Hasher, ABC):
     def __init__(self, hash_method, unhash_method=None, columns="__all__"):
         if not hasattr(hash_method, "__call__"):
-            raise ValueError("Argument 'hash_method' must"
-                             "be a callable object.")
+            raise ValueError(
+                "Argument 'hash_method' must" "be a callable object."
+            )
         if unhash_method is not None:
             if not hasattr(hash_method, "__call__"):
-                raise ValueError("Argument 'unhash_method' must be a"
-                                 "callable object.")
+                raise ValueError(
+                    "Argument 'unhash_method' must be a" "callable object."
+                )
         if columns != "__all__":
             if not isinstance(columns, (tuple, list)):
-                raise ValueError("Argument 'columns' must be a list of "
-                                 "column names.")
+                raise ValueError(
+                    "Argument 'columns' must be a list of " "column names."
+                )
         self.columns = columns
         self._hash_method = hash_method
         self._unhash_method = unhash_method

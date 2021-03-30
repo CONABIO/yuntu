@@ -19,18 +19,17 @@ class GridedMediaMixin:
         return self.shape[self.grid_axis]
 
 
-class TimeGridedMediaMixin(
-        GridedMediaMixin,
-        time.TimeMediaMixin):
+class TimeGridedMediaMixin(GridedMediaMixin, time.TimeMediaMixin):
     def __init__(
-            self,
-            media,
-            frame_length,
-            hop_length=None,
-            start_time=None,
-            end_time=None,
-            resolution=None,
-            **kwargs):
+        self,
+        media,
+        frame_length,
+        hop_length=None,
+        start_time=None,
+        end_time=None,
+        resolution=None,
+        **kwargs
+    ):
         self.frame_length = frame_length
 
         if hop_length is None:
@@ -58,20 +57,21 @@ class TimeGridedMediaMixin(
             start=start_time,
             duration=end_time,
             resolution=resolution,
-            **kwargs)
+            **kwargs
+        )
 
     def to_dict(self):
         return {
-            'frame_length': self.frame_length,
-            'hop_length': self.hop_length,
-            **self.to_dict()
+            "frame_length": self.frame_length,
+            "hop_length": self.hop_length,
+            **self.to_dict(),
         }
 
     def plot(self, ax=None, media=False, **kwargs):
         ax = super().plot(ax=ax, **kwargs)
 
         if media:
-            media_kwargs = kwargs.get('media_kwargs', {})
+            media_kwargs = kwargs.get("media_kwargs", {})
             self.media.plot(ax=ax, **media_kwargs)
 
     def write(self, path=None):
@@ -89,9 +89,8 @@ class TimeGridedMediaMixin(
         hop_length = int(self.hop_length * self.media.time_axis.resolution)
 
         frames = librosa.util.frame(
-            array,
-            frame_length=frame_length,
-            hop_length=hop_length)
+            array, frame_length=frame_length, hop_length=hop_length
+        )
 
         if (axis != -1) or (axis == ndim - 1):
             frames = np.moveaxis(frames, axis, -1)
@@ -100,9 +99,9 @@ class TimeGridedMediaMixin(
 
     def _copy_dict(self):
         return {
-            'frame_length': self.frame_length,
-            'hop_length': self.hop_length,
-            **self._copy_dict()
+            "frame_length": self.frame_length,
+            "hop_length": self.hop_length,
+            **self._copy_dict(),
         }
 
 
@@ -111,17 +110,18 @@ class TimeGridedMedia(TimeGridedMediaMixin, Media):
 
 
 class FrequencyGridedMediaMixin(
-        frequency.FrequencyMediaMixin,
-        GridedMediaMixin):
+    frequency.FrequencyMediaMixin, GridedMediaMixin
+):
     def __init__(
-            self,
-            media,
-            frame_length,
-            hop_length=None,
-            min_freq=None,
-            max_freq=None,
-            resolution=None,
-            **kwargs):
+        self,
+        media,
+        frame_length,
+        hop_length=None,
+        min_freq=None,
+        max_freq=None,
+        resolution=None,
+        **kwargs
+    ):
         self.frame_length = frame_length
 
         if hop_length is None:
@@ -150,13 +150,14 @@ class FrequencyGridedMediaMixin(
             min_freq=min_freq,
             max_freq=max_freq,
             resolution=resolution,
-            **kwargs)
+            **kwargs
+        )
 
     def to_dict(self):
         return {
-            'frame_length': self.frame_length,
-            'hop_length': self.hop_length,
-            **self.to_dict()
+            "frame_length": self.frame_length,
+            "hop_length": self.hop_length,
+            **self.to_dict(),
         }
 
     def compute(self):
@@ -172,9 +173,8 @@ class FrequencyGridedMediaMixin(
         hop_length = int(self.hop_length * media_res)
 
         frames = librosa.util.frame(
-            array,
-            frame_length=frame_length,
-            hop_length=hop_length)
+            array, frame_length=frame_length, hop_length=hop_length
+        )
 
         if (axis != -1) or (axis == ndim - 1):
             frames = np.moveaxis(frames, axis, -1)
@@ -183,23 +183,24 @@ class FrequencyGridedMediaMixin(
 
     def _copy_dict(self):
         return {
-            'frame_length': self.frame_length,
-            'hop_length': self.hop_length,
-            **self._copy_dict()
+            "frame_length": self.frame_length,
+            "hop_length": self.hop_length,
+            **self._copy_dict(),
         }
 
 
 class TimeFrequencyGridedMediaMixin(
-        time_frequency.TimeFrequencyMediaMixin,
-        GridedMediaMixin):
+    time_frequency.TimeFrequencyMediaMixin, GridedMediaMixin
+):
     def __init__(
-            self,
-            media,
-            time_frame_length,
-            freq_frame_length,
-            freq_hop_length=None,
-            time_hop_length=None,
-            **kwargs):
+        self,
+        media,
+        time_frame_length,
+        freq_frame_length,
+        freq_hop_length=None,
+        time_hop_length=None,
+        **kwargs
+    ):
         self.time_frame_length = time_frame_length
         self.freq_frame_length = freq_frame_length
 

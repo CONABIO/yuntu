@@ -7,4 +7,4 @@ import logging
 
 
 # pylint: disable=invalid-name
-logger = logging.getLogger('Yuntu')
+logger = logging.getLogger("Yuntu")

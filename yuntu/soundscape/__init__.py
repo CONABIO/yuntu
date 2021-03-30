@@ -7,9 +7,9 @@ from . import pipelines
 from yuntu.soundscape.dataframe import SoundscapeAccessor
 
 __all__ = [
-    'processors',
-    'hashers',
-    'transitions',
-    'pipelines',
-    'SoundscapeAccessor'
+    "processors",
+    "hashers",
+    "transitions",
+    "pipelines",
+    "SoundscapeAccessor",
 ]

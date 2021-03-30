@@ -6,14 +6,14 @@ import dask.dataframe.extensions
 from yuntu.core.audio.audio import Audio
 
 
-PATH = 'path'
-SAMPLERATE = 'samplerate'
-TIME_EXPANSION = 'timeexp'
-DURATION = 'duration'
-MEDIA_INFO = 'media_info'
-METADATA = 'metadata'
-ID = 'id'
-ANNOTATIONS = 'annotations'
+PATH = "path"
+SAMPLERATE = "samplerate"
+TIME_EXPANSION = "timeexp"
+DURATION = "duration"
+MEDIA_INFO = "media_info"
+METADATA = "metadata"
+ID = "id"
+ANNOTATIONS = "annotations"
 REQUIRED_AUDIO_COLUMNS = [
     PATH,
 ]
@@ -48,17 +48,18 @@ class AudioAccessor:
             raise AttributeError("Must have 'path'")
 
     def _build_audio(
-            self,
-            row,
-            lazy=True,
-            path_column=None,
-            samplerate_column=None,
-            timeexp_column=None,
-            duration_column=None,
-            media_info_column=None,
-            metadata_column=None,
-            annotations_columns=None,
-            id_column=None):
+        self,
+        row,
+        lazy=True,
+        path_column=None,
+        samplerate_column=None,
+        timeexp_column=None,
+        duration_column=None,
+        media_info_column=None,
+        metadata_column=None,
+        annotations_columns=None,
+        id_column=None,
+    ):
 
         if path_column is None:
             path_column = self.path_column
@@ -92,37 +93,36 @@ class AudioAccessor:
             MEDIA_INFO: getattr(row, media_info_column, None),
             METADATA: getattr(row, metadata_column, None),
             ID: getattr(row, id_column, None),
-            ANNOTATIONS: getattr(row, annotations_columns, [])
+            ANNOTATIONS: getattr(row, annotations_columns, []),
         }
 
         return Audio(**data, lazy=lazy)
 
     def apply(self, func):
         return self._obj.apply(
-            lambda row: func(row, self._build_audio(row)),
-            axis=1)
+            lambda row: func(row, self._build_audio(row)), axis=1
+        )
 
     def __getitem__(self, key):
         if isinstance(key, int):
             return self._build_audio(self._obj.iloc[key])
 
-        return [
-            self._build_audio(row)
-            for row in self._obj[key].itertuples()]
+        return [self._build_audio(row) for row in self._obj[key].itertuples()]
 
     def get(
-            self,
-            row=None,
-            id=None,
-            lazy=True,
-            path_column=None,
-            samplerate_column=None,
-            timeexp_column=None,
-            duration_column=None,
-            media_info_column=None,
-            annotations_columns=None,
-            metadata_column=None,
-            id_column=None):
+        self,
+        row=None,
+        id=None,
+        lazy=True,
+        path_column=None,
+        samplerate_column=None,
+        timeexp_column=None,
+        duration_column=None,
+        media_info_column=None,
+        annotations_columns=None,
+        metadata_column=None,
+        id_column=None,
+    ):
         if id_column is None:
             id_column = self.id_column
 
@@ -143,7 +143,8 @@ class AudioAccessor:
             media_info_column=media_info_column,
             metadata_column=metadata_column,
             annotations_columns=annotations_columns,
-            id_column=id_column)
+            id_column=id_column,
+        )
 
     def change_path_column(self, new_column):
         self.path_column = new_column
@@ -174,13 +175,13 @@ def dask_wrapper(func):
     name = func.__name__
 
     def wrapper(self, *args, **kwargs):
-
         def delayed_func():
             accesor = self._obj.compute().audio
             method = getattr(accesor, name)
             return method(*args, **kwargs)
 
         return delayed(delayed_func)()
+
     return wrapper
 
 
@@ -190,32 +191,28 @@ class DaskAudioAccesor(AudioAccessor):
     def __getitem__(self, key):
         super().__getitem__(key)
 
-    def apply(self, func, args=(), meta='__no_default__', **kwargs):
+    def apply(self, func, args=(), meta="__no_default__", **kwargs):
         def wrapper(row, *nargs, **kwargs):
             audio = self._build_audio(row)
             return func(row, audio, *nargs, **kwargs)
 
-        return self._obj.apply(
-            wrapper,
-            axis=1,
-            args=args,
-            meta=meta,
-            **kwargs)
+        return self._obj.apply(wrapper, axis=1, args=args, meta=meta, **kwargs)
 
     # pylint: disable=redefined-builtin, too-many-arguments
     @dask_wrapper
     def get(
-            self,
-            row=None,
-            id=None,
-            lazy=True,
-            path_column=None,
-            samplerate_column=None,
-            timeexp_column=None,
-            duration_column=None,
-            media_info_column=None,
-            metadata_column=None,
-            id_column=None):
+        self,
+        row=None,
+        id=None,
+        lazy=True,
+        path_column=None,
+        samplerate_column=None,
+        timeexp_column=None,
+        duration_column=None,
+        media_info_column=None,
+        metadata_column=None,
+        id_column=None,
+    ):
         return super().get(
             row=None,
             id=None,
@@ -226,4 +223,5 @@ class DaskAudioAccesor(AudioAccessor):
             duration_column=None,
             media_info_column=None,
             metadata_column=None,
-            id_column=None)
+            id_column=None,
+        )

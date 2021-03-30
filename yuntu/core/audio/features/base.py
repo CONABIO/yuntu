@@ -19,12 +19,10 @@ class Feature(Media):
     information extracted from the audio data.
     """
 
-    def __init__(
-            self,
-            audio=None,
-            **kwargs):
+    def __init__(self, audio=None, **kwargs):
         """Construct a feature."""
         from yuntu.core.audio.audio import Audio
+
         if isinstance(audio, Audio):
             self._audio = audio
             self._audio_data = audio.to_dict()
@@ -35,13 +33,12 @@ class Feature(Media):
 
     @property
     def audio(self):
-        if not hasattr(self, '_audio'):
+        if not hasattr(self, "_audio"):
             from yuntu.core.audio.audio import Audio
+
             data = self._audio_data.copy()
-            data.pop('type')
-            self._audio = Audio.from_dict(
-                data,
-                lazy=True)
+            data.pop("type")
+            self._audio = Audio.from_dict(data, lazy=True)
         return self._audio
 
     def clean_audio(self):
@@ -49,7 +46,7 @@ class Feature(Media):
 
     def _copy_dict(self, **kwargs):
         return {
-            'audio': self._audio_data,
+            "audio": self._audio_data,
             **super()._copy_dict(**kwargs),
         }
 
@@ -57,13 +54,13 @@ class Feature(Media):
         data = super().to_dict()
 
         if self.has_audio():
-            data['audio'] = self._audio_data
+            data["audio"] = self._audio_data
 
         return data
 
     def has_audio(self):
         """Return if this feature is linked to an Audio instance."""
-        if not hasattr(self, '_audio_data'):
+        if not hasattr(self, "_audio_data"):
             return False
 
         return self._audio_data is not None
@@ -71,8 +68,8 @@ class Feature(Media):
     def plot(self, ax=None, **kwargs):
         ax = super().plot(ax=ax, **kwargs)
 
-        if kwargs.get('audio', False):
-            audio_kwargs = kwargs.get('audio_kwargs', {})
+        if kwargs.get("audio", False):
+            audio_kwargs = kwargs.get("audio_kwargs", {})
             self.audio.plot(ax=ax, **audio_kwargs)
 
         return ax
@@ -87,28 +84,31 @@ class Feature(Media):
             path = self.path
 
         extension = os.path.splitext(path)[1]
-        if extension == 'npy':
+        if extension == "npy":
             try:
                 return np.load(self.path)
             except IOError:
                 message = (
-                    'The provided path for this feature object could '
-                    f'not be read. (path={self.path})')
+                    "The provided path for this feature object could "
+                    f"not be read. (path={self.path})"
+                )
                 raise ValueError(message)
 
-        if extension == 'npz':
+        if extension == "npz":
             try:
                 with np.load(self.path) as data:
                     return data[type(self).__name__]
             except IOError:
                 message = (
-                    'The provided path for this feature object could '
-                    f'not be read. (path={self.path})')
+                    "The provided path for this feature object could "
+                    f"not be read. (path={self.path})"
+                )
                 raise ValueError(message)
 
         message = (
-            'The provided path does not have a numpy file extension. '
-            f'(extension={extension})')
+            "The provided path does not have a numpy file extension. "
+            f"(extension={extension})"
+        )
         raise ValueError(message)
 
 

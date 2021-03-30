@@ -6,6 +6,7 @@ This could be the full wav array, the zero crossing rate or the spectrogram.
 These media objects can all be stored and read from the filesystem.
 """
 import os
+from io import BytesIO
 
 from abc import ABC
 from abc import abstractmethod
@@ -26,18 +27,20 @@ class Media(ABC, AnnotatedObjectMixin):
     mask_class = None
 
     # Plotting variables
-    plot_title = 'Media Object'
-    plot_xlabel = ''
-    plot_ylabel = ''
+    # TODO: Plotting should not be the Media class responsiblity
+    plot_title = "Media Object"
+    plot_xlabel = ""
+    plot_ylabel = ""
 
     # pylint: disable=super-init-not-called, unused-argument
     def __init__(
-            self,
-            path=None,
-            lazy=False,
-            array=None,
-            window=None,
-            **kwargs):
+        self,
+        path=None,
+        lazy=False,
+        array=None,
+        window=None,
+        **kwargs,
+    ):
         """Construct a media object."""
         self.path = path
 
@@ -60,8 +63,7 @@ class Media(ABC, AnnotatedObjectMixin):
     def _load_array(self):
         if self.is_remote():
             tmpfile = self.remote_load()
-            array = self.load(path=tmpfile)
-            tmpfile.close()
+            array = self.load(bytes=tmpfile)
             return array
 
         return self.load()
@@ -85,13 +87,13 @@ class Media(ABC, AnnotatedObjectMixin):
     def to_dict(self):
         """Return a dictionary holding all media metadata."""
         data = {
-            'type': self.__class__.__name__,
-            'window': self.window.to_dict(),
-            **super().to_dict()
+            "type": self.__class__.__name__,
+            "window": self.window.to_dict(),
+            **super().to_dict(),
         }
 
         if self.path is not None:
-            data['path'] = self.path
+            data["path"] = self.path
 
         return data
 
@@ -102,7 +104,7 @@ class Media(ABC, AnnotatedObjectMixin):
         if os.path.exists(self.path):
             return False
 
-        if self.path[:5] == 's3://':
+        if self.path[:5] == "s3://":
             return False
 
         parsed = urlparse(self.path)
@@ -110,7 +112,7 @@ class Media(ABC, AnnotatedObjectMixin):
         if not parsed.scheme:
             return False
 
-        if parsed.scheme == 'file':
+        if parsed.scheme == "file":
             return False
 
         return True
@@ -118,12 +120,12 @@ class Media(ABC, AnnotatedObjectMixin):
     def remote_load(self):
         parsed = urlparse(self.path)
 
-        if parsed.scheme in ['http', 'https']:
+        if parsed.scheme in ["http", "https"]:
             return download_file(self.path)
 
         message = (
-            'Remote loading is not implemented for '
-            f'scheme {parsed.scheme}')
+            "Remote loading is not implemented for " f"scheme {parsed.scheme}"
+        )
         raise NotImplementedError(message)
 
     def path_exists(self, path=None):
@@ -136,6 +138,7 @@ class Media(ABC, AnnotatedObjectMixin):
 
         if "s3://" == path[:5]:
             from s3fs.core import S3FileSystem
+
             s3 = S3FileSystem()
             return s3.exists(path)
 
@@ -147,24 +150,36 @@ class Media(ABC, AnnotatedObjectMixin):
 
     def is_empty(self):
         """Check if array has not been loaded yet."""
-        return not hasattr(self, '_array') or self._array is None
+        return not hasattr(self, "_array") or self._array is None
 
-    def load(self, path=None):
+    # pylint: disable=redefined-builtin
+    def load(self, path=None, bytes=None):
+        if bytes is not None:
+            if not isinstance(bytes, BytesIO):
+                raise ValueError("Bytes argument is not a BytesIO object")
+
+            return self.load_from_bytes(bytes)
+
         if self.path_exists(path):
             return self.load_from_path(path)
 
         return self.compute()
 
     def compute(self):
-        message = 'This class does not implement a compute method'
+        message = "This class does not implement a compute method"
         raise NotImplementedError(message)
 
     def load_from_path(self, path=None):
         if path is None:
             path = self.path
 
-        message = 'This class does not implement a load from path method'
+        message = "This class does not implement a load from path method"
         raise NotImplementedError(message)
+
+    # pylint: disable=redefined-builtin
+    def load_from_bytes(self, bytes):
+        # Commonly, file readers will handle bytes object with no problem
+        return self.load_from_path(path=bytes)
 
     @abstractmethod
     def write(self, path=None, **kwargs):
@@ -184,58 +199,58 @@ class Media(ABC, AnnotatedObjectMixin):
         """Plot a representation of the media object."""
         ax = super().plot(ax=ax, **kwargs)
 
-        title = kwargs.get('title', False)
+        title = kwargs.get("title", False)
         if title:
             if not isinstance(title, str):
                 title = self.get_plot_title()
             ax.set_title(title)
 
-        xlabel = kwargs.get('xlabel', False)
+        xlabel = kwargs.get("xlabel", False)
         if xlabel:
             if not isinstance(xlabel, str):
                 xlabel = self.get_plot_xlabel()
             ax.set_xlabel(xlabel)
 
-        ylabel = kwargs.get('ylabel', False)
+        ylabel = kwargs.get("ylabel", False)
         if ylabel:
             if not isinstance(ylabel, str):
                 ylabel = self.get_plot_ylabel()
             ax.set_ylabel(ylabel)
 
-        if kwargs.get('window', False):
-            window_kwargs = kwargs.get('window_kwargs', {})
+        if kwargs.get("window", False):
+            window_kwargs = kwargs.get("window_kwargs", {})
             ax = self.window.plot(ax=ax, **window_kwargs)
 
         return ax
 
-    def normalized(self, method='minmax', **kwargs):
-        if method == 'minmax':
+    def normalized(self, method="minmax", **kwargs):
+        if method == "minmax":
             array = self.array
 
-            minimum = kwargs.get('minimum', None)
+            minimum = kwargs.get("minimum", None)
             if minimum is None:
                 minimum = array.min()
 
-            maximum = kwargs.get('maximum', None)
+            maximum = kwargs.get("maximum", None)
             if maximum is None:
                 maximum = array.max()
 
             return (array - minimum) / (maximum - minimum)
 
-        if method == 'z':
+        if method == "z":
             array = self.array
 
-            mean = kwargs.get('mean', None)
+            mean = kwargs.get("mean", None)
             if mean is None:
                 mean = array.mean()
 
-            std = kwargs.get('std', None)
+            std = kwargs.get("std", None)
             if std is None:
                 std = array.std()
 
             return (array - mean) / std
 
-        message = f'Normalization method {method} is not implemented'
+        message = f"Normalization method {method} is not implemented"
         raise NotImplementedError(message)
 
     def copy(self, **kwargs):
@@ -246,13 +261,13 @@ class Media(ABC, AnnotatedObjectMixin):
 
     def _copy_dict(self, with_array=True, **kwargs):
         data = {
-            'annotations': self.annotations,
-            'window': self.window.copy(),
-            'path': self.path,
+            "annotations": self.annotations,
+            "window": self.window.copy(),
+            "path": self.path,
         }
 
         if not self.is_empty() and with_array:
-            data['array'] = self.array.copy(**kwargs)
+            data["array"] = self.array.copy(**kwargs)
 
         return data
 
@@ -267,16 +282,11 @@ class Media(ABC, AnnotatedObjectMixin):
     # pylint: disable=no-self-use
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Use numpy universal functions on media array."""
-        modified_inputs = tuple([
-            inp.array
-            if isinstance(inp, Media) else inp
-            for inp in inputs
-        ])
+        modified_inputs = tuple(
+            [inp.array if isinstance(inp, Media) else inp for inp in inputs]
+        )
         modified_kwargs = {
-            key:
-                value.array
-                if isinstance(value, Media)
-                else value
+            key: value.array if isinstance(value, Media) else value
             for key, value in kwargs.items()
         }
 
@@ -292,149 +302,150 @@ class Media(ABC, AnnotatedObjectMixin):
 
 
 NUMPY_METHODS = [
-    'all',
-    'any',
-    'argmax',
-    'argmin',
-    'argpartition',
-    'argsort',
-    'astype',
-    'byteswap',
-    'choose',
-    'clip',
-    'compress',
-    'conj',
-    'conjugate',
-    'cumprod',
-    'cumsum',
-    'diagonal',
-    'dot',
-    'dump',
-    'dumps',
-    'fill',
-    'flatten',
-    'getfield',
-    'item',
-    'itemset',
-    'max',
-    'mean',
-    'min',
-    'newbyteorder',
-    'nonzero',
-    'partition',
-    'prod',
-    'ptp',
-    'put',
-    'ravel',
-    'repeat',
-    'reshape',
-    'resize',
-    'round',
-    'searchsorted',
-    'setfield',
-    'setflags',
-    'sort',
-    'squeeze',
-    'std',
-    'sum',
-    'swapaxes',
-    'take',
-    'tobytes',
-    'tofile',
-    'tolist',
-    'tostring',
-    'trace',
-    'transpose',
-    'var',
-    'view',
-    '__abs__',
-    '__add__',
-    '__and__',
-    '__bool__',
-    '__contains__',
-    '__delitem__',
-    '__divmod__',
-    '__eq__',
-    '__float__',
-    '__floordiv__',
-    '__ge__',
-    '__getitem__',
-    '__gt__',
-    '__iadd__',
-    '__iand__',
-    '__ifloordiv__',
-    '__ilshift__',
-    '__imatmul__',
-    '__imod__',
-    '__imul__',
-    '__index__',
-    '__int__',
-    '__invert__',
-    '__ior__',
-    '__ipow__',
-    '__irshift__',
-    '__isub__',
-    '__iter__',
-    '__itruediv__',
-    '__ixor__',
-    '__le__',
-    '__len__',
-    '__lshift__',
-    '__lt__',
-    '__matmul__',
-    '__mod__',
-    '__mul__',
-    '__ne__',
-    '__neg__',
-    '__or__',
-    '__pos__',
-    '__pow__',
-    '__radd__',
-    '__rand__',
-    '__rdivmod__',
-    '__repr__',
-    '__rfloordiv__',
-    '__rlshift__',
-    '__rmatmul__',
-    '__rmod__',
-    '__rmul__',
-    '__ror__',
-    '__rpow__',
-    '__rrshift__',
-    '__rshift__',
-    '__rsub__',
-    '__rtruediv__',
-    '__rxor__',
-    '__setitem__',
-    '__str__',
-    '__sub__',
-    '__truediv__',
-    '__xor__'
+    "all",
+    "any",
+    "argmax",
+    "argmin",
+    "argpartition",
+    "argsort",
+    "astype",
+    "byteswap",
+    "choose",
+    "clip",
+    "compress",
+    "conj",
+    "conjugate",
+    "cumprod",
+    "cumsum",
+    "diagonal",
+    "dot",
+    "dump",
+    "dumps",
+    "fill",
+    "flatten",
+    "getfield",
+    "item",
+    "itemset",
+    "max",
+    "mean",
+    "min",
+    "newbyteorder",
+    "nonzero",
+    "partition",
+    "prod",
+    "ptp",
+    "put",
+    "ravel",
+    "repeat",
+    "reshape",
+    "resize",
+    "round",
+    "searchsorted",
+    "setfield",
+    "setflags",
+    "sort",
+    "squeeze",
+    "std",
+    "sum",
+    "swapaxes",
+    "take",
+    "tobytes",
+    "tofile",
+    "tolist",
+    "tostring",
+    "trace",
+    "transpose",
+    "var",
+    "view",
+    "__abs__",
+    "__add__",
+    "__and__",
+    "__bool__",
+    "__contains__",
+    "__delitem__",
+    "__divmod__",
+    "__eq__",
+    "__float__",
+    "__floordiv__",
+    "__ge__",
+    "__getitem__",
+    "__gt__",
+    "__iadd__",
+    "__iand__",
+    "__ifloordiv__",
+    "__ilshift__",
+    "__imatmul__",
+    "__imod__",
+    "__imul__",
+    "__index__",
+    "__int__",
+    "__invert__",
+    "__ior__",
+    "__ipow__",
+    "__irshift__",
+    "__isub__",
+    "__iter__",
+    "__itruediv__",
+    "__ixor__",
+    "__le__",
+    "__len__",
+    "__lshift__",
+    "__lt__",
+    "__matmul__",
+    "__mod__",
+    "__mul__",
+    "__ne__",
+    "__neg__",
+    "__or__",
+    "__pos__",
+    "__pow__",
+    "__radd__",
+    "__rand__",
+    "__rdivmod__",
+    "__repr__",
+    "__rfloordiv__",
+    "__rlshift__",
+    "__rmatmul__",
+    "__rmod__",
+    "__rmul__",
+    "__ror__",
+    "__rpow__",
+    "__rrshift__",
+    "__rshift__",
+    "__rsub__",
+    "__rtruediv__",
+    "__rxor__",
+    "__setitem__",
+    "__str__",
+    "__sub__",
+    "__truediv__",
+    "__xor__",
 ]
 
 
 NUMPY_PROPERTIES = [
-    'T',
-    'data',
-    'dtype',
-    'flags',
-    'flat',
-    'imag',
-    'real',
-    'size',
-    'itemsize',
-    'nbytes',
-    'ndim',
-    'shape',
-    'strides',
-    'ctypes',
-    'base',
+    "T",
+    "data",
+    "dtype",
+    "flags",
+    "flat",
+    "imag",
+    "real",
+    "size",
+    "itemsize",
+    "nbytes",
+    "ndim",
+    "shape",
+    "strides",
+    "ctypes",
+    "base",
 ]
 
 
 def _build_method(method_name):
     def class_method(self, *args, **kwargs):
         return getattr(self.array, method_name)(*args, **kwargs)
+
     return class_method
 
 
@@ -442,6 +453,7 @@ def _build_property(property_name):
     @property
     def class_property(self):
         return getattr(self.array, property_name)
+
     return class_property
 
 

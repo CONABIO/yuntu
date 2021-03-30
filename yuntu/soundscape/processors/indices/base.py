@@ -2,8 +2,10 @@
 from abc import ABC
 from abc import abstractmethod
 
+
 class AcousticIndex(ABC):
     """Base class for acoustic indices."""
+
     name = None
 
     def __init__(self, name=None):

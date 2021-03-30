@@ -11,18 +11,18 @@ from yuntu.core.audio.features.base import TimeFrequencyFeature
 from yuntu.core.audio.features.utils import stft
 
 
-BOXCAR = 'boxcar'
-TRIANG = 'triang'
-BLACKMAN = 'blackman'
-HAMMING = 'hamming'
-HANN = 'hann'
-BARTLETT = 'bartlett'
-FLATTOP = 'flattop'
-PARZEN = 'parzen'
-BOHMAN = 'bohman'
-BLACKMANHARRIS = 'blackmanharris'
-NUTTALL = 'nuttall'
-BARTHANN = 'barthann'
+BOXCAR = "boxcar"
+TRIANG = "triang"
+BLACKMAN = "blackman"
+HAMMING = "hamming"
+HANN = "hann"
+BARTLETT = "bartlett"
+FLATTOP = "flattop"
+PARZEN = "parzen"
+BOHMAN = "bohman"
+BLACKMANHARRIS = "blackmanharris"
+NUTTALL = "nuttall"
+BARTHANN = "barthann"
 WINDOW_FUNCTIONS = [
     BOXCAR,
     TRIANG,
@@ -42,27 +42,29 @@ N_FFT = 1024
 HOP_LENGTH = 512
 WINDOW_FUNCTION = HANN
 
-Shape = namedtuple('Shape', ['rows', 'columns'])
+Shape = namedtuple("Shape", ["rows", "columns"])
 
 
 class Spectrogram(TimeFrequencyFeature):
     """Spectrogram class."""
-    plot_title = 'Amplitude Spectrogram'
+
+    plot_title = "Amplitude Spectrogram"
 
     def __init__(
-            self,
-            audio=None,
-            n_fft=N_FFT,
-            hop_length=HOP_LENGTH,
-            window_function=WINDOW_FUNCTION,
-            max_freq=None,
-            freq_resolution=None,
-            frequency_axis=None,
-            duration=None,
-            time_resolution=None,
-            time_axis=None,
-            array=None,
-            **kwargs):
+        self,
+        audio=None,
+        n_fft=N_FFT,
+        hop_length=HOP_LENGTH,
+        window_function=WINDOW_FUNCTION,
+        max_freq=None,
+        freq_resolution=None,
+        frequency_axis=None,
+        duration=None,
+        time_resolution=None,
+        time_axis=None,
+        array=None,
+        **kwargs,
+    ):
         """Construct Spectrogram object."""
         self.n_fft = n_fft
         self.hop_length = hop_length
@@ -70,13 +72,13 @@ class Spectrogram(TimeFrequencyFeature):
 
         if time_axis is None:
             from yuntu.core.audio.audio import Audio
+
             if audio is not None and not isinstance(audio, Audio):
                 audio = Audio.from_dict(audio)
 
             if duration is None:
                 if audio is None:
-                    message = (
-                        'If no audio is provided a duration must be set')
+                    message = "If no audio is provided a duration must be set"
                     raise ValueError(message)
                 duration = audio.duration
 
@@ -87,8 +89,9 @@ class Spectrogram(TimeFrequencyFeature):
                     columns = 1 + len(audio) // hop_length
                 else:
                     message = (
-                        'If no audio or array is provided a samplerate must be '
-                        'set')
+                        "If no audio or array is provided a samplerate must be "
+                        "set"
+                    )
                     raise ValueError(message)
 
                 time_resolution = columns / duration
@@ -113,39 +116,40 @@ class Spectrogram(TimeFrequencyFeature):
             frequency_axis=frequency_axis,
             array=array,
             time_axis=time_axis,
-            **kwargs)
+            **kwargs,
+        )
 
     def __repr__(self):
         data = OrderedDict()
 
         if self.n_fft != N_FFT:
-            data['n_fft'] = self.n_fft
+            data["n_fft"] = self.n_fft
 
         if self.hop_length != HOP_LENGTH:
-            data['hop_length'] = self.hop_length
+            data["hop_length"] = self.hop_length
 
         if self.window_function != WINDOW_FUNCTION:
-            data['window_function'] = self.window_function
+            data["window_function"] = self.window_function
 
         has_path = self.path_exists()
         if has_path:
-            data['path'] = repr(self.path)
+            data["path"] = repr(self.path)
 
         has_audio = self.has_audio()
         if not has_path and has_audio:
-            data['audio'] = f'Audio(path={self._audio_data["path"]})'
+            data["audio"] = f'Audio(path={self._audio_data["path"]})'
 
         if not has_audio and not has_path:
-            data['array'] = repr(self.array)
+            data["array"] = repr(self.array)
 
         if not self._has_trivial_window():
-            data['window'] = repr(self.window)
+            data["window"] = repr(self.window)
 
         class_name = type(self).__name__
-        args = [f'{key}={value}' for key, value in data.items()]
-        args_string = ', '.join(args)
+        args = [f"{key}={value}" for key, value in data.items()]
+        args_string = ", ".join(args)
 
-        return f'{class_name}({args_string})'
+        return f"{class_name}({args_string})"
 
     def compute(self):
         """Compute spectrogram from audio data.
@@ -161,16 +165,18 @@ class Spectrogram(TimeFrequencyFeature):
         if not self._has_trivial_window():
             start = self._get_start()
             end = self._get_end()
-            array = self.audio.cut(
-                start_time=start, end_time=end).array
+            array = self.audio.cut(start_time=start, end_time=end).array
         else:
             array = self.audio.array
 
-        result = np.abs(stft(
-            array,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length,
-            window=self.window_function))
+        result = np.abs(
+            stft(
+                array,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length,
+                window=self.window_function,
+            )
+        )
 
         if self._has_trivial_window():
             return result
@@ -181,9 +187,7 @@ class Spectrogram(TimeFrequencyFeature):
         start_index = self.get_index_from_time(self._get_start())
         end_index = self.get_index_from_time(self._get_end())
 
-        slices = (
-            slice(min_index, max_index),
-            slice(start_index, end_index))
+        slices = (slice(min_index, max_index), slice(start_index, end_index))
         return result[slices]
 
     def write(self, path):  # pylint: disable=arguments-differ
@@ -237,15 +241,15 @@ class Spectrogram(TimeFrequencyFeature):
         minimum = spectrogram.min()
         maximum = spectrogram.max()
 
-        vmin = kwargs.get('vmin', None)
-        vmax = kwargs.get('vmax', None)
+        vmin = kwargs.get("vmin", None)
+        vmax = kwargs.get("vmax", None)
 
-        if 'pvmin' in kwargs:
-            pvmin = kwargs['pvmin']
+        if "pvmin" in kwargs:
+            pvmin = kwargs["pvmin"]
             vmin = minimum + (maximum - minimum) * pvmin
 
-        if 'pvmax' in kwargs:
-            pvmax = kwargs['pvmax']
+        if "pvmax" in kwargs:
+            pvmax = kwargs["pvmax"]
             vmax = minimum + (maximum - minimum) * pvmax
 
         mesh = ax.pcolormesh(
@@ -254,11 +258,13 @@ class Spectrogram(TimeFrequencyFeature):
             spectrogram,
             vmin=vmin,
             vmax=vmax,
-            cmap=kwargs.get('cmap', 'gray'),
-            alpha=kwargs.get('alpha', 1.0))
+            cmap=kwargs.get("cmap", "gray"),
+            alpha=kwargs.get("alpha", 1.0),
+        )
 
-        if kwargs.get('colorbar', False):
+        if kwargs.get("colorbar", False):
             import matplotlib.pyplot as plt
+
             plt.colorbar(mesh, ax=ax)
 
         return ax
@@ -278,96 +284,100 @@ class Spectrogram(TimeFrequencyFeature):
         kwargs = self._copy_dict()
 
         if not self.is_empty() or not lazy:
-            kwargs['array'] = self.array ** 2
+            kwargs["array"] = self.array ** 2
 
         return PowerSpectrogram(**kwargs)
 
     # pylint: disable=invalid-name
     def db(
-            self,
-            lazy: Optional[bool] = False,
-            ref: Optional[float] = None,
-            amin: Optional[float] = None,
-            top_db: Optional[float] = None):
+        self,
+        lazy: Optional[bool] = False,
+        ref: Optional[float] = None,
+        amin: Optional[float] = None,
+        top_db: Optional[float] = None,
+    ):
         """Get decibel spectrogram from spec."""
         kwargs = {
-            'ref': ref,
-            'amin': amin,
-            'top_db': top_db,
-            **self._copy_dict()
+            "ref": ref,
+            "amin": amin,
+            "top_db": top_db,
+            **self._copy_dict(),
         }
 
         if not self.is_empty() or not lazy:
-            kwargs['array'] = amplitude_to_db(self.array)
+            kwargs["array"] = amplitude_to_db(self.array)
 
         return DecibelSpectrogram(**kwargs)
 
     def to_dict(self):
         """Return spectrogram metadata."""
         return {
-            'n_fft': self.n_fft,
-            'hop_length': self.hop_length,
-            'window_function': self.window_function,
-            **super().to_dict()
+            "n_fft": self.n_fft,
+            "hop_length": self.hop_length,
+            "window_function": self.window_function,
+            **super().to_dict(),
         }
 
     @classmethod
     def from_dict(cls, data):
-        spec_type = data.pop('type', None)
+        spec_type = data.pop("type", None)
 
-        if spec_type == 'Spectrogram':
+        if spec_type == "Spectrogram":
             return Spectrogram(**data)
 
-        if spec_type == 'PowerSpectrogram':
+        if spec_type == "PowerSpectrogram":
             return PowerSpectrogram(**data)
 
-        if spec_type == 'DecibelSpectrogram':
+        if spec_type == "DecibelSpectrogram":
             return DecibelSpectrogram(**data)
 
-        raise ValueError('Unknown or missing units')
+        raise ValueError("Unknown or missing units")
 
 
 class PowerSpectrogram(Spectrogram):
     """Power spectrogram class."""
-    plot_title = 'Power Spectrogram'
+
+    plot_title = "Power Spectrogram"
 
     def compute(self):
         """Calculate spectrogram from audio data."""
         spectrogram = super().compute()
-        return spectrogram**2
+        return spectrogram ** 2
 
     def db(
-            self,
-            lazy: Optional[bool] = False,
-            ref: Optional[float] = None,
-            amin: Optional[float] = None,
-            top_db: Optional[float] = None):
+        self,
+        lazy: Optional[bool] = False,
+        ref: Optional[float] = None,
+        amin: Optional[float] = None,
+        top_db: Optional[float] = None,
+    ):
         """Get decibel spectrogram from power spec."""
         kwargs = self.to_dict()
-        kwargs['annotations'] = self.annotations.annotations
-        kwargs['window'] = self.window
+        kwargs["annotations"] = self.annotations.annotations
+        kwargs["window"] = self.window
 
         if ref is not None:
-            kwargs['ref'] = ref
+            kwargs["ref"] = ref
 
         if amin is not None:
-            kwargs['amin'] = amin
+            kwargs["amin"] = amin
 
         if top_db is not None:
-            kwargs['top_db'] = top_db
+            kwargs["top_db"] = top_db
 
         if self.has_audio():
-            kwargs['audio'] = self.audio
+            kwargs["audio"] = self.audio
 
         if not self.is_empty() or not lazy:
-            kwargs['array'] = power_to_db(self.array)
+            kwargs["array"] = power_to_db(self.array)
 
         return DecibelSpectrogram(**kwargs)
 
 
 class DecibelSpectrogram(Spectrogram):
     """Decibel spectrogram class."""
-    plot_title = 'Decibel Spectrogram'
+
+    plot_title = "Decibel Spectrogram"
 
     ref = 1.0
     amin = 1e-05
@@ -390,7 +400,5 @@ class DecibelSpectrogram(Spectrogram):
         """Calculate spectrogram from audio data."""
         spectrogram = super().compute()
         return amplitude_to_db(
-            spectrogram,
-            ref=self.ref,
-            amin=self.amin,
-            top_db=self.top_db)
+            spectrogram, ref=self.ref, amin=self.amin, top_db=self.top_db
+        )

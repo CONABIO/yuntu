@@ -30,8 +30,9 @@ def knit(*nodes, prune=False):
         if ind > 0:
             new_pipeline.merge(pipeline, prune=prune)
 
-    str_names = ",".join([node.name if node.name is not None
-                          else 'NoName'for node in nodes])
+    str_names = ",".join(
+        [node.name if node.name is not None else "NoName" for node in nodes]
+    )
     new_pipeline.name = f"knit({str_names})"
 
     return new_pipeline

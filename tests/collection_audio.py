@@ -3,9 +3,11 @@ from yuntu.collection.base import Collection
 from yuntu.core.audio.audio import Audio
 
 test_col = Collection()
-meta = {"path": "./test_data/selvaAltaPerennifolia_estacionLos" +
-        "Tuxtlas_Ver_830am.wav",
-        "timeexp": 1.0}
+meta = {
+    "path": "./test_data/selvaAltaPerennifolia_estacionLos"
+    + "Tuxtlas_Ver_830am.wav",
+    "timeexp": 1.0,
+}
 
 score = 0
 print("Begining tests:")
@@ -52,4 +54,4 @@ if len(matches) == 0:
 print("6. SUCCESS!")
 score += 1
 
-print("Final score: "+str(score)+" of 6")
+print("Final score: " + str(score) + " of 6")

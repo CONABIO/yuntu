@@ -12,12 +12,12 @@ from . import soundscape
 
 
 __all__ = [
-    'Audio',
-    'audio',
-    'database',
-    'datastore',
-    'soundscape',
-    'collection',
-    'AudioAccessor',
-    'AnnotationAccessor',
+    "Audio",
+    "audio",
+    "database",
+    "datastore",
+    "soundscape",
+    "collection",
+    "AudioAccessor",
+    "AnnotationAccessor",
 ]

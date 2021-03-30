@@ -2,6 +2,7 @@
 from abc import ABC
 from abc import abstractmethod
 
+
 class Probe(ABC):
     """Base class for all probes.
 
@@ -45,16 +46,14 @@ class Probe(ABC):
             "max_freq": max_freq,
             "min_freq": min_freq,
             "geometry": wkt,
-            "metadata": meta
+            "metadata": meta,
         }
 
     @property
     def info(self):
-        return {
-            'probe_class': self.__class__.__name__
-        }
+        return {"probe_class": self.__class__.__name__}
 
-    def annotate(self,*args, **kwargs):
+    def annotate(self, *args, **kwargs):
         """Apply probe and produce annotations"""
 
         outputs = self.apply(*args, **kwargs)
@@ -79,6 +78,7 @@ class Probe(ABC):
         """Call apply method."""
         return self.apply(target, **kwargs)
 
+
 class TemplateProbe(Probe, ABC):
     """A probe that uses a template to find similar matches."""
 
@@ -91,6 +91,7 @@ class TemplateProbe(Probe, ABC):
     def compare(self, target):
         """Compare target with self's template."""
 
+
 class ModelProbe(Probe, ABC):
     """A probe that uses any kind of detection or multilabelling model"""
 
@@ -101,8 +102,8 @@ class ModelProbe(Probe, ABC):
     @property
     def info(self):
         return {
-            'probe_class': self.__class__.__name__,
-            'model_path': self.model_path
+            "probe_class": self.__class__.__name__,
+            "model_path": self.model_path,
         }
 
     @property

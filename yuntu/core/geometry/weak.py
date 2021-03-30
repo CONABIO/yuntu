@@ -7,10 +7,9 @@ class Weak(Geometry):
 
     def __init__(self, geometry=None):
         if geometry is None:
-            geometry = utils.bbox_to_polygon([
-                0, utils.INFINITY,
-                0, utils.INFINITY
-            ])
+            geometry = utils.bbox_to_polygon(
+                [0, utils.INFINITY, 0, utils.INFINITY]
+            )
         super().__init__(geometry=geometry)
 
     def buffer(self, buffer=None, **kwargs):

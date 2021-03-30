@@ -12,16 +12,19 @@ from yuntu.core.pipeline.base import Pipeline
 
 class Place(Node, ABC):
     """Pipeline place base class."""
+
     node_type = "place"
 
-    def __init__(self,
-                 *args,
-                 data=None,
-                 parent=None,
-                 is_output=False,
-                 persist=False,
-                 keep=False,
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        data=None,
+        parent=None,
+        is_output=False,
+        persist=False,
+        keep=False,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         if not self.validate(data):
             message = "Data is invalid for this type of node."
@@ -72,12 +75,14 @@ class Place(Node, ABC):
 
     @property
     def meta(self):
-        meta = {"key": self.key,
-                "name": self.name,
-                "node_type": self.node_type,
-                "is_output": self.is_output,
-                "persist": self.persist,
-                "keep": self.keep}
+        meta = {
+            "key": self.key,
+            "name": self.name,
+            "node_type": self.node_type,
+            "is_output": self.is_output,
+            "persist": self.persist,
+            "keep": self.keep,
+        }
         return meta
 
     @property
@@ -129,64 +134,61 @@ class Place(Node, ABC):
                         self.set_pipeline(self._parent.pipeline)
                         self.attach()
 
-    def future(self,
-               feed=None,
-               read=None,
-               force=False,
-               **kwargs):
+    def future(self, feed=None, read=None, force=False, **kwargs):
         """Return node's future."""
         if self.pipeline is None:
-            message = "This node does not belong to any pipeline. " + \
-                      "Please assign a pipeline using method " + \
-                      "'set_pipeline'."
+            message = (
+                "This node does not belong to any pipeline. "
+                + "Please assign a pipeline using method "
+                + "'set_pipeline'."
+            )
             raise ValueError(message)
 
         if isinstance(feed, dict):
             if self.key in feed:
                 del feed[self.key]
 
-        return self.pipeline.get_node(self.key,
-                                      feed=feed,
-                                      read=read,
-                                      force=force,
-                                      compute=False,
-                                      **kwargs)
+        return self.pipeline.get_node(
+            self.key, feed=feed, read=read, force=force, compute=False, **kwargs
+        )
 
-    def compute(self,
-                feed=None,
-                read=None,
-                write=None,
-                keep=None,
-                force=False,
-                **kwargs):
+    def compute(
+        self, feed=None, read=None, write=None, keep=None, force=False, **kwargs
+    ):
         """Compute self."""
         if self.pipeline is None:
-            message = "This node does not belong to any pipeline. " + \
-                      "Please assign a pipeline using method " + \
-                      "'set_pipeline'."
+            message = (
+                "This node does not belong to any pipeline. "
+                + "Please assign a pipeline using method "
+                + "'set_pipeline'."
+            )
             raise ValueError(message)
 
         if isinstance(feed, dict):
             if self.key in feed:
                 del feed[self.key]
 
-        result = self.pipeline.compute([self.key],
-                                       feed=feed,
-                                       read=read,
-                                       write=write,
-                                       keep=keep,
-                                       force=force,
-                                       **kwargs)[self.key]
+        result = self.pipeline.compute(
+            [self.key],
+            feed=feed,
+            read=read,
+            write=write,
+            keep=keep,
+            force=force,
+            **kwargs,
+        )[self.key]
         return result
 
-    def __call__(self,
-                 client=None,
-                 strict=False,
-                 feed=None,
-                 read=None,
-                 write=None,
-                 keep=None,
-                 **inputs):
+    def __call__(
+        self,
+        client=None,
+        strict=False,
+        feed=None,
+        read=None,
+        write=None,
+        keep=None,
+        **inputs,
+    ):
         """Execute node results on local inputs."""
         if feed is not None:
             if not isinstance(feed, dict):
@@ -200,45 +202,55 @@ class Place(Node, ABC):
                 ikeys = list(inputs.keys())
                 for key in ikeys:
                     if key not in self.pipeline.nodes_up[self.parent.key]:
-                        message = (f"Unknown input {key} for parent " +
-                                   f"transition {self.key}.")
+                        message = (
+                            f"Unknown input {key} for parent "
+                            + f"transition {self.key}."
+                        )
                         raise ValueError(message)
                     if not self.pipeline.places[key].validate(inputs[key]):
                         data_class = self.pipeline.places[key].data_class
-                        message = (f"Wrong type for parameter {key}" +
-                                   ". Parent transition expects: " +
-                                   f"{data_class}")
+                        message = (
+                            f"Wrong type for parameter {key}"
+                            + ". Parent transition expects: "
+                            + f"{data_class}"
+                        )
                         raise TypeError(message)
             feed.update(inputs)
-            return self.compute(feed=feed,
-                                read=read,
-                                write=write,
-                                keep=keep,
-                                force=True,
-                                client=client)
+            return self.compute(
+                feed=feed,
+                read=read,
+                write=write,
+                keep=keep,
+                force=True,
+                client=client,
+            )
 
         if len(inputs) > 0:
             message = "No inputs needed. Ignoring."
             warnings.warn(message)
 
-        return self.compute(feed=feed,
-                            read=read,
-                            write=write,
-                            keep=keep,
-                            force=True,
-                            client=client)
+        return self.compute(
+            feed=feed,
+            read=read,
+            write=write,
+            keep=keep,
+            force=True,
+            client=client,
+        )
 
     def __copy__(self):
         """Copy self."""
         place_class = self.__class__
 
-        return place_class(name=self.name,
-                           pipeline=None,
-                           parent=None,
-                           is_output=self.is_output,
-                           persist=self.persist,
-                           keep=self.keep,
-                           data=self.data)
+        return place_class(
+            name=self.name,
+            pipeline=None,
+            parent=None,
+            is_output=self.is_output,
+            persist=self.persist,
+            keep=self.keep,
+            data=self.data,
+        )
 
 
 class DynamicPlace(Place):
@@ -286,8 +298,9 @@ class PickleablePlace(Place):
     def write(self, path=None, data=None):
         if path is None:
             if self.pipeline is None:
-                raise ValueError("Can not infer output path for node without a"
-                                 "pipeline")
+                raise ValueError(
+                    "Can not infer output path for node without a" "pipeline"
+                )
             self.pipeline.init_dirs()
             path = self.get_persist_path()
         if data is None:
@@ -298,7 +311,7 @@ class PickleablePlace(Place):
         if not self.validate(data):
             message = "Data is invalid."
             raise ValueError(message)
-        with open(path, 'wb') as file:
+        with open(path, "wb") as file:
             pickle.dump(data, file)
 
     def read(self, path=None):
@@ -316,37 +329,37 @@ class PickleablePlace(Place):
             base_name = self.name
         else:
             base_name = self.key
-        return os.path.join(self.pipeline.persist_dir, base_name+".pickle")
+        return os.path.join(self.pipeline.persist_dir, base_name + ".pickle")
 
 
 class BoolPlace(PickleablePlace):
     """Boolean place."""
+
     data_class = bool
 
     def validate(self, data):
         if data is None:
             return True
-        return (super().validate(data)
-                and isinstance(data, self.data_class))
+        return super().validate(data) and isinstance(data, self.data_class)
 
 
 class DictPlace(PickleablePlace):
     """Python dictionary place."""
+
     data_class = dict
 
     def validate(self, data):
         if data is None:
             return True
-        return (super().validate(data)
-                and isinstance(data, self.data_class))
+        return super().validate(data) and isinstance(data, self.data_class)
 
 
 class ScalarPlace(PickleablePlace):
     """Scalar places: numbers and strings."""
+
     data_class = (str, int, float)
 
     def validate(self, data):
         if data is None:
             return True
-        return (super().validate(data)
-                and isinstance(data, self.data_class))
+        return super().validate(data) and isinstance(data, self.data_class)

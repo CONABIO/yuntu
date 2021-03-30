@@ -33,42 +33,43 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
     time_item_class = TimeItemWithFrequencies
     frequency_item_class = FrequencyItemWithTime
 
-    plot_xlabel = 'Time (s)'
-    plot_ylabel = 'Frequency (Hz)'
+    plot_xlabel = "Time (s)"
+    plot_ylabel = "Frequency (Hz)"
 
     def __init__(
-            self,
-            start=0,
-            duration=None,
-            time_resolution=None,
-            time_axis=None,
-            min_freq=0,
-            max_freq=None,
-            freq_resolution=None,
-            frequency_axis=None,
-            window=None,
-            **kwargs):
+        self,
+        start=0,
+        duration=None,
+        time_resolution=None,
+        time_axis=None,
+        min_freq=0,
+        max_freq=None,
+        freq_resolution=None,
+        frequency_axis=None,
+        window=None,
+        **kwargs
+    ):
 
         if time_axis is None:
-            time_axis = self.time_axis_class(
-                resolution=time_resolution)
+            time_axis = self.time_axis_class(resolution=time_resolution)
 
         if not isinstance(time_axis, self.time_axis_class):
             time_axis = self.time_axis_class.from_dict(time_axis)
 
         if frequency_axis is None:
             frequency_axis = self.frequency_axis_class(
-                resolution=freq_resolution)
+                resolution=freq_resolution
+            )
 
         if not isinstance(frequency_axis, self.frequency_axis_class):
-            frequency_axis = self.frequency_axis_class.from_dict(frequency_axis) # noqa
+            frequency_axis = self.frequency_axis_class.from_dict(
+                frequency_axis
+            )  # noqa
 
         if window is None:
             window = windows.TimeFrequencyWindow(
-                start=start,
-                end=duration,
-                min=min_freq,
-                max=max_freq)
+                start=start, end=duration, min=min_freq, max=max_freq
+            )
 
         if not isinstance(window, windows.TimeFrequencyWindow):
 
@@ -77,21 +78,21 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                     start=window.start,
                     end=window.end,
                     min=min_freq,
-                    max=max_freq)
+                    max=max_freq,
+                )
 
             elif isinstance(window, windows.FrequencyWindow):
                 window = windows.TimeFrequencyWindow(
-                    start=start,
-                    end=duration,
-                    min=window.min,
-                    max=window.max)
+                    start=start, end=duration, min=window.min, max=window.max
+                )
 
         super().__init__(
             start=start,
             frequency_axis=frequency_axis,
             time_axis=time_axis,
             window=window,
-            **kwargs)
+            **kwargs
+        )
 
     def get_value(self, time: float, freq: float) -> float:
         """Get media value at a given time and frequency.
@@ -132,11 +133,8 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
     # pylint: disable=arguments-differ
     def read(
-            self,
-            start_time=None,
-            end_time=None,
-            min_freq=None,
-            max_freq=None):
+        self, start_time=None, end_time=None, min_freq=None, max_freq=None
+    ):
         if min_freq is None:
             min_freq = self._get_min()
 
@@ -144,7 +142,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             max_freq = self._get_max()
 
         if min_freq > max_freq:
-            message = 'Read min_freq should be less than read max_freq.'
+            message = "Read min_freq should be less than read max_freq."
             raise ValueError(message)
 
         if start_time is None:
@@ -154,7 +152,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             end_time = self._get_end()
 
         if start_time > end_time:
-            message = 'Read start_time should be less than read end_time.'
+            message = "Read start_time should be less than read end_time."
             raise ValueError(message)
 
         start_freq_index = self.get_index_from_frequency(min_freq)
@@ -167,21 +165,23 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             start_time_index,
             end_time_index + 1,
             start_freq_index,
-            end_freq_index + 1)
+            end_freq_index + 1,
+        )
         return self.array[slices]
 
     def cut(
-            self,
-            window: Optional[windows.TimeFrequencyWindow] = None,
-            geometry: Optional[geom.Geometry] = None,
-            start_time: Optional[float] = None,
-            end_time: Optional[float] = None,
-            max_freq: Optional[float] = None,
-            min_freq: Optional[float] = None,
-            lazy: Optional[bool] = False,
-            pad=False,
-            pad_mode='constant',
-            constant_values=0):
+        self,
+        window: Optional[windows.TimeFrequencyWindow] = None,
+        geometry: Optional[geom.Geometry] = None,
+        start_time: Optional[float] = None,
+        end_time: Optional[float] = None,
+        max_freq: Optional[float] = None,
+        min_freq: Optional[float] = None,
+        lazy: Optional[bool] = False,
+        pad=False,
+        pad_mode="constant",
+        constant_values=0,
+    ):
         current_start = self._get_start()
         current_end = self._get_end()
         current_min = self._get_min()
@@ -194,7 +194,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             assert isinstance(geometry, geom.Geometry)
 
         if start_time is None:
-            if window is not None and hasattr(window, 'start'):
+            if window is not None and hasattr(window, "start"):
                 start_time = window.start
             elif geometry is not None:
                 start_time, _, _, _ = geometry.bounds
@@ -203,7 +203,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 start_time = current_start
 
         if end_time is None:
-            if window is not None and hasattr(window, 'end'):
+            if window is not None and hasattr(window, "end"):
                 end_time = window.end
             elif geometry is not None:
                 _, _, end_time, _ = geometry.bounds
@@ -212,7 +212,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 end_time = current_end
 
         if min_freq is None:
-            if window is not None and hasattr(window, 'min'):
+            if window is not None and hasattr(window, "min"):
                 min_freq = window.min
             elif geometry is not None:
                 _, min_freq, _, _ = geometry.bounds
@@ -221,7 +221,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 min_freq = current_min
 
         if max_freq is None:
-            if window is not None and hasattr(window, 'max'):
+            if window is not None and hasattr(window, "max"):
                 max_freq = window.max
             elif geometry is not None:
                 _, _, _, max_freq = geometry.bounds
@@ -230,7 +230,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 max_freq = current_max
 
         if start_time > end_time or min_freq > max_freq:
-            raise ValueError('Cut is empty')
+            raise ValueError("Cut is empty")
 
         bounded_start_time = max(min(start_time, current_end), current_start)
         bounded_end_time = max(min(end_time, current_end), current_start)
@@ -238,21 +238,22 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
         bounded_min_freq = max(min(min_freq, current_max), current_min)
 
         kwargs = self._copy_dict()
-        kwargs['window'] = windows.TimeFrequencyWindow(
+        kwargs["window"] = windows.TimeFrequencyWindow(
             start=start_time if pad else bounded_start_time,
             end=end_time if pad else bounded_end_time,
             min=min_freq if pad else bounded_min_freq,
-            max=max_freq if pad else bounded_max_freq)
+            max=max_freq if pad else bounded_max_freq,
+        )
 
         if lazy:
             # TODO: No lazy cutting for now. The compute method does not take
             # into acount possible cuts and thus might not give the correct
             # result.
             lazy = False
-        kwargs['lazy'] = lazy
+        kwargs["lazy"] = lazy
 
         if not lazy:
-            kwargs['array'] = self.cut_array(
+            kwargs["array"] = self.cut_array(
                 window=window,
                 start_time=start_time,
                 end_time=end_time,
@@ -260,21 +261,23 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 min_freq=min_freq,
                 pad=pad,
                 pad_mode=pad_mode,
-                constant_values=constant_values)
+                constant_values=constant_values,
+            )
 
         return type(self)(**kwargs)
 
     def cut_array(
-            self,
-            window: Optional[windows.TimeFrequencyWindow] = None,
-            geometry: Optional[geom.Geometry] = None,
-            start_time: Optional[float] = None,
-            end_time: Optional[float] = None,
-            max_freq: Optional[float] = None,
-            min_freq: Optional[float] = None,
-            pad=False,
-            pad_mode='constant',
-            constant_values=0):
+        self,
+        window: Optional[windows.TimeFrequencyWindow] = None,
+        geometry: Optional[geom.Geometry] = None,
+        start_time: Optional[float] = None,
+        end_time: Optional[float] = None,
+        max_freq: Optional[float] = None,
+        min_freq: Optional[float] = None,
+        pad=False,
+        pad_mode="constant",
+        constant_values=0,
+    ):
         current_start = self._get_start()
         current_end = self._get_end()
         current_min = self._get_min()
@@ -287,7 +290,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             assert isinstance(geometry, geom.Geometry)
 
         if start_time is None:
-            if window is not None and hasattr(window, 'start'):
+            if window is not None and hasattr(window, "start"):
                 start_time = window.start
             elif geometry is not None:
                 start_time, _, _, _ = geometry.bounds
@@ -296,7 +299,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 start_time = current_start
 
         if end_time is None:
-            if window is not None and hasattr(window, 'end'):
+            if window is not None and hasattr(window, "end"):
                 end_time = window.end
             elif geometry is not None:
                 _, _, end_time, _ = geometry.bounds
@@ -305,7 +308,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 end_time = current_end
 
         if min_freq is None:
-            if window is not None and hasattr(window, 'min'):
+            if window is not None and hasattr(window, "min"):
                 min_freq = window.min
             elif geometry is not None:
                 _, min_freq, _, _ = geometry.bounds
@@ -314,7 +317,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 min_freq = current_min
 
         if max_freq is None:
-            if window is not None and hasattr(window, 'max'):
+            if window is not None and hasattr(window, "max"):
                 max_freq = window.max
             elif geometry is not None:
                 _, _, _, max_freq = geometry.bounds
@@ -323,7 +326,7 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 max_freq = current_max
 
         if start_time > end_time or min_freq > max_freq:
-            raise ValueError('Cut is empty')
+            raise ValueError("Cut is empty")
 
         bounded_start_time = max(min(start_time, current_end), current_start)
         bounded_end_time = max(min(end_time, current_end), current_start)
@@ -336,44 +339,44 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
         max_index = self.get_index_from_frequency(bounded_max_freq)
 
         slices = self._build_slices(
-                start_index,
-                end_index,
-                min_index,
-                max_index)
+            start_index, end_index, min_index, max_index
+        )
         array = self.array[slices]
 
         if pad:
             start_pad = self.time_axis.get_bin_nums(
-                    start_time, bounded_start_time)
-            end_pad = self.time_axis.get_bin_nums(
-                    bounded_end_time, end_time)
+                start_time, bounded_start_time
+            )
+            end_pad = self.time_axis.get_bin_nums(bounded_end_time, end_time)
 
             min_pad = self.frequency_axis.get_bin_nums(
-                    min_freq, bounded_min_freq)
+                min_freq, bounded_min_freq
+            )
             max_pad = self.frequency_axis.get_bin_nums(
-                    bounded_max_freq, max_freq)
+                bounded_max_freq, max_freq
+            )
 
             pad_widths = self._build_pad_widths(
-                    start_pad,
-                    end_pad,
-                    min_pad,
-                    max_pad)
+                start_pad, end_pad, min_pad, max_pad
+            )
 
             array = pad_array(
-                    array,
-                    pad_widths,
-                    mode=pad_mode,
-                    constant_values=constant_values)
+                array,
+                pad_widths,
+                mode=pad_mode,
+                constant_values=constant_values,
+            )
 
         return array
 
     def resample(
-            self,
-            time_resolution=None,
-            freq_resolution=None,
-            lazy: Optional[bool] = False,
-            kind: str = 'linear',
-            **kwargs):
+        self,
+        time_resolution=None,
+        freq_resolution=None,
+        lazy: Optional[bool] = False,
+        kind: str = "linear",
+        **kwargs
+    ):
         """Get a new FrequencyMedia object with the resampled data."""
         if time_resolution is None:
             time_resolution = self.time_axis.resolution
@@ -382,18 +385,19 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             freq_resolution = self.frequency_axis.resolution
 
         data = self._copy_dict()
-        data['lazy'] = lazy
+        data["lazy"] = lazy
         new_time_axis = self.time_axis.resample(time_resolution)
-        data['time_axis'] = new_time_axis
+        data["time_axis"] = new_time_axis
 
         new_freq_axis = self.frequency_axis.resample(freq_resolution)
-        data['frequency_axis'] = new_freq_axis
+        data["frequency_axis"] = new_freq_axis
 
         if not lazy:
             if self.ndim != 2:
                 message = (
-                    'Media elements with more than 2 dimensions cannot be'
-                    ' resampled')
+                    "Media elements with more than 2 dimensions cannot be"
+                    " resampled"
+                )
                 raise ValueError(message)
 
             new_times = new_time_axis.get_bins(window=self.window)
@@ -412,46 +416,38 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
                 newxcoord = new_freqs
                 newycoord = new_times
 
-            if kind == 'linear':
-                interp = interp2d(
-                    xcoord,
-                    ycoord,
-                    self.array,
-                    **kwargs)
+            if kind == "linear":
+                interp = interp2d(xcoord, ycoord, self.array, **kwargs)
             else:
                 interp = RectBivariateSpline(
-                    xcoord,
-                    ycoord,
-                    self.array,
-                    **kwargs)
+                    xcoord, ycoord, self.array, **kwargs
+                )
 
-            data['array'] = interp(newxcoord, newycoord)
+            data["array"] = interp(newxcoord, newycoord)
 
         return type(self)(**data)
 
     def get_freq_item_kwargs(self, freq):
-        return {
-            'window': self.window.copy(),
-            'time_axis': self.time_axis
-        }
+        return {"window": self.window.copy(), "time_axis": self.time_axis}
 
     def get_time_item_kwargs(self, freq):
         return {
-            'window': self.window.copy(),
-            'frequency_axis': self.frequency_axis
+            "window": self.window.copy(),
+            "frequency_axis": self.frequency_axis,
         }
 
     def get_aggr_value(
-            self,
-            time=None,
-            freq=None,
-            buffer=None,
-            bins=None,
-            window=None,
-            geometry=None,
-            aggr_func=np.mean):
+        self,
+        time=None,
+        freq=None,
+        buffer=None,
+        bins=None,
+        window=None,
+        geometry=None,
+        aggr_func=np.mean,
+    ):
         if bins is not None and buffer is not None:
-            message = 'Bins and buffer arguments are mutually exclusive.'
+            message = "Bins and buffer arguments are mutually exclusive."
             raise ValueError(message)
 
         if buffer is None and bins is not None:
@@ -477,8 +473,9 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
         if geometry is None:
             message = (
-                'Either time and frequency, a window, or a geometry '
-                'should be supplied.')
+                "Either time and frequency, a window, or a geometry "
+                "should be supplied."
+            )
             raise ValueError(message)
 
         if buffer is not None:
@@ -501,7 +498,8 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
             geometry=intersected,
             lazy=lazy,
             time_axis=self.time_axis,
-            frequency_axis=self.frequency_axis)
+            frequency_axis=self.frequency_axis,
+        )
 
     # pylint: disable=arguments-differ
     def _build_slices(self, start_time, end_time, min_freq, max_freq):
@@ -519,18 +517,19 @@ class TimeFrequencyMediaMixin(TimeMediaMixin, FrequencyMediaMixin):
 
 @masked.masks(TimeFrequencyMediaMixin)
 class TimeFrequencyMaskedMedia(TimeFrequencyMediaMixin, masked.MaskedMedia):
-    plot_title = 'Time Frequency Masked Object'
+    plot_title = "Time Frequency Masked Object"
 
     def plot(self, ax=None, **kwargs):
         ax = super().plot(ax=ax, **kwargs)
 
-        if kwargs.get('mask', True):
+        if kwargs.get("mask", True):
             ax.pcolormesh(
                 self.times,
                 self.frequencies,
                 self.array,
-                cmap=kwargs.get('cmap', 'gray'),
-                alpha=kwargs.get('alpha', 1.0))
+                cmap=kwargs.get("cmap", "gray"),
+                alpha=kwargs.get("alpha", 1.0),
+            )
 
         return ax
 
@@ -539,7 +538,8 @@ class TimeFrequencyMaskedMedia(TimeFrequencyMediaMixin, masked.MaskedMedia):
             self.geometry.geometry,
             self.media.array.shape,
             transformX=self.media.get_index_from_time,
-            transformY=self.media.get_index_from_frequency)
+            transformY=self.media.get_index_from_frequency,
+        )
 
 
 class TimeFrequencyMedia(TimeFrequencyMediaMixin, Media):

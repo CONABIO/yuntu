@@ -2,24 +2,27 @@
 import numpy as np
 import pandas as pd
 
-ID = 'id'
-START_TIME = 'start_time'
-END_TIME = 'end_time'
-MAX_FREQ = 'max_freq'
-MIN_FREQ = 'min_freq'
-WEIGHT = 'weight'
+ID = "id"
+START_TIME = "start_time"
+END_TIME = "end_time"
+MAX_FREQ = "max_freq"
+MIN_FREQ = "min_freq"
+WEIGHT = "weight"
 
-REQUIRED_SOUNDSCAPE_COLUMNS = [ID,
-                               START_TIME,
-                               END_TIME,
-                               MAX_FREQ,
-                               MIN_FREQ,
-                               WEIGHT]
+REQUIRED_SOUNDSCAPE_COLUMNS = [
+    ID,
+    START_TIME,
+    END_TIME,
+    MAX_FREQ,
+    MIN_FREQ,
+    WEIGHT,
+]
 TIME = "time_raw"
 TIME_FORMAT = "time_format"
 TIME_ZONE = "time_zone"
 
 CRONO_SOUNDSCAPE_COLUMNS = [TIME, TIME_FORMAT, TIME_ZONE]
+
 
 @pd.api.extensions.register_dataframe_accessor("soundscape")
 class SoundscapeAccessor:
@@ -48,7 +51,10 @@ class SoundscapeAccessor:
 
         self.index_columns = []
         for col, dtype in zip(list(self._obj.columns), list(self._obj.dtypes)):
-            if pd.api.types.is_float_dtype(dtype) and col not in REQUIRED_SOUNDSCAPE_COLUMNS:
+            if (
+                pd.api.types.is_float_dtype(dtype)
+                and col not in REQUIRED_SOUNDSCAPE_COLUMNS
+            ):
                 self.index_columns.append(col)
         self.index_columns = list(set(self.index_columns))
 

@@ -1,6 +1,7 @@
 from abc import ABC
 from abc import abstractmethod
 
+
 class as_object:
     def __init__(self, datum):
         for key in datum:
@@ -9,9 +10,11 @@ class as_object:
     def to_dict(self):
         return self.__dict__
 
-class RESTModel(ABC):
 
-    def __init__(self, target_url, target_attr="results", page_size=1, auth=None):
+class RESTModel(ABC):
+    def __init__(
+        self, target_url, target_attr="results", page_size=1, auth=None
+    ):
         self.target_url = target_url
         self.target_attr = target_attr
         self._auth = auth
@@ -52,7 +55,6 @@ class RESTModel(ABC):
                 for meta in meta_arr:
                     parsed = self.parse(meta)
                     yield as_object(parsed)
-
 
     @abstractmethod
     def validate_query(self):

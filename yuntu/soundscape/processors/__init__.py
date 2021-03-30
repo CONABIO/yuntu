@@ -2,7 +2,4 @@
 from . import probes
 from . import indices
 
-__all__ = [
-    'probes',
-    'indices'
-]
+__all__ = ["probes", "indices"]

@@ -4,6 +4,7 @@ import tensorflow.keras as keras
 
 from yuntu.soundscape.processors.probes.base import ModelProbe
 
+
 class KerasModelProbe(ModelProbe, ABC):
     """A model probe that uses keras."""
 

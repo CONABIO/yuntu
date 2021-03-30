@@ -12,38 +12,40 @@ import yuntu.core.utils.atlas as utils
 import yuntu.core.windows as windows
 
 
-INFINITY = 10e+15
+INFINITY = 10e15
 
 
 class Geometry(ABC):
     name = None
 
     class Types(Enum):
-        Weak = 'Weak'
-        TimeLine = 'TimeLine'
-        TimeInterval = 'TimeInterval'
-        FrequencyLine = 'FrequencyLine'
-        FrequencyInterval = 'FrequencyInterval'
-        BBox = 'BBox'
-        Point = 'Point'
-        LineString = 'LineString'
-        Polygon = 'Polygon'
-        MultiPoint = 'MultiPoint'
-        MultiLineString = 'MultiLineString'
-        MultiPolygon = 'MultiPolygon'
-        GeometryCollection = 'GeometryCollection'
+        Weak = "Weak"
+        TimeLine = "TimeLine"
+        TimeInterval = "TimeInterval"
+        FrequencyLine = "FrequencyLine"
+        FrequencyInterval = "FrequencyInterval"
+        BBox = "BBox"
+        Point = "Point"
+        LineString = "LineString"
+        Polygon = "Polygon"
+        MultiPoint = "MultiPoint"
+        MultiLineString = "MultiLineString"
+        MultiPolygon = "MultiPolygon"
+        GeometryCollection = "GeometryCollection"
 
     def __init__(self, geometry=None):
         self.geometry = geometry
 
     def __repr__(self):
-        args = ', '.join([
-            '{}={}'.format(key, repr(value))
-            for key, value in self.to_dict().items()
-            if key != 'type'
-        ])
+        args = ", ".join(
+            [
+                "{}={}".format(key, repr(value))
+                for key, value in self.to_dict().items()
+                if key != "type"
+            ]
+        )
         name = type(self).__name__
-        return f'{name}({args})'
+        return f"{name}({args})"
 
     @property
     def window(self):
@@ -56,50 +58,46 @@ class Geometry(ABC):
             return windows.TimeWindow(start=left, end=right)
 
         return windows.TimeFrequencyWindow(
-            min=bottom, max=top, start=left, end=right)
+            min=bottom, max=top, start=left, end=right
+        )
 
     def buffer(self, buffer=None, **kwargs):
         # pylint: disable=import-outside-toplevel
         import yuntu.core.geometry.polygons as polygons
 
-        time, freq = utils._parse_tf(buffer, 'buffer', **kwargs)
-        buffer_geom = utils.buffer_geometry(
-            self.geometry,
-            buffer=[time, freq])
+        time, freq = utils._parse_tf(buffer, "buffer", **kwargs)
+        buffer_geom = utils.buffer_geometry(self.geometry, buffer=[time, freq])
 
-        if buffer_geom.geom_type == 'Polygon':
+        if buffer_geom.geom_type == "Polygon":
             return polygons.Polygon(geometry=buffer_geom)
 
         return polygons.MultiPolygon(geometry=buffer_geom)
 
     def shift(self, shift=None, **kwargs):
-        time, freq = utils._parse_tf(shift, 'shift', **kwargs)
+        time, freq = utils._parse_tf(shift, "shift", **kwargs)
         translated = utils.translate_geometry(
-            self.geometry,
-            xoff=time,
-            yoff=freq)
+            self.geometry, xoff=time, yoff=freq
+        )
         return type(self)(geometry=translated)
 
     def scale(self, scale=None, center=None, **kwargs):
         # pylint: disable=import-outside-toplevel
         import yuntu.core.geometry.points as points
 
-        time, freq = utils._parse_tf(scale, 'scale', default=1, **kwargs)
+        time, freq = utils._parse_tf(scale, "scale", default=1, **kwargs)
 
         if center is None:
-            center = 'center'
+            center = "center"
 
         if isinstance(center, points.Point):
             center = center.geometry
 
         scaled = utils.scale_geometry(
-            self.geometry,
-            xfact=time,
-            yfact=freq,
-            origin=center)
+            self.geometry, xfact=time, yfact=freq, origin=center
+        )
         return type(self)(geometry=scaled)
 
-    def rotate(self, angle, origin='center', use_radians=True):
+    def rotate(self, angle, origin="center", use_radians=True):
         # pylint: disable=import-outside-toplevel
         import yuntu.core.geometry.points as points
 
@@ -107,16 +105,12 @@ class Geometry(ABC):
             origin = origin.geometry
 
         rotated = utils.rotate_geometry(
-            self.geometry,
-            angle,
-            origin=origin,
-            use_radians=use_radians)
+            self.geometry, angle, origin=origin, use_radians=use_radians
+        )
         return type(self)(geometry=rotated)
 
     def transform(self, transform):
-        transformed = utils.transform_geometry(
-            self.geometry,
-            transform)
+        transformed = utils.transform_geometry(self.geometry, transform)
         return type(self)(geometry=transformed)
 
     def intersects(self, other):
@@ -141,12 +135,16 @@ class Geometry(ABC):
         if isinstance(other, (windows.Window, Geometry)):
             other = other.geometry
 
-        if isinstance(other, (
+        if isinstance(
+            other,
+            (
                 lines.TimeLine,
                 lines.FrequencyLine,
                 intervals.TimeInterval,
                 intervals.FrequencyInterval,
-                geometry_collections.GeometryCollection)):
+                geometry_collections.GeometryCollection,
+            ),
+        ):
             return geometry_collections.GeometryCollection([self, other])
 
         new_geometry = self.geometry.union(other)
@@ -157,7 +155,7 @@ class Geometry(ABC):
         import matplotlib.pyplot as plt
 
         if ax is None:
-            _, ax = plt.subplots(figsize=kwargs.get('figsize', None))
+            _, ax = plt.subplots(figsize=kwargs.get("figsize", None))
 
         return ax
 
@@ -166,7 +164,7 @@ class Geometry(ABC):
         return self.geometry.bounds
 
     def to_dict(self):
-        return {'type': self.name.value}
+        return {"type": self.name.value}
 
     @staticmethod
     def from_geometry(geometry):
@@ -177,7 +175,7 @@ class Geometry(ABC):
     @staticmethod
     def from_dict(data):
         data = data.copy()
-        geom_type = Geometry.Types[data.pop('type')]
+        geom_type = Geometry.Types[data.pop("type")]
         geom_class = Geometry.get_class_from_name(geom_type)
 
         if Geometry.Types.TimeInterval == geom_class.name:
@@ -238,5 +236,5 @@ class Geometry(ABC):
         if name == Geometry.Types.BBox:
             return bbox.BBox
 
-        message = f'Geometry Type {name} has not been implemented'
+        message = f"Geometry Type {name} has not been implemented"
         raise NotImplementedError(message)
