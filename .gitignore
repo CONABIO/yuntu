@@ -12,3 +12,8 @@ dist/
 labelling_structure.json
 old_tests/
 old_yuntu/
+
+.nvimrc
+
+.coverage
+htmlcov/
