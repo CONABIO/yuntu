@@ -1,6 +1,5 @@
 # Rediseño
 
-
 0. yuntu.config
 1. yuntu.core (Mainly base classes)
     1. yuntu.core.media
@@ -12,8 +11,7 @@
             1. filesystem
             2. s3
             3. scp
-            4. remote HTTP (read only)
-    2. yuntu.core.axis
+            4. remote HTTP (read only) 2. yuntu.core.axis
     3. yuntu.core.geometries
     4. yuntu.core.annotations
         1. yuntu.core.annotated_object
@@ -39,13 +37,17 @@
 3. yuntu.database
     1. yuntu.database.base
     2. yuntu.database.backends
+        0. yuntu.database.backends.base
         1. yuntu.database.backends.pony
-        2. yuntu.database.backends.irekua
+        2. yuntu.database.backends.rest
+        3. yuntu.database.backends.django
     3. yuntu.database.store
         1. yuntu.database.store.base
         2. yuntu.database.store.postgresql
         3. yuntu.database.store.mongodb
         4. yuntu.database.store.audiomoth
+    4. yuntu.database.structures
+        1. yuntu.database.irekua
 
 4. yuntu.collections
     1. yuntu.collections.base
@@ -54,7 +56,7 @@
     4. yuntu.collections.dataframes
         1. yuntu.collections.dataframes.hashers
         2. yuntu.collections.dataframes.audio
-    6. yuntu.collections.io
+    5. yuntu.collections.writers
 
 4. yuntu.pipelines
     1. yuntu.pipelines.base
@@ -74,11 +76,9 @@
     6. yuntu.soundscapes.axis
     7. yuntu.soundscapes.atlas
     8. yuntu.soundscapes.dataframes
-    9. yuntu.soundscapes.analyisis
-
+    9. yuntu.soundscapes.analysis
 
 6. yuntu.extra
-
 
 ## Yuntu core
 
@@ -87,7 +87,6 @@ Pocas dependencias:
 1. numpy
 2. shapely
 3. matplotlib [opcional?]
-
 
 ## Media
 

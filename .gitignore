@@ -10,3 +10,8 @@ dist/
 !tutorials/*.ipynb
 
 labelling_structure.json
+
+.coverage
+htmlcov/
+old_yuntu/
+old_tests/
