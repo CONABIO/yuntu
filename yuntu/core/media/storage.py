@@ -53,6 +53,7 @@ class Storage(metaclass=PluginMount):
 
         cls._default = storage
 
+    @abstractmethod
     def exists(self, path):
         pass
 
