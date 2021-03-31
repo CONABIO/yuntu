@@ -19,7 +19,6 @@ Welcome to yuntu's documentation!
    development/media
 
 
-
 Indices and tables
 ==================
 

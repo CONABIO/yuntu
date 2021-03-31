@@ -13,22 +13,26 @@ is make a class that uses the PluginMount as a metaclass. This interface
 class will store a plugin list. If an implementation of the interface is
 loaded, it will automatically be included into the plugin list.
 
+
 Example:
-    Say you want to make an interface of file loaders::
+    Say you want to make an interface of file loaders
+
+        >>> from yuntu.core.utils.plugins import PluginMount
 
         >>> class FileLoader(metaclass=PluginMount):
-        >>>     def load(self, path):
-        >>>         # Implement method here
+        ...     def load(self, path):
+        ...          pass
 
-
-    Whenever you inherit from this class::
+    Whenever you inherit from this class
 
         >>> class WavLoader(FileLoader):
-        >>>     def load(self, path):
-        >>>         # ...
+        ...     def load(self, path):
+        ...         pass
 
     It will automatically be included into the list of plugins
-    from FileLoader::
+    from FileLoader
+
+    .. doctest::
 
         >>> WavLoader in FileLoader.plugins
         True
@@ -54,3 +58,9 @@ class PluginMount(type):
             # Simply appending it to the list is all that's needed to keep
             # track of it later.
             cls.plugins.append(cls)
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod()

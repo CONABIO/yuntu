@@ -24,7 +24,6 @@ coverage:
 	poetry run coverage run -m pytest $(TEST_DIR)
 	poetry run coverage report -m
 	poetry run coverage html
-	python3 -m http.server --directory htmlcov/ 8080
 
 lint:
 	poetry run pylint --exclude=.tox
@@ -35,10 +34,12 @@ test:
 clean-docs:
 	rm -rf docs/build/
 
-build-docs: clean-docs
-	poetry run sphinx-build docs/source/ docs/build/
+docs: clean-docs
+	poetry run sphinx-build -b doctest docs/source/ docs/build/
+	poetry run sphinx-build -b html docs/source/ docs/build/
+
+serve-coverage:
+	python3 -m http.server --directory htmlcov/ 8080
 
 serve-docs:
 	python3 -m http.server --directory docs/build/ 9090
-
-docs: build-docs serve-docs
