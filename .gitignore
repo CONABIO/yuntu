@@ -15,3 +15,8 @@ labelling_structure.json
 htmlcov/
 old_yuntu/
 old_tests/
+
+.nvimrc
+
+.coverage
+htmlcov/
