@@ -39,9 +39,10 @@ Example:
 
     The class must be loaded for it to appear in the plugin list.
 """
+from abc import ABCMeta
 
 
-class PluginMount(type):
+class PluginMount(ABCMeta):
     """
     Taken from http://martyalchin.com/2008/jan/10/simple-plugin-framework/
     """
@@ -58,9 +59,3 @@ class PluginMount(type):
             # Simply appending it to the list is all that's needed to keep
             # track of it later.
             cls.plugins.append(cls)
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()
