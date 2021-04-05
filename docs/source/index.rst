@@ -13,10 +13,9 @@ Welcome to yuntu's documentation!
    usage/installation
    usage/quickstart
 
-   api/audio
+   api/index
 
-   development/plugins
-   development/media
+   development/index
 
 
 Indices and tables
