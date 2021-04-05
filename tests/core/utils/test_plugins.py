@@ -14,3 +14,17 @@ def test_plugin_system():
 
     assert len(A.plugins) == 1
     assert B in A.plugins
+
+    A.flush()
+
+    assert len(A.plugins) == 0
+
+    class C(A):
+        pass
+
+    class D(A):
+        pass
+
+    assert len(A.plugins) == 2
+    assert C in C.plugins
+    assert D in D.plugins
