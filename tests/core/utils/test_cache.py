@@ -1,4 +1,6 @@
 import os
+import io
+import pytest
 
 from yuntu.core.utils import cache
 
@@ -8,9 +10,8 @@ def test_cache_interface():
     assert hasattr(cache.Cache, "plugins")
 
     abstract_methods = cache.Cache.__abstractmethods__
-    assert "remove_one" in abstract_methods
-    assert "store_value" in abstract_methods
-    assert "retrieve_value" in abstract_methods
+    assert "encode_value" in abstract_methods
+    assert "decode_value" in abstract_methods
 
 
 def test_memcache_too_large():
@@ -46,7 +47,7 @@ def test_memcache_remove_one():
     assert "b" in memcache
     assert memcache.size == 2
 
-    memcache.remove_one()
+    memcache.remove_item("a")
     assert "a" not in memcache
     assert "b" in memcache
     assert memcache.size == 1
@@ -58,8 +59,7 @@ def test_memcache_remove_one():
     memcache["b"] = "b"
     # Read value
     assert memcache["a"] == "a"
-    memcache.remove_one()
-    # Last viewed should be "a"
+    memcache.remove_item("b")
     assert "a" in memcache
     assert "b" not in memcache
 
@@ -82,3 +82,90 @@ def test_tmpfile_cache():
     assert not os.path.exists(path)
     assert key not in tmpcache
     assert tmpcache.size == 0
+
+
+@pytest.mark.parametrize(
+    "cachetype",
+    [
+        cache.MemCache,
+        cache.TmpFileCache,
+    ],
+)
+def test_lrufy(cachetype):
+    instance = cache.lrufy(cachetype)()
+
+    instance["a"] = "value a"
+    instance["b"] = "value b"
+
+    # Read value
+    assert instance["a"] == "value a"
+    # Last viewed should be "a"
+    instance.remove_one()
+    assert "a" in instance
+    assert "b" not in instance
+
+    instance.clean()
+
+    instance["a"] = "value a"
+    instance["b"] = "value b"
+    instance["c"] = "value c"
+    assert instance["a"] == "value a"
+    # Last viewed should be "a"
+    instance.remove_one()
+    assert "a" in instance
+    assert "b" not in instance
+    assert "c" in instance
+
+
+@pytest.mark.parametrize(
+    "cachetype",
+    [
+        cache.MemCache,
+        cache.TmpFileCache,
+    ],
+)
+def test_streamfy(cachetype):
+    instance = cache.streamfy(cachetype)()
+
+    a = io.BytesIO(b"content a")
+
+    instance["a"] = a
+
+    assert not isinstance(instance.retrieve_value("a"), io.BytesIO)
+    assert isinstance(instance["a"], io.BytesIO)
+    assert a.read() == instance["a"].read()
+
+
+@pytest.mark.parametrize(
+    "cachetype",
+    [
+        cache.MemCache,
+        cache.TmpFileCache,
+    ],
+)
+def test_streamfy_and_lrufy(cachetype):
+    instance = cache.lrufy(cache.streamfy(cachetype))()
+
+    instance["a"] = io.BytesIO(b"content a")
+    instance["b"] = io.BytesIO(b"content b")
+    instance["c"] = io.BytesIO(b"content c")
+
+    assert instance["a"].read() == b"content a"
+
+    instance.remove_one()
+    assert "a" in instance
+    assert "b" not in instance
+    assert "c" in instance
+
+    instance = cache.streamfy(cache.lrufy(cachetype))()
+
+    instance["a"] = io.BytesIO(b"content a")
+    instance["b"] = io.BytesIO(b"content b")
+    instance["c"] = io.BytesIO(b"content c")
+
+    assert instance["a"].read() == b"content a"
+
+    instance.remove_one()
+    assert "a" in instance
+    assert "b" not in instance
+    assert "c" in instance
