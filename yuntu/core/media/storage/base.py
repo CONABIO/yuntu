@@ -46,7 +46,7 @@ class Storage(metaclass=PluginMount):
 
     @classmethod
     @abstractmethod
-    def compatible_file(self, path):
+    def is_compatible(self, path):
         return False
 
     @classmethod

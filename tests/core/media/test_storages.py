@@ -1,4 +1,6 @@
+import os
 import io
+import requests
 from urllib.parse import urlparse
 
 import pytest
@@ -27,7 +29,7 @@ def test_storage_interface():
 
         class IncompleteStorage(storage.Storage):
             @classmethod
-            def compatible_file(cls, path):
+            def is_compatible(cls, path):
                 return False
 
         for other_method in abstract_methods:
@@ -63,7 +65,7 @@ def test_infer_storage_type():
 
     class HttpDummyStorage(storage.FileSystemStorage):
         @classmethod
-        def compatible_file(cls, path):
+        def is_compatible(cls, path):
             parsed = urlparse(path)
             return parsed.scheme in ["http", "https"]
 
@@ -75,7 +77,7 @@ def test_infer_storage_type():
 
     class S3DummyStorage(storage.FileSystemStorage):
         @classmethod
-        def compatible_file(cls, path):
+        def is_compatible(cls, path):
             parsed = urlparse(path)
             return parsed.scheme == "s3"
 
@@ -102,7 +104,7 @@ def test_get_storage():
 
     class HttpDummyStorage(storage.FileSystemStorage):
         @classmethod
-        def compatible_file(cls, path):
+        def is_compatible(cls, path):
             parsed = urlparse(path)
             return parsed.scheme in ["http", "https"]
 
@@ -117,7 +119,7 @@ def test_get_storage():
 
     class S3DummyStorage(storage.FileSystemStorage):
         @classmethod
-        def compatible_file(cls, path):
+        def is_compatible(cls, path):
             parsed = urlparse(path)
             return parsed.scheme == "s3"
 
@@ -134,7 +136,7 @@ def test_set_default():
 
     class DummyStorage(storage.FileSystemStorage):
         @classmethod
-        def compatible_file(cls, path):
+        def is_compatible(cls, path):
             parsed = urlparse(path)
             return parsed.scheme == "dummy"
 
@@ -220,10 +222,29 @@ def tests_filesystem_storage(tmp_path, converter):
         "https://filesamples.com/samples/image/jpeg/sample_640%C3%97426.jpeg",
     ],
 )
-def test_http_storage(url):
+def test_http_storage(url, monkeypatch):
     st = storage.HTTPStorage()
-    assert st.compatible_file(url)
+    assert st.is_compatible(url)
     assert st.exists(url)
+
+    st.download(url)
+    assert os.path.exists(st._cache.get_path((url,)))
+
+    def mockget(*args, **kwargs):
+        # Should not request a second time
+        raise AssertionError
+
+    monkeypatch.setattr(requests, "get", mockget)
+    st.download(url)
+
+    # Check the file was not deleted
+    assert os.path.exists(st._cache.get_path((url,)))
+
+    with pytest.raises(NotImplementedError):
+        st.write(url, b"cant write")
+
+    with st.open(url) as f:
+        assert isinstance(f, io.BytesIO)
 
 
 def test_http_storage_not_exists():

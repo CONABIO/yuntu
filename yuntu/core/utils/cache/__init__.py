@@ -1,10 +1,9 @@
 """
-Yuntu Cache System
-==================
+Cache System
 
 Yuntu provides a caching system to avoid repeating expensive operations, such
 as a complicated computation or a file download. The cache interface is
-specified by the Cache class.
+specified by the :class:`Cache` class.
 
 The base package has two cache implementations:
 
@@ -13,13 +12,15 @@ The base package has two cache implementations:
 
 .. doctest::
 
-    >> MemCache in Cache.plugins
+    >>> from yuntu.core.utils.cache import Cache, MemCache, TmpFileCache
+
+    >>> MemCache in Cache.plugins
     True
 
-    >> TmpFileCache in Cache.plugins
+    >>> TmpFileCache in Cache.plugins
     True
 
-    >> len(Cache.plugins)
+    >>> len(Cache.plugins)
     2
 
 The user interface is identical.
@@ -78,11 +79,83 @@ Example:
 
 """
 from .base import Cache
-from .memcache import MemCache
 from .tmpfile import TmpFileCache
-
+from .memcache import MemCache
 from .mixins import BytesIOCacheMixin
 from .mixins import LRUCacheMixin
+
+
+__all__ = [
+    "cache",
+    "TMP_FILE_CACHE",
+    "MEM_CACHE",
+]
+
+
+TMP_FILE_CACHE = TmpFileCache.__name__
+
+MEM_CACHE = MemCache.__name__
+
+
+def cache(name: str, lru=True, stream=False, max_size=None, **kwargs) -> Cache:
+    """Build a cache of the desired type.
+
+    Args:
+        name (str): The name of the cache system to build.
+        lru (bool, optional): If true, the cache will use the LRU algorithm
+            to dispose unwanted items. Defaults to True.
+        stream (bool, optional): If True the cache system will only accept
+            and return BytesIO objects, default to False.
+        max_size (int, optional): The maximum number of items the cache can
+            store. If None the cache does not have a maximum size. Defaults
+            to None.
+        **kwargs: Additional configuration arguments for the cache.
+
+    Example:
+        To build an in-memory cache object
+
+        .. doctest::
+
+            >>> from yuntu.core.utils.cache import cache
+
+            >>> c = cache('MemCache', max_size=10)
+            >>> key = "a"
+            >>> value = 8238
+            >>> c[key] = value
+
+            >>> key in c
+            True
+
+            >>> c[key] == value
+            True
+
+            >>> c.size
+            1
+
+    Returns:
+        Cache: The cache instance
+
+    Raises:
+        NotImplementedError: If no cache implementation exists with
+            the given name.
+
+    """
+    for implementation in Cache.plugins:
+        if implementation.__name__ == name:
+            klass = implementation
+            break
+
+    else:
+        message = f"No cache implementation with name {name} was found"
+        raise NotImplementedError(message)
+
+    if lru:
+        klass = lrufy(klass)
+
+    if stream:
+        klass = streamfy(klass)
+
+    return klass(**kwargs)
 
 
 def streamfy(klass):
@@ -97,12 +170,3 @@ def lrufy(klass):
         pass
 
     return WrappedClass
-
-
-__all__ = [
-    "Cache",
-    "MemCache",
-    "TmpFileCache",
-    "streamify",
-    "lruify",
-]

@@ -43,7 +43,6 @@ extensions = [
     "sphinx_autodoc_typehints",
 ]
 
-
 # Copy button configurations
 copybutton_prompt_text = (
     r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "

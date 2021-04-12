@@ -39,7 +39,7 @@ class FileSystemStorage(Storage):
         return os.path.getsize(path)
 
     @classmethod
-    def compatible_file(cls, path):
+    def is_compatible(cls, path):
         parsed = urlparse(path)
 
         if parsed.scheme == "file":

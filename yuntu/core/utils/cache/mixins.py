@@ -1,8 +1,8 @@
 import datetime
 from io import BytesIO
 from typing import Any
-from typing import Hashable
 from typing import TypedDict
+from typing import Hashable
 
 
 DateValue = TypedDict(
@@ -14,10 +14,10 @@ DateValue = TypedDict(
 class LRUCacheMixin:
     """Least Recently Used Mixin.
 
-    This helper class implements the least recently used algorithm for
-    cache management. Cache systems inheriting from this class will select
-    the oldest item in the cache for removal. If an item is retrieved from
-    the cache it will be considered new.
+    This helper class implements the least recently used algorithm for cache
+    management. Cache systems inheriting from this class will select the oldest
+    item in the cache for removal. If an item is retrieved from the cache it
+    will be considered new.
     """
 
     def encode_value(self, value: Any) -> DateValue:
@@ -34,7 +34,7 @@ class LRUCacheMixin:
         return value["value"]
 
     def remove_one(self) -> None:
-        """Remove the last updated stored item."""
+        """Remove the earliest updated item."""
         retriever = super().retrieve_value
 
         last = min(
@@ -48,7 +48,8 @@ class LRUCacheMixin:
 class BytesIOCacheMixin:
     """Bytes IO Mixin.
 
-    This helper class
+    When this mixin is used the cache system will only accept and return ByteIO
+    objects.
     """
 
     def encode_value(self, value: BytesIO) -> Any:

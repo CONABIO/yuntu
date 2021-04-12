@@ -1,4 +1,5 @@
 from .base import Storage
+
 from .filesystem import FileSystemStorage
 from .http import HTTPStorage
 
@@ -9,7 +10,7 @@ _default = None
 def get_storage(path, config=None):
     default = get_default()
 
-    if default.compatible_file(path):
+    if default.is_compatible(path):
         return default
 
     storage_type = infer_storage_type(path)
@@ -22,7 +23,7 @@ def get_storage(path, config=None):
 
 def infer_storage_type(path):
     apt_storages = [
-        storage for storage in Storage.plugins if storage.compatible_file(path)
+        storage for storage in Storage.plugins if storage.is_compatible(path)
     ]
 
     if len(apt_storages) == 0:

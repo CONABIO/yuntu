@@ -1,3 +1,8 @@
+"""
+In-Memory Cache
+
+This cache system will store the values, uncompressed, into memory.
+"""
 from typing import Any
 
 from yuntu.core.utils.cache.base import Cache

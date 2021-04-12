@@ -94,11 +94,11 @@ def test_tmpfile_cache():
 def test_lrufy(cachetype):
     instance = cache.lrufy(cachetype)()
 
-    instance["a"] = "value a"
-    instance["b"] = "value b"
+    instance["a"] = b"value a"
+    instance["b"] = b"value b"
 
     # Read value
-    assert instance["a"] == "value a"
+    assert instance["a"] == b"value a"
     # Last viewed should be "a"
     instance.remove_one()
     assert "a" in instance
@@ -106,10 +106,10 @@ def test_lrufy(cachetype):
 
     instance.clean()
 
-    instance["a"] = "value a"
-    instance["b"] = "value b"
-    instance["c"] = "value c"
-    assert instance["a"] == "value a"
+    instance["a"] = b"value a"
+    instance["b"] = b"value b"
+    instance["c"] = b"value c"
+    assert instance["a"] == b"value a"
     # Last viewed should be "a"
     instance.remove_one()
     assert "a" in instance

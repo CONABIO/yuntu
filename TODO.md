@@ -3,6 +3,9 @@
 
 0. yuntu.config
 1. yuntu.core (Mainly base classes)
+    0. yuntu.core.utils
+        1. yuntu.core.plugins
+        2. yuntu.core.cache
     1. yuntu.core.media
         1. yuntu.core.base
         2. yuntu.core.media.loaders
@@ -130,3 +133,24 @@ Requisitos:
 Pipelines:
     + Cada nodo debe de tener un nombre (no necesariamente único) y un
     identificador único.
+
+Observaciones:
+    1. Los pipelines son los responsables de registrar y serializar los pasos
+       de procesamiento.
+    2. Los nodos de un pipeline deberán de tener un método de `to_dict` o
+       `dumps`.
+    3. Un método de reconstrucción `Pipeline.loads(nodo.dumps())`
+    4. Yuntu deberá de ofrecer las siguientes funcionalidades:
+        1. Poder cortar un arreglo con una geometría
+        2. Poder generar una máscara binaria con una geometria
+        3. Poder calcular agregaciones de los valores de un arreglo sobre una
+           geometría
+        4. Resamplear los datos sobre los distintos ejes
+        5. Mantener la referencia las coordenadas que corresponden a cada bin
+           del arreglo.
+    5. Debemos de encontrar una abstracción de geometría que permita extender a
+       3 dimensiones. Seguir usando shapely cuando se pueda. Una manera de
+       asignar coordenadas a ejes.
+    6. Yuntu deberá de poder traducir fácilmente anotaciones de irekua en
+       anotaciones de yuntu y viceversa.
+

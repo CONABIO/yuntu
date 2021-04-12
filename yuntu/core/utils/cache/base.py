@@ -1,14 +1,15 @@
 """
 The Cache Interface
-===================
 
 All cache objects keep an internal dictionary to track stored values::
 
     cache = Cache()
-    print(cache._cache)
 
-Naively to store a key, value pair in the cache you could do it by storing it
-directly in this internal dictionary::
+    # Internal dictionary
+    cache._cache
+
+Naively, storing a key-value pair in the cache could be achieved by storing
+them directly in this internal dictionary::
 
     # Storing a key, value pair
     cache._cache[key] = value
@@ -16,8 +17,8 @@ directly in this internal dictionary::
     # Retrieveing a value by key
     value = cache._cache[key]
 
-To add flexibility to the cache system, we instead store an encoded version of
-the value, somewhat like this::
+To add flexibility to the cache system we instead store an encoded version of
+the value, akin to this::
 
     # Storing a key, value pair
     cache._cache[key] = cache.encode_value(value)
@@ -25,9 +26,9 @@ the value, somewhat like this::
     # retrieving a value by key
     value = cache.decode_value(cache._cache[key])
 
-The encoded representation of the value can be anything, as long as the
+The encoded representation of the value can be anything as long as the
 original value can be reconstructed from the representation. It can be the
-full object itself, or the path of the file where it was stored.
+full object itself, the path to the file where it was stored, etc.
 """
 from abc import abstractmethod
 from typing import Any
@@ -168,7 +169,7 @@ class Cache(metaclass=PluginMount):
     def remove_item(self, key: Hashable) -> None:
         del self._cache[key]
 
-    def retrieve_value(self, key):
+    def retrieve_value(self, key: Hashable) -> Any:
         """Get the stored encoded value"""
         return self._cache[key]
 
