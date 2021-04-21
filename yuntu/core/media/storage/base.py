@@ -5,8 +5,16 @@ Storage Module
 """
 from abc import abstractmethod
 from contextlib import contextmanager
+from pathlib import Path
+from typing import Union
+from typing import Any
+from typing import BinaryIO
+from typing import Generator
 
 from yuntu.core.utils.plugins import PluginMount
+
+
+PathLike = Union[str, Path]
 
 
 class Storage(metaclass=PluginMount):
@@ -18,37 +26,41 @@ class Storage(metaclass=PluginMount):
     retrieve the contents, and in most cases how to store data in files.
 
     The number of types of storages available can be expanded by using the
-    plugin system (see :mod:TODO)
+    plugin system.
 
-    TODO
+    TODO: Finish
     """
 
     @abstractmethod
-    def exists(self, path: str):
+    def exists(self, path: PathLike):
         pass
 
     @abstractmethod
     @contextmanager
-    def open(self, path: str, mode: str = "rb"):
+    def open(
+        self,
+        path: PathLike,
+        mode: str = "rb",
+    ) -> Generator[BinaryIO, None, None]:
         pass
 
     @abstractmethod
-    def read(self, path: str):
+    def read(self, path: PathLike) -> bytes:
         pass
 
     @abstractmethod
-    def write(self, path: str, contents):
+    def write(self, path: PathLike, contents) -> None:
         pass
 
     @abstractmethod
-    def size(self, path: str):
+    def size(self, path: PathLike) -> int:
         pass
 
     @classmethod
     @abstractmethod
-    def is_compatible(self, path):
+    def is_compatible(self, path: PathLike) -> bool:
         return False
 
     @classmethod
-    def get_default_config(cls):
+    def get_default_config(cls) -> Any:
         return {}

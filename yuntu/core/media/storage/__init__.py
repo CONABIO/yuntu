@@ -1,13 +1,27 @@
-from .base import Storage
+from pathlib import Path
+from typing import Union
+from typing import Type
 
-from .filesystem import FileSystemStorage
-from .http import HTTPStorage
+from yuntu.core.media.storage.base import Storage
+from yuntu.core.media.storage.filesystem import FileSystemStorage
+from yuntu.core.media.storage.http import HTTPStorage
+
+
+__all__ = [
+    "Storage",
+    "FileSystemStorage",
+    "HTTPStorage",
+    "get_storage",
+]
 
 
 _default = None
 
 
-def get_storage(path, config=None):
+def get_storage(path: Union[str, Path], config=None) -> Storage:
+    if isinstance(path, Path):
+        path = str(path.resolve())
+
     default = get_default()
 
     if default.is_compatible(path):
@@ -21,7 +35,7 @@ def get_storage(path, config=None):
     return storage_type(**config)
 
 
-def infer_storage_type(path):
+def infer_storage_type(path: str) -> Type[Storage]:
     apt_storages = [
         storage for storage in Storage.plugins if storage.is_compatible(path)
     ]
@@ -55,11 +69,3 @@ def set_default(storage):
         raise ValueError
 
     _default = storage
-
-
-__all__ = [
-    "Storage",
-    "FileSystemStorage",
-    "HTTPStorage",
-    "get_storage",
-]
