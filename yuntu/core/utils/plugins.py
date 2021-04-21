@@ -59,3 +59,6 @@ class PluginMount(ABCMeta):
             # Simply appending it to the list is all that's needed to keep
             # track of it later.
             cls.plugins.append(cls)
+
+    def flush(cls):
+        cls.plugins = []
