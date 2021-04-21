@@ -1,4 +1,6 @@
 TEST_DIR := tests/
+DOCS_SOURCE_DIR := docs/source/
+DOCS_BUILD_DIR := docs/build/
 
 clean: clean-build clean-pyc clean-test
 
@@ -29,17 +31,20 @@ lint:
 	poetry run pylint --exclude=.tox
 
 test:
-	pytest --verbose --color=yes $(TEST_DIR)
+	poetry run pytest --verbose --color=yes $(TEST_DIR)
+
+tox:
+	poetry run tox
 
 clean-docs:
-	rm -rf docs/build/
+	rm -rf $(DOCS_BUILD_DIR)
 
 docs: clean-docs
-	poetry run sphinx-build -b doctest docs/source/ docs/build/
-	poetry run sphinx-build -b html docs/source/ docs/build/
+	poetry run sphinx-build -b doctest $(DOCS_SOURCE_DIR) $(DOCS_BUILD_DIR)
+	poetry run sphinx-build -b html $(DOCS_SOURCE_DIR) $(DOCS_BUILD_DIR)
 
 serve-coverage:
 	python3 -m http.server --directory htmlcov/ 8080
 
 serve-docs:
-	python3 -m http.server --directory docs/build/ 9090
+	python3 -m http.server --directory $(DOCS_BUILD_DIR) 9090
