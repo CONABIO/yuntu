@@ -1,4 +1,32 @@
-NUMPY_METHODS = [
+class NumpyMixin:
+    @property
+    def array(self):
+        """Get media contents."""
+        return self.content
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        """Use numpy universal functions on media array."""
+        modified_inputs = tuple(
+            [
+                inp.array if isinstance(inp, NumpyMixin) else inp
+                for inp in inputs
+            ]
+        )
+        modified_kwargs = {
+            key: value.array if isinstance(value, NumpyMixin) else value
+            for key, value in kwargs.items()
+        }
+
+        return getattr(ufunc, method)(*modified_inputs, **modified_kwargs)
+
+    def __getattribute__(self, name):
+        if name in NUMPY_ATTRIBUTES:
+            return self.array.__getattribute__(name)
+
+        return super().__getattribute__(name)
+
+
+NUMPY_ATTRIBUTES = {
     "all",
     "any",
     "argmax",
@@ -54,6 +82,24 @@ NUMPY_METHODS = [
     "transpose",
     "var",
     "view",
+    "T",
+    "data",
+    "dtype",
+    "flags",
+    "flat",
+    "imag",
+    "real",
+    "size",
+    "itemsize",
+    "nbytes",
+    "ndim",
+    "shape",
+    "strides",
+    "ctypes",
+    "base",
+}
+
+DUNDER_METHODS = [
     "__abs__",
     "__add__",
     "__and__",
@@ -99,7 +145,6 @@ NUMPY_METHODS = [
     "__radd__",
     "__rand__",
     "__rdivmod__",
-    #  "__repr__",
     "__rfloordiv__",
     "__rlshift__",
     "__rmatmul__",
@@ -113,52 +158,10 @@ NUMPY_METHODS = [
     "__rtruediv__",
     "__rxor__",
     "__setitem__",
-    "__str__",
     "__sub__",
     "__truediv__",
     "__xor__",
 ]
-
-
-NUMPY_PROPERTIES = [
-    "T",
-    "data",
-    "dtype",
-    "flags",
-    "flat",
-    "imag",
-    "real",
-    "size",
-    "itemsize",
-    "nbytes",
-    "ndim",
-    "shape",
-    "strides",
-    "ctypes",
-    "base",
-]
-
-
-class NumpyMixin:
-    @property
-    def array(self):
-        """Get media contents."""
-        return self.content
-
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        """Use numpy universal functions on media array."""
-        modified_inputs = tuple(
-            [
-                inp.array if isinstance(inp, NumpyMixin) else inp
-                for inp in inputs
-            ]
-        )
-        modified_kwargs = {
-            key: value.array if isinstance(value, NumpyMixin) else value
-            for key, value in kwargs.items()
-        }
-
-        return getattr(ufunc, method)(*modified_inputs, **modified_kwargs)
 
 
 def _build_method(method_name):
@@ -168,17 +171,5 @@ def _build_method(method_name):
     return class_method
 
 
-def _build_property(property_name):
-    @property
-    def class_property(self):
-        return getattr(self.array, property_name)
-
-    return class_property
-
-
-for meth in NUMPY_METHODS:
-    setattr(NumpyMixin, meth, _build_method(meth))
-
-
-for prop in NUMPY_PROPERTIES:
-    setattr(NumpyMixin, prop, _build_property(prop))
+for method in DUNDER_METHODS:
+    setattr(NumpyMixin, method, _build_method(method))

@@ -3,6 +3,7 @@ import random
 
 import pytest
 import numpy as np
+import xarray as xr
 import soundfile
 
 from yuntu.audio import Audio
@@ -61,5 +62,5 @@ def test_load_remote_audio():
         "https://file-examples-com.github.io/uploads/2017/11/file_example_WAV_1MG.wav"
     )
 
-    assert isinstance(audio.array, np.ndarray)
+    assert isinstance(audio.array, xr.DataArray)
     assert audio.media_info.samplerate > 0
