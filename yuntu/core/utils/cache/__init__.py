@@ -78,15 +78,16 @@ Example:
         val = func(arg1, arg2)
 
 """
-from .base import Cache
-from .tmpfile import TmpFileCache
-from .memcache import MemCache
-from .mixins import BytesIOCacheMixin
-from .mixins import LRUCacheMixin
+from yuntu.core.utils.cache.base import Cache
+from yuntu.core.utils.cache.tmpfile import TmpFileCache
+from yuntu.core.utils.cache.memcache import MemCache
+from yuntu.core.utils.cache.mixins import BytesIOCacheMixin
+from yuntu.core.utils.cache.mixins import LRUCacheMixin
 
 
 __all__ = [
     "cache",
+    "TmpFileCache",
     "TMP_FILE_CACHE",
     "MEM_CACHE",
 ]
@@ -159,6 +160,8 @@ def cache(name: str, lru=True, stream=False, max_size=None, **kwargs) -> Cache:
 
 
 def streamfy(klass):
+    return klass
+
     class WrappedClass(BytesIOCacheMixin, klass):
         pass
 
@@ -166,6 +169,8 @@ def streamfy(klass):
 
 
 def lrufy(klass):
+    return klass
+
     class WrappedClass(LRUCacheMixin, klass):
         pass
 

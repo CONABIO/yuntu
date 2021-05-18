@@ -62,3 +62,16 @@ class PluginMount(ABCMeta):
 
     def flush(cls):
         cls.plugins = []
+
+
+class FuncMount(ABCMeta):
+    def __init__(cls, name, bases, attrs):
+        if not hasattr(cls, "plugins"):
+            # This branch only executes when processing the mount point itself.
+            # So, since this is a new plugin type, not an implementation, this
+            # class shouldn't be registered as a plugin. Instead, it sets up a
+            # list where plugins can be registered later.
+            cls.plugins = []
+
+    def register(cls, func):
+        cls.plugins.append(func)
