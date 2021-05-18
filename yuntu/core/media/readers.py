@@ -32,7 +32,7 @@ class FileReader(metaclass=PluginMount):
         pass
 
     @abstractmethod
-    def read(self, fp: BinaryIO) -> Any:
+    def read(self, fp: BinaryIO, **kwargs) -> Any:
         """Parse the contents of the file buffer"""
 
     @classmethod
@@ -77,7 +77,7 @@ class TextReader(FileReader):
     def __init__(self, encoding: str = "utf-8"):
         self.encoding = encoding
 
-    def read(self, fp: BinaryIO) -> str:
+    def read(self, fp: BinaryIO, **kwargs) -> str:
         return fp.read().decode(self.encoding)
 
 
@@ -87,5 +87,5 @@ class NumpyReader(FileReader):
         _, extension = os.path.splitext(path)
         return extension == "npy"
 
-    def read(self, fp: BinaryIO) -> str:
+    def read(self, fp: BinaryIO, **kwargs) -> str:
         return np.load(fp)

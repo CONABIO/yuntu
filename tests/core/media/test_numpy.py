@@ -24,3 +24,11 @@ def test_numpy_media():
     assert (n < 2).sum() == 2
     assert (n + 2).sum() == 14
     assert n.astype(bool).sum() == 3
+
+    n = NumpyMedia(content=np.array([1, 2, 4, 8]))
+    log = np.log2(n)
+    assert isinstance(log, np.ndarray)
+    assert (log == np.array([0, 1, 2, 3])).all()
+
+    n[0] = 16
+    assert n[0] == 16

@@ -75,7 +75,16 @@ class Media(ABC):
             reader = get_reader(self.path)
 
         with storage.open(self.path) as fp:
-            return reader.read(fp)
+            reader_kwargs = self._get_reader_kwargs()
+            content = reader.read(fp, **reader_kwargs)
+
+        return self._prepare_content(content)
+
+    def _prepare_content(self, content):
+        return content
+
+    def _get_reader_kwargs(self):
+        return {}
 
     @lazy_property
     def media_info(self):
