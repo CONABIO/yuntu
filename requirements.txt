@@ -21,7 +21,7 @@ kiwisolver==1.2.0
 librosa>=0.7.2
 llvmlite==0.36.0rc1
 locket==0.2.0
-MarkupSafe==2.0.0a1
+MarkupSafe>=2.0
 matplotlib==3.2.1
 msgpack==1.0.0
 networkx==2.4
