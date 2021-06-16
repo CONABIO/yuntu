@@ -1,10 +1,10 @@
 """Datastore yuntu modules."""
 from . import base
-from . import audiomoth
+#from . import audiomoth
 from . import irekua
 
 __all__ = [
-    'audiomoth',
+#    'audiomoth',
     'irekua',
     'base'
 ]

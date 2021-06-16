@@ -9,6 +9,8 @@ from abc import abstractmethod
 import os
 import pickle
 from pony.orm import db_session
+from yuntu.collection.base import ImageCollection
+
 
 
 class Datastore(ABC):
@@ -73,7 +75,10 @@ class Datastore(ABC):
 
             for annotation in self.iter_annotations(datum):
                 annotation_meta = self.prepare_annotation(datum, annotation)
-                annotation_meta['recording'] = recording
+                if isinstance(collection, ImageCollection):
+                    annotation_meta['image'] = recording
+                else:
+                    annotation_meta['recording'] = recording
                 collection.annotate([annotation_meta])
                 annotation_inserts += 1
 

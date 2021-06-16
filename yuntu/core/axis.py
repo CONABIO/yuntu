@@ -114,3 +114,56 @@ class FrequencyAxis(Axis):
             return end
 
         return window.max
+
+class XAxis(Axis):
+    def get_start(self, start=None, window=None):
+        if window is None:
+            assert start is not None
+            return start
+
+        if getattr(window, 'x', None) is None:
+            assert start is not None
+            return start
+
+        return window.x
+
+    def get_end(self, end=None, window=None):
+        pass
+
+    def get_size(self, size=None, window=None):
+        if window is None:
+            assert size is not None
+            return size
+
+        if getattr(window, 'w', None) is None:
+            assert size is not None
+            return size
+
+        return window.w
+
+
+class YAxis(Axis):
+    def get_start(self, start=None, window=None):
+        if window is None:
+            assert start is not None
+            return start
+
+        if getattr(window, 'y', None) is None:
+            assert start is not None
+            return start
+
+        return window.y
+
+    def get_end(self, end=None, window=None):
+        pass
+
+    def get_size(self, size=None, window=None):
+        if window is None:
+            assert size is not None
+            return size
+
+        if getattr(window, 'h', None) is None:
+            assert size is not None
+            return size
+
+        return window.h

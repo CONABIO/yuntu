@@ -16,7 +16,7 @@ class RESTManager(ABC):
         if "bucket" in config:
             self.bucket = config["bucket"]
 
-        self.recordings_url = f"{self.api_url}items/{self.version}/items/"
+        self.recordings_url = f"{self.api_url}items/{self.version}/items/" # TODO
         self.models = self.build_models()
 
     def select(self, query=None, limit=None, offset=None, model="recording"):
@@ -43,6 +43,6 @@ class RESTManager(ABC):
     def build_models(self):
         """Construct all database entities."""
 
-    @abstractmethod
-    def build_recording_model(self):
-        """Build REST recording model"""
+#    @abstractmethod
+#    def build_recording_model(self):
+#        """Build REST recording model"""

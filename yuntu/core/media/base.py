@@ -7,6 +7,9 @@ These media objects can all be stored and read from the filesystem.
 """
 import os
 
+import numpy as np
+
+from io import BytesIO
 from abc import ABC
 from abc import abstractmethod
 from urllib.parse import urlparse
@@ -133,6 +136,9 @@ class Media(ABC, AnnotatedObjectMixin):
 
         if path is None:
             return False
+        
+        if isinstance(path,BytesIO):
+            return True
 
         if "s3://" == path[:5]:
             from s3fs.core import S3FileSystem
@@ -151,6 +157,8 @@ class Media(ABC, AnnotatedObjectMixin):
 
     def load(self, path=None):
         if self.path_exists(path):
+            if isinstance(path,BytesIO):
+                return np.frombuffer(path.read(), dtype=np.uint8)
             return self.load_from_path(path)
 
         return self.compute()

@@ -18,6 +18,17 @@ def build_base_datastore_model(db):
 
     return Datastore
 
+def build_image_base_datastore_model(db):
+    """Create base datastore model."""
+    class Datastore(db.Entity):
+        """Basic datastore entity for yuntu."""
+        id = PrimaryKey(int, auto=True)
+        file = Optional(str)
+        images = Set('Image')
+        metadata = Required(Json)
+
+    return Datastore
+
 
 def build_foreign_db_datastore_model(Datastore):
     class ForeignDb(Datastore):

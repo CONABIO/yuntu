@@ -6,6 +6,8 @@ import yuntu.core.utils.atlas as geom_utils
 
 
 INFINITY = 10e+15
+INFINITY_IMG = 1
+
 
 
 class Window(ABC):
@@ -57,9 +59,12 @@ class Window(ABC):
         if window_type == 'TimeFrequencyWindow':
             return TimeFrequencyWindow(**data)
 
+        if window_type == 'ImageWindow':
+            return ImageWindow(**data)
+
         message = (
             f'Window type {window_type} is incorrect. Valid options: '
-            'TimeWindow, FrequencyWindow, TimeFrequencyWindow')
+            'TimeWindow, FrequencyWindow, TimeFrequencyWindow, ImageWindow')
         raise ValueError(message)
 
     def __repr__(self):
@@ -338,3 +343,112 @@ class TimeFrequencyWindow(TimeWindow, FrequencyWindow):
                 color=kwargs.get('color', 'blue'))
 
         return ax
+
+class ImageWindow(Window):
+    """Image window class.
+
+    Used to cut a bboxes.
+    """
+
+    # pylint: disable=redefined-builtin
+    def __init__(
+            self,
+            x: Optional[float] = None,
+            w: Optional[float] = None,
+            y: Optional[float] = None,
+            h: Optional[float] = None,
+            **kwargs):
+        """Construct a time frequency window.
+
+        Parameters
+        ----------
+        x: float
+            Interval starting x in relative size.
+        w:
+            Interval width in relative size.
+        y: float
+            Interval starting y in relative size.
+        h:
+            Interval height in relative size.
+        """
+        
+        self.x = x
+        self.w = w
+        self.y = y
+        self.h = h
+        
+        if 'geometry' not in kwargs:
+            x = x if x is not None else 0
+            x_end = w+x if w is not None else INFINITY_IMG
+            y = y if y is not None else 0
+            y_end = h+y if h is not None else INFINITY_IMG
+            kwargs['geometry'] = geom_utils.bbox_to_polygon([
+                x, x_end,
+                y, y_end
+            ])
+
+        super().__init__(**kwargs)
+
+    def buffer(self, buffer):
+        """Get a buffer window."""
+        if isinstance(buffer, (int, float)):
+            buffer = [buffer, buffer]
+
+        y = self.y - buffer[1]
+        h = self.h + buffer[1]*2
+        x = self.x - buffer[0]
+        w = self.w + buffer[0]*2
+        return ImageWindow(y=y, h=h, x=x, w=w)
+
+    def plot(self, ax=None, **kwargs):
+        """Plot frequency window."""
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(figsize=kwargs.get('figsize', (15, 5)))
+
+        xcoords = [self.x, self.x+self.w, self.x+self.w, self.x, self.x]
+        ycoords = [self.y, self.y, self.y+self.h, self.y+self.h, self.y]
+
+        ax.plot(
+            xcoords,
+            ycoords,
+            linewidth=kwargs.get('linewidth', 1),
+            linestyle=kwargs.get('linestyle', '--'),
+            color=kwargs.get('color', 'blue'))
+
+        if kwargs.get('fill', True):
+            ax.fill(
+                xcoords,
+                ycoords,
+                linewidth=0,
+                alpha=kwargs.get('alpha', 0.2),
+                color=kwargs.get('color', 'blue'))
+
+        return ax
+
+    def to_dict(self):
+        """Get dictionary representation of window."""
+        return {
+            'x': self.x,
+            'y': self.y,
+            'w': self.w,
+            'h': self.h,
+            **super().to_dict()
+        }
+
+    def is_trivial(self):
+        """Return if window is trivial."""
+        if self.x is not None:
+            return False
+
+        if self.y is not None:
+            return False
+
+        if self.w is not None:
+            return False
+
+        if self.h is not None:
+            return False
+
+        return super().is_trivial()

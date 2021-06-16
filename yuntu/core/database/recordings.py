@@ -56,3 +56,4 @@ def build_timed_recording_model(Recording):
         time_utc = Required(datetime, precision=6)
 
     return TimedRecording
+
