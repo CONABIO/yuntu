@@ -10,7 +10,7 @@ from enum import Enum
 
 import yuntu.core.utils.atlas as utils
 import yuntu.core.windows as windows
-
+import shapely.wkt
 
 INFINITY = 10e+15
 
@@ -182,6 +182,10 @@ class Geometry(ABC):
 
         if Geometry.Types.TimeInterval == geom_class.name:
             if "wkt" in data:
+                if "start_time" not in data or "end_time" not in data:
+                    start_time, _, end_time, _ = shapely.wkt.loads(data["wkt"]).bounds
+                    data["start_time"] = start_time
+                    data["end_time"] = end_time
                 del data["wkt"]
 
         return geom_class(**data)
