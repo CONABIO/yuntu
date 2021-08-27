@@ -184,8 +184,7 @@ class AudioAccessor:
         if read:
             tpath = os.path.join(workdir, name, "persist", "matches.parquet")
             if not os.path.exists(tpath):
-                raise ValueError(f"Cannot read soundscape. Target file {tpath}
-                                 does not exist.")
+                raise ValueError(f"Cannot read matches. Target file {tpath} does not exist.")
             print("Reading matches from file...")
             return (pipeline["matches"]
                     .read()
@@ -217,8 +216,7 @@ class AudioAccessor:
         if read:
             tpath = os.path.join(workdir, name, "persist", "soundscape.parquet")
             if not os.path.exists(tpath):
-                raise ValueError(f"Cannot read soundscape. Target file {tpath}
-                                 does not exist.")
+                raise ValueError(f"Cannot read soundscape. Target file {tpath} does not exist.")
             print("Reading soundscape from file...")
             return pipeline["soundscape"].read().compute()
 
