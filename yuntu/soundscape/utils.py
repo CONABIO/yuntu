@@ -108,6 +108,12 @@ def aware_time(strtime, tzone, time_format):
         dtime = tzobj.localize(dtime)
     return dtime
 
+def from_timestamp(timestamp, tzone):
+    dtime = datetime.fromtimestamp(timestamp)
+    if dtime.tzinfo is None or dtime.tzinfo.utcoffset(dtime) is None:
+        tzobj = pytz.timezone(tzone)
+        dtime = tzobj.localize(dtime)
+    return dtime
 
 def time_as_seconds(time_obj):
     tzobj = pytz.timezone("UTC")

@@ -1,7 +1,7 @@
 """Row hashers for category assingment."""
 import numpy as np
 import pandas as pd
-from yuntu.soundscape.utils import aware_time
+from yuntu.soundscape.utils import aware_time, from_timestamp
 import datetime
 from yuntu.soundscape.hashers.base import Hasher
 
@@ -92,10 +92,9 @@ class CronoHasher(Hasher):
             timeformat = row[self.format_column]
             atime = aware_time(strtime, timezone, timeformat)
         else:
-            atime = row[self.time_utc_column]
+            atime = from_timestamp(row[self.time_utc_column], tzone="UTC")
 
         delta_from_start = atime - self.start
-
         remainder = delta_from_start % self.module
         new_row = {}
         new_row[out_name] = np.int64(int(round(remainder/self.unit)) % self.time_module)
