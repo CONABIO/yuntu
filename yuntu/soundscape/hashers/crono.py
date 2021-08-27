@@ -17,7 +17,7 @@ AWARE_START = aware_time(TIME_START, TIME_ZONE, TIME_FORMAT)
 
 
 class CronoHasher(Hasher):
-
+    name = "crono_hasher"
     def __init__(self,
                  time_column=TIME_COLUMN,
                  tzone_column=TIME_ZONE_COLUMN,
@@ -45,7 +45,7 @@ class CronoHasher(Hasher):
 
         if aware_start is not None:
             if not isinstance(aware_start, datetime.datetime):
-                raise ValueError("Argument 'standard_start' must "
+                raise ValueError("Argument 'aware_start' must "
                                  "be a datetime.")
             self.start = aware_start
 
@@ -64,8 +64,10 @@ class CronoHasher(Hasher):
         self.tzone_column = tzone_column
         self.format_column = format_column
         self.columns = [time_column, tzone_column, format_column]
-        self.unit = datetime.timedelta(seconds=time_unit)
-        self.module = datetime.timedelta(seconds=time_unit * time_module)
+        self.time_unit = time_unit
+        self.time_module = time_module
+        self.unit = datetime.timedelta(seconds=self.time_unit)
+        self.module = datetime.timedelta(seconds=self.time_unit * self.time_module)
 
     def hash(self, row, out_name="crono_hash"):
         """Return rotating integer hash according to unit, module and start."""
@@ -78,7 +80,7 @@ class CronoHasher(Hasher):
 
         remainder = delta_from_start % self.module
         new_row = {}
-        new_row[out_name] = np.int64(int(round(remainder/self.unit)))
+        new_row[out_name] = np.int64(int(round(remainder/self.unit)) % self.time_module)
 
         return pd.Series(new_row)
 

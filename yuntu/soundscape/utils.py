@@ -1,5 +1,6 @@
 """Utilities for soundscape operations and indices."""
 import itertools
+import json
 import numpy as np
 from yuntu.core.windows import TimeFrequencyWindow
 import datetime,time
@@ -113,3 +114,11 @@ def time_as_seconds(time_obj):
     globalstart = tzobj.localize(datetime.datetime(1970, 1, 1, 0, 0, 0))
 
     return (time_obj - globalstart).total_seconds()
+
+def absolute_timing(time_ref, seconds):
+    return time_ref + datetime.timedelta(seconds=seconds)
+
+def parse_json(row, columns):
+    for col in columns:
+        row[col] = json.loads(row[col])
+    return row

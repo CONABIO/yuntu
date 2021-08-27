@@ -2,9 +2,12 @@
 import pandas as pd
 from dask import delayed
 import dask.dataframe.extensions
+from dask.diagnostics import ProgressBar
 
 from yuntu.core.audio.audio import Audio
-
+from yuntu.soundscape.utils import parse_json
+from yuntu.soundscape.pipelines.build_soundscape import Soundscape
+from yuntu.soundscape.pipelines.probe_dataframe import ProbeDataframe
 
 PATH = 'path'
 SAMPLERATE = 'samplerate'
@@ -168,6 +171,48 @@ class AudioAccessor:
 
     def change_id_column(self, new_column):
         self.id_column = new_column
+
+    def apply_probe(self, probe_config, name="apply_probe", work_dir="/tmp", persist=True,
+                    npartitions=1, client=None, show_progress=True,):
+        """Apply probe and return matches."""
+        pipeline = ProbeDataframe(name=name,
+                                  work_dir=work_dir,
+                                  recordings=self._obj,
+                                  probe_config=probe_config,
+                                  **kwargs)
+
+        pipeline["matches"].persist = persist
+
+        if show_progress:
+            with ProgressBar():
+                df = pipeline["matches"].compute(client=client,
+                                                 feed={"npartitions": npartitions})
+        else:
+            df = pipeline["matches"].compute(client=client,
+                                             feed={"npartitions": npartitions})
+
+        return df.apply(lambda row: parse_json(row, ["labels", "metadata"]), axis=1)
+
+
+    def get_soundscape(self, name="get_soundscape", work_dir="/tmp", persist=True,
+                       npartitions=1, client=None, show_progress=True, **kwargs):
+
+        pipeline = Soundscape(name=name,
+                              work_dir=work_dir,
+                              recordings=self._obj,
+                              **kwargs)
+
+        pipeline["soundscape"].persist = persist
+
+        if show_progress:
+            with ProgressBar():
+                df = pipeline["soundscape"].compute(client=client,
+                                                    feed={"npartitions": npartitions})
+        else:
+            df = pipeline["soundscape"].compute(client=client,
+                                                feed={"npartitions": npartitions})
+
+        return df
 
 
 def dask_wrapper(func):

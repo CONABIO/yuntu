@@ -37,6 +37,7 @@ else:
                         'tqdm',
                         'dask[complete]',
                         'fastparquet',
+                        'pyarrow',
                         'pygraphviz',
                         'pymongo']
 # allow setup.py to be run from any path

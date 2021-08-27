@@ -6,7 +6,7 @@ from yuntu.soundscape.transitions.probe_trans import probe_annotate
 
 
 class ProbeAnnotate(Pipeline):
-    """Pipeline to build tfrecords from bat call annotations."""
+    """Pipeline that applies probes and directly annotate collections."""
 
     def __init__(self,
                  name,

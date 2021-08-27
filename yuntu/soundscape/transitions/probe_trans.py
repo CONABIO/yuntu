@@ -1,5 +1,6 @@
 import gc
 import os
+import json
 import shutil
 import numpy as np
 from pony.orm import db_session
@@ -51,6 +52,29 @@ def write_probe_outputs(partition, probe_config, col_config, write_config, batch
 
     return rows
 
+def probe_all(recording_rows, probe_config, batch_size):
+    """Run probe row by row"""
+    probe_class = module_object(probe_config["module"])
+    probe_kwargs = probe_config["kwargs"]
+
+    all_annotations = []
+    with probe_class(**probe_kwargs) as probe:
+        for row in recording_rows:
+            rid = row["id"]
+            path = row["path"]
+            duration = row["duration"]
+            timeexp = row["timeexp"]
+
+            with Audio(path=path, timeexp=timeexp) as audio:
+                annotations = probe.annotate(audio, batch_size)
+
+            for i in range(len(annotations)):
+                annotations[i]["recording"] = rid
+                annotations[i]["labels"] = json.dumps(annotations[i]["labels"])
+                annotations[i]["metadata"] = json.dumps(annotations[i]["metadata"])
+                all_annotations.append(annotations[i])
+
+    return all_annotations
 
 def insert_probe_annotations(partition, probe_config, col_config, batch_size, overwrite=False):
     """Run probe on partition and write results"""
@@ -128,5 +152,37 @@ def probe_annotate(partitions, probe_config, col_config, batch_size):
                              batch_size=batch_size).flatten()
 
     meta = [('id', np.dtype('int')), ('annotation_inserts', np.dtype('int'))]
+
+    return results.to_dataframe(meta=meta)
+
+
+@transition(name="bag_recordings", outputs=["recordings_bag"], persist=False,
+            signature=((PandasDataFramePlace, ScalarPlace), (DynamicPlace,)))
+def bag_recordings(recordings, npartitions):
+    """Transform dataframe to dict bag."""
+    if recordings.empty:
+        raise ValueError("Recordings dataframe has no data.")
+
+    return db.from_sequence(recordings.to_dict(orient="records"),
+                            npartitions=npartitions)
+
+@transition(name="probe_recordings", outputs=["matches"], persist=True,
+            signature=((DynamicPlace, DictPlace, ScalarPlace), (DaskDataFramePlace,)))
+def probe_recordings(recordings_bag, probe_config, batch_size):
+    """Run probe and annotate bag of recording rows."""
+
+    meta = [('recording', np.dtype('int')),
+            ('start_time', np.dtype('float64')),
+            ('end_time', np.dtype('float64')),
+            ('min_freq', np.dtype('float64')),
+            ('max_freq', np.dtype('float64')),
+            ('type', np.dtype('O')),
+            ('metadata', np.dtype('O')),
+            ('geometry', np.dtype('O')),
+            ('labels', np.dtype('O'))]
+
+    results = recordings_bag.map(probe_all,
+                                 probe_config=probe_config,
+                                 batch_size=batch_size).flatten()
 
     return results.to_dataframe(meta=meta)

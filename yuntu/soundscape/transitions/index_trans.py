@@ -172,19 +172,31 @@ def slice_features(recordings, config, indices):
                                     meta=meta,
                                     config=config,
                                     indices=indices)
+    dropcols = ['datastore', 'path', 'hash', 'timeexp', 'spectrum',
+                'classtype', 'duration', 'filesize', 'length', 'nchannels',
+                'samplerate', 'sampwidth', 'metadata']
 
-    recordings['start_time'] = result['start_time']
+    colnames = [name for name in list(recordings.columns) if name not in dropcols]
+    subrecs = recordings[colnames]
 
-    slices = recordings.explode('start_time')
+    subrecs['start_time'] = result['start_time']
+    slices = subrecs.explode('start_time')
     slices['end_time'] = result['end_time'].explode()
     slices['min_freq'] = result['max_freq'].explode()
     slices['max_freq'] = result['min_freq'].explode()
     slices['weight'] = result['weight'].explode()
 
+    types = {"start_time": "float64",
+             "end_time": "float64",
+             "min_freq": "float64",
+             "max_freq": "float64",
+             "weight": "float64"}
+
     for index in indices:
         slices[index.name] = result[index.name].explode()
+        types[index.name] = "float64"
 
-    return slices
+    return slices.astype(types)
 
 @transition(name='apply_indices', outputs=["index_results"],
             is_output=True, persist=True, keep=True,

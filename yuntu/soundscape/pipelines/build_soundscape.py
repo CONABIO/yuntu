@@ -78,9 +78,9 @@ class Soundscape(Pipeline):
                                     ptype='scalar')
         self['recordings_dd'] = as_dd(self['recordings'],
                                       self['npartitions'])
-        self['index_results'] = slice_features(self['recordings_dd'],
-                                               self['slice_config'],
-                                               self['indices'])
+        self['soundscape'] = slice_features(self['recordings_dd'],
+                                            self['slice_config'],
+                                            self['indices'])
 
 
 
@@ -103,13 +103,12 @@ class HashedSoundscape(Soundscape):
     def build(self):
         """Build soundscape processing pipeline."""
         super().build()
-
         self['hasher_config'] = place(data=self.hasher_config,
                                       name='hasher',
                                       ptype='pickleable')
         self['hash_name'] = place(data=self.hash_name,
                                   name="hash_name",
                                   ptype='scalar')
-        self['hashed_soundscape'] = add_hash(self['index_results'],
+        self['hashed_soundscape'] = add_hash(self['soundscape'],
                                              self['hasher_config'],
                                              self['hash_name'])

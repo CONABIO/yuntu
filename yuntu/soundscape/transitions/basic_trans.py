@@ -103,7 +103,6 @@ def source_partition(datastore_config, rest_auth, npartitions=1):
     return partitions
 
 
-
 @transition(name="get_partitions", outputs=["partitions"],
             signature=((DictPlace, DynamicPlace, ScalarPlace), (DynamicPlace,)))
 def get_partitions(col_config, query, npartitions=1):

@@ -1,7 +1,12 @@
 """Dataframe accesors for soundscape methods"""
 import numpy as np
 import pandas as pd
+import pytz
+from yuntu.soundscape.utils import absolute_timing
+from yuntu.soundscape.hashers.base import Hasher
+from yuntu.soundscape.hashers.crono import CronoHasher
 
+import matplotlib.dates as mdates
 ID = 'id'
 START_TIME = 'start_time'
 END_TIME = 'end_time'
@@ -47,7 +52,7 @@ class SoundscapeAccessor:
                 raise ValueError(message)
 
         self.index_columns = []
-        for col, dtype in zip(list(self._obj.columns), list(self._obj.dtypes)):
+        for col, dtype in zip(list(obj.columns), list(obj.dtypes)):
             if pd.api.types.is_float_dtype(dtype) and col not in REQUIRED_SOUNDSCAPE_COLUMNS:
                 self.index_columns.append(col)
         self.index_columns = list(set(self.index_columns))
@@ -58,8 +63,80 @@ class SoundscapeAccessor:
 
         self._is_crono = True
         for col in CRONO_SOUNDSCAPE_COLUMNS:
-            if col not in self._obj.columns:
+            if col not in obj.columns:
                 self._is_crono = False
+
+    def add_absolute_time(self):
+        """Add absolute reference from UTC time"""
+        out = self._obj[list(self._obj.columns)]
+        out["abs_start_time"] = self._obj.apply(lambda x: absolute_timing(x["time_utc"], x["start_time"]), axis=1)
+        out["abs_end_time"] = self._obj.apply(lambda x: absolute_timing(x["time_utc"], x["end_time"]), axis=1)
+        return out
+
+    def add_hash(self, hasher, out_name="xhash"):
+        """Add row hasher"""
+        if not hasher.validate(self._obj):
+            str_cols = str(hasher.columns)
+            message = ("Input dataframe is incompatible with hasher."
+                       f"Missing column inputs. Hasher needs: {str_cols} ")
+            raise ValueError(message)
+
+        result = self._obj.apply(hasher, out_name=out_name, axis=1)
+        if out_name in list(self._obj.columns):
+            raise ValueError(f"Name '{out_name}' not available." +
+                             "A column already has that name.")
+
+        out = self._obj[list(self._obj.columns)]
+        out[out_name] = result[out_name]
+        return out
+
+
+    def plot_sequence(self, rgb, view_time_zone="America/Mexico_city", xticks=10,
+                      yticks=10, ylabel="Frequency (kHz)", xlabel="Time",
+                      time_format='%H:%M:%S', ax=None):
+        if "abs_start_time" not in self._obj.columns or "abs_end_time" not in self._obj.columns:
+            print("Generating time reference...")
+            df = self.add_absolute_time()
+        else:
+            df = self._obj
+
+        utc_zone = pytz.timezone("UTC")
+        local_zone = pytz.timezone(view_time_zone)
+        if ax is None:
+            fig, ax = plt.subplots()
+
+        nfreqs = df["max_freq"].unique().size
+        min_t = df["abs_start_time"].min()
+        max_t = df["abs_end_time"].max()
+        max_f = df["max_freq"].max()
+        min_f = df["min_freq"].min()
+
+        snd_matrix = np.flip(np.reshape(df.sort_values(by=["max_freq", "abs_start_time"])[rgb].values, [nfreqs,-1,3]),axis=0)
+
+        ntimes = snd_matrix.shape[1]
+
+        max_feature_spec = np.amax(snd_matrix, axis=(0,1))
+        min_feature_spec = np.amin(snd_matrix, axis=(0,1))
+        norm_feature_spec = (snd_matrix - min_feature_spec)/(max_feature_spec - min_feature_spec)
+
+        ax.imshow(np.flip(norm_feature_spec, axis=0), aspect="auto")
+        tstep = float(ntimes)/xticks
+        ax.set_xticks(np.arange(0,ntimes+tstep,tstep))
+        tlabel_step = (max_t - min_t) / xticks
+        ax.set_xticklabels([utc_zone.localize(min_t+tlabel_step*i).astimezone(local_zone).strftime(format=time_format)
+                           for i in range(xticks)]+[utc_zone.localize(max_t).astimezone(local_zone).strftime(format=time_format)])
+
+        ax.invert_yaxis()
+        fstep = float(nfreqs)/yticks
+        ax.set_yticks(np.arange(0,nfreqs+fstep,fstep))
+        flabel_step = float(max_f-min_f)/yticks
+        yticklabels = ["{:.2f}".format(x) for x in list(np.arange(min_f/1000,(max_f+flabel_step)/1000,flabel_step/1000))]
+        ax.set_yticklabels(yticklabels)
+
+        ax.set_ylabel(ylabel)
+        ax.set_xlabel(xlabel)
+
+        return ax
 
     def plot(self, group_col=None, crono_conf=None, ax=None, **kwargs):
         """Plot soundscape in various presentations."""

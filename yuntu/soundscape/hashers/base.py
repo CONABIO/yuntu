@@ -3,6 +3,7 @@ from abc import ABC
 from abc import abstractmethod
 
 class Hasher(ABC):
+    name = "hasher"
     columns = "__all__"
 
     @abstractmethod
@@ -33,6 +34,7 @@ class Hasher(ABC):
 
 
 class GenericHasher(Hasher, ABC):
+    name = "generic_hasher"
     def __init__(self, hash_method, unhash_method=None, columns="__all__"):
         if not hasattr(hash_method, "__call__"):
             raise ValueError("Argument 'hash_method' must"
