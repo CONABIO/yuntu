@@ -1,7 +1,7 @@
 from yuntu.core.pipeline.base import Pipeline
 from yuntu.core.pipeline.places.extended import place
 from yuntu.soundscape.transitions.probe_trans import bag_recordings
-from yuntu.soundscape.transitions.probe_trans import probe_bagged
+from yuntu.soundscape.transitions.probe_trans import probe_recordings
 
 class ProbeDataframe(Pipeline):
     """Pipeline to apply probe using dask."""
