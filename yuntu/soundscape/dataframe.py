@@ -101,11 +101,9 @@ class SoundscapeAccessor:
 
     def plot_sequence(self, rgb, view_time_zone="America/Mexico_city", xticks=10,
                       yticks=10, ylabel="Frequency", xlabel="Time", interpolation="bilinear",
-                      time_format='%H:%M:%S', keep_timing=False, ax=None):
+                      time_format='%H:%M:%S', ax=None):
         if "abs_start_time" not in self._obj.columns or "abs_end_time" not in self._obj.columns:
             df = self.add_absolute_time()
-            if keep_timing:
-                self._obj = df
         else:
             df = self._obj
 
@@ -157,23 +155,18 @@ class SoundscapeAccessor:
         time_unit = cycle_config["time_unit"]
         all_hashes = list(np.arange(0, time_module))
 
-        keep_hash = False
         do_hash = False
         if hash_col is None:
             hash_name = "crono_hasher"
             do_hash = True
         elif hash_col not in self._obj.columns:
             hash_name = hash_col
-            keep_hash = True
             do_hash = True
 
         df = self._obj
         if do_hash:
             hasher = CronoHasher(**cycle_config)
             hashed_df = df.soundscape.add_hash(hasher, out_name=hash_name)
-            if keep_hash:
-                print(f"Keeping hash with column name '{hash_name}'")
-                self._obj = hashed_df
         else:
             hashed_df = df
 
