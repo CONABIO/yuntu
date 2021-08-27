@@ -13,12 +13,14 @@ TIME_MODULE = 24
 TIME_COLUMN = "time_raw"
 TIME_FORMAT_COLUMN = "time_format"
 TIME_ZONE_COLUMN = "time_zone"
+TIME_UTC_COLUMN = None
 AWARE_START = aware_time(TIME_START, TIME_ZONE, TIME_FORMAT)
 
 DEFAULT_HASHER_CONFIG = {
     "time_column": TIME_COLUMN,
     "tzone_column": TIME_ZONE_COLUMN,
     "format_column": TIME_FORMAT_COLUMN,
+    "time_utc_column": TIME_UTC_COLUMN,
     "aware_start": AWARE_START,
     "start_time": TIME_START,
     "start_tzone": TIME_ZONE,
@@ -33,6 +35,7 @@ class CronoHasher(Hasher):
                  time_column=TIME_COLUMN,
                  tzone_column=TIME_ZONE_COLUMN,
                  format_column=TIME_FORMAT_COLUMN,
+                 time_utc_column=TIME_UTC_COLUMN,
                  aware_start=AWARE_START,
                  start_time=TIME_START,
                  start_tzone=TIME_ZONE,
@@ -74,6 +77,7 @@ class CronoHasher(Hasher):
         self.time_column = time_column
         self.tzone_column = tzone_column
         self.format_column = format_column
+        self.time_utc_column = time_utc_column
         self.columns = [time_column, tzone_column, format_column]
         self.time_unit = time_unit
         self.time_module = time_module
@@ -82,11 +86,14 @@ class CronoHasher(Hasher):
 
     def hash(self, row, out_name="crono_hash"):
         """Return rotating integer hash according to unit, module and start."""
-        strtime = row[self.time_column]
-        timezone = row[self.tzone_column]
-        timeformat = row[self.format_column]
+        if self.time_utc_column is None:
+            strtime = row[self.time_column]
+            timezone = row[self.tzone_column]
+            timeformat = row[self.format_column]
+            atime = aware_time(strtime, timezone, timeformat)
+        else:
+            atime = row[self.time_utc_column]
 
-        atime = aware_time(strtime, timezone, timeformat)
         delta_from_start = atime - self.start
 
         remainder = delta_from_start % self.module
