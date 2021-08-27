@@ -1,4 +1,5 @@
 """Audio dataframe base classes"""
+import os
 import pandas as pd
 from dask import delayed
 import dask.dataframe.extensions
@@ -173,8 +174,7 @@ class AudioAccessor:
         self.id_column = new_column
 
     def apply_probe(self, probe_config, name="apply_probe", work_dir="/tmp", persist=True,
-                    read=True, npartitions=1, client=None, show_progress=True,
-                    **kwargs):
+                    read=True, npartitions=1, client=None, show_progress=True,**kwargs):
         """Apply probe and return matches."""
         pipeline = ProbeDataframe(name=name,
                                   work_dir=work_dir,
