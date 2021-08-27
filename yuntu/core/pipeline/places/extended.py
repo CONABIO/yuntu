@@ -341,7 +341,7 @@ class DaskDataFramePlace(Place, DaskDataFrameMixin):
             raise ValueError(message)
         try:
             df = dd.read_parquet(path)
-        else:
+        except:
             df = dd.read_parquet(path, engine="pyarrow")
         return df
 
