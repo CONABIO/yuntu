@@ -109,7 +109,7 @@ def aware_time(strtime, tzone, time_format):
     return dtime
 
 def from_timestamp(timestamp, tzone):
-    dtime = datetime.datetime.fromtimestamp(timestamp)
+    dtime = timestamp.to_pydatetime()
     if dtime.tzinfo is None or dtime.tzinfo.utcoffset(dtime) is None:
         tzobj = pytz.timezone(tzone)
         dtime = tzobj.localize(dtime)
