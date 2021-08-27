@@ -74,7 +74,7 @@ class SoundscapeAccessor:
 
     def add_absolute_time(self):
         """Add absolute reference from UTC time"""
-        print("Generating time reference...")
+        print("Generating absolute time reference...")
         out = self._obj[list(self._obj.columns)]
         out["abs_start_time"] = self._obj.apply(lambda x: absolute_timing(x["time_utc"], x["start_time"]), axis=1)
         out["abs_end_time"] = self._obj.apply(lambda x: absolute_timing(x["time_utc"], x["end_time"]), axis=1)
@@ -96,8 +96,8 @@ class SoundscapeAccessor:
 
         out = self._obj[list(self._obj.columns)]
         out[out_name] = result[out_name]
+        out[f"{out_name}_time"] = hasher.unhash(out[out_name])
         return out
-
 
     def plot_sequence(self, rgb, view_time_zone="America/Mexico_city", xticks=10,
                       yticks=10, ylabel="Frequency", xlabel="Time", interpolation="bilinear",
@@ -174,16 +174,15 @@ class SoundscapeAccessor:
 
         missing_hashes = [x for x in all_hashes if x not in list(hashed_df[hash_name].unique())]
         nfreqs = hashed_df["max_freq"].unique().size
-        hashed_df["unhashed_time"] = hashed_df[hash_name].apply(hasher.unhash)
-        min_t =  hashed_df["unhashed_time"].min()
-        max_t =  hashed_df["unhashed_time"].max()
+        min_t =  hashed_df[f"{hash_col}_time"].min()
+        max_t =  hashed_df[f"{hash_col}_time"].max()
         max_f = df["max_freq"].max()
         min_f = df["min_freq"].min()
 
-        snd_matrix = (np.flip(np.reshape(hashed_df[["max_freq", "unhashed_time"]+rgb]
-                                         .groupby(by=["max_freq", "unhashed_time"], as_index=False)
+        snd_matrix = (np.flip(np.reshape(hashed_df[["max_freq", f"{hash_col}_time"]+rgb]
+                                         .groupby(by=["max_freq", f"{hash_col}_time"], as_index=False)
                                          .mean()
-                                         .sort_values(by=["max_freq", "unhashed_time"])[rgb].values, [nfreqs,-1,3]),axis=0))
+                                         .sort_values(by=["max_freq", f"{hash_col}_time"])[rgb].values, [nfreqs,-1,3]),axis=0))
         ntimes = snd_matrix.shape[1]
 
         max_feature_spec = np.amax(snd_matrix, axis=(0,1))
