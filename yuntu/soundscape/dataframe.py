@@ -96,7 +96,7 @@ class SoundscapeAccessor:
 
         out = self._obj[list(self._obj.columns)]
         out[out_name] = result[out_name]
-        out[f"{out_name}_time"] = hasher.unhash(out[out_name])
+        out[f"{out_name}_time"] = out[out_name].apply(hasher.unhash)
         return out
 
     def plot_sequence(self, rgb, view_time_zone="America/Mexico_city", xticks=10,
