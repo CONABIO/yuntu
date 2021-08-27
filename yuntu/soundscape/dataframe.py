@@ -156,12 +156,14 @@ class SoundscapeAccessor:
         all_hashes = list(np.arange(0, time_module))
 
         do_hash = False
+        hash_name = "crono_hasher"
         if hash_col is None:
-            hash_name = "crono_hasher"
             do_hash = True
-        elif hash_col not in self._obj.columns:
+        elif hash_col not in list(self._obj.columns):
             hash_name = hash_col
             do_hash = True
+        else:
+            hash_name = hash_col
 
         df = self._obj
         if do_hash:
