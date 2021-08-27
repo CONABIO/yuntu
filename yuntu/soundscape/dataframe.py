@@ -174,15 +174,15 @@ class SoundscapeAccessor:
 
         missing_hashes = [x for x in all_hashes if x not in list(hashed_df[hash_name].unique())]
         nfreqs = hashed_df["max_freq"].unique().size
-        min_t =  hashed_df[f"{hash_col}_time"].min()
-        max_t =  hashed_df[f"{hash_col}_time"].max()
+        min_t =  hashed_df[f"{hash_name}_time"].min()
+        max_t =  hashed_df[f"{hash_name}_time"].max()
         max_f = df["max_freq"].max()
         min_f = df["min_freq"].min()
 
-        snd_matrix = (np.flip(np.reshape(hashed_df[["max_freq", f"{hash_col}_time"]+rgb]
-                                         .groupby(by=["max_freq", f"{hash_col}_time"], as_index=False)
+        snd_matrix = (np.flip(np.reshape(hashed_df[["max_freq", f"{hash_name}_time"]+rgb]
+                                         .groupby(by=["max_freq", f"{hash_name}_time"], as_index=False)
                                          .mean()
-                                         .sort_values(by=["max_freq", f"{hash_col}_time"])[rgb].values, [nfreqs,-1,3]),axis=0))
+                                         .sort_values(by=["max_freq", f"{hash_name}_time"])[rgb].values, [nfreqs,-1,3]),axis=0))
         ntimes = snd_matrix.shape[1]
 
         max_feature_spec = np.amax(snd_matrix, axis=(0,1))
