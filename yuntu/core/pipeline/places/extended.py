@@ -339,7 +339,11 @@ class DaskDataFramePlace(Place, DaskDataFrameMixin):
         if not os.path.exists(path):
             message = "No persisted data at path."
             raise ValueError(message)
-        return dd.read_parquet(path)
+        try:
+            df = dd.read_parquet(path)
+        else:
+            df = dd.read_parquet(path, engine="pyarrow")
+        return df
 
     def get_persist_path(self):
         if self.key is None:
