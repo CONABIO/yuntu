@@ -15,6 +15,17 @@ TIME_FORMAT_COLUMN = "time_format"
 TIME_ZONE_COLUMN = "time_zone"
 AWARE_START = aware_time(TIME_START, TIME_ZONE, TIME_FORMAT)
 
+DEFAULT_HASHER_CONFIG = {
+    "time_column": TIME_COLUMN,
+    "tzone_column": TIME_ZONE_COLUMN,
+    "format_column": TIME_FORMAT_COLUMN,
+    "aware_start": AWARE_START,
+    "start_time": TIME_START,
+    "start_tzone": TIME_ZONE,
+    "start_format": TIME_FORMAT,
+    "time_unit": TIME_UNIT,
+    "time_module": TIME_MODULE
+}
 
 class CronoHasher(Hasher):
     name = "crono_hasher"

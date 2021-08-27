@@ -5,8 +5,14 @@ import pytz
 from yuntu.soundscape.utils import absolute_timing
 from yuntu.soundscape.hashers.base import Hasher
 from yuntu.soundscape.hashers.crono import CronoHasher
-
+from yuntu.soundscape.hashers.crono import DEFAULT_HASHER_CONFIG
 import matplotlib.dates as mdates
+
+import pytz
+import numpy as np
+import datetime
+
+
 ID = 'id'
 START_TIME = 'start_time'
 END_TIME = 'end_time'
@@ -68,6 +74,7 @@ class SoundscapeAccessor:
 
     def add_absolute_time(self):
         """Add absolute reference from UTC time"""
+        print("Generating time reference...")
         out = self._obj[list(self._obj.columns)]
         out["abs_start_time"] = self._obj.apply(lambda x: absolute_timing(x["time_utc"], x["start_time"]), axis=1)
         out["abs_end_time"] = self._obj.apply(lambda x: absolute_timing(x["time_utc"], x["end_time"]), axis=1)
@@ -75,6 +82,7 @@ class SoundscapeAccessor:
 
     def add_hash(self, hasher, out_name="xhash"):
         """Add row hasher"""
+        print("Hashing dataframe...")
         if not hasher.validate(self._obj):
             str_cols = str(hasher.columns)
             message = ("Input dataframe is incompatible with hasher."
@@ -95,7 +103,6 @@ class SoundscapeAccessor:
                       yticks=10, ylabel="Frequency (kHz)", xlabel="Time",
                       time_format='%H:%M:%S', ax=None):
         if "abs_start_time" not in self._obj.columns or "abs_end_time" not in self._obj.columns:
-            print("Generating time reference...")
             df = self.add_absolute_time()
         else:
             df = self._obj
@@ -138,8 +145,72 @@ class SoundscapeAccessor:
 
         return ax
 
-    def plot(self, group_col=None, crono_conf=None, ax=None, **kwargs):
-        """Plot soundscape in various presentations."""
-        if not self._is_crono and crono_conf is not None:
-            raise ValueError("This soundscape is not cronological.")
-        pass
+
+    def plot_cycle(self, rgb, hash_col=None, cycle_config=DEFAULT_HASHER_CONFIG, aggr="mean", xticks=10,
+                   yticks=10, ylabel="Frequency (kHz)", xlabel="Time",
+                   time_format='%H:%M:%S', ax=None):
+        """Plot soundscape according to cycle configs."""
+
+        time_module = cycle_config["time_module"]
+        time_unit = cycle_config["time_unit"]
+        all_hashes = list(np.arange(0, time_module))
+
+        do_hash = False
+        if hash_col is None:
+            hash_name = "crono_hasher"
+            do_hash = True
+        elif hash_col not in self._obj.columns:
+            hash_name = hash_col
+            do_hash = True
+
+        df = self._obj
+        if do_hash:
+            hasher = CronoHasher(**cycle_config)
+            hashed_df = df.soundscape.add_hash(hasher, out_name="crono_hasher")
+        else:
+            hashed_df = df
+
+        missing_hashes = [x for x in all_hashes if x not in list(hashed_df[hash_name].unique())]
+        nfreqs = hashed_df["max_freq"].unique().size
+        hashed_df["unhashed_time"] = hashed_df[hash_name].apply(hasher.unhash)
+        min_t =  hashed_df["unhashed_time"].min()
+        max_t =  hashed_df["unhashed_time"].max()
+        max_f = df["max_freq"].max()
+        min_f = df["min_freq"].min()
+
+        snd_matrix = (np.flip(np.reshape(hashed_df[["max_freq", "unhashed_time"]+rgb]
+                                         .groupby(by=["max_freq", "unhashed_time"], as_index=False)
+                                         .mean()
+                                         .sort_values(by=["max_freq", "unhashed_time"])[rgb].values, [nfreqs,-1,3]),axis=0))
+        ntimes = snd_matrix.shape[1]
+
+        max_feature_spec = np.amax(snd_matrix, axis=(0,1))
+        min_feature_spec = np.amin(snd_matrix, axis=(0,1))
+        norm_feature_spec = (snd_matrix - min_feature_spec)/(max_feature_spec - min_feature_spec)
+
+        # Fill missing units
+        null_arr = np.empty([nfreqs,3])
+        null_arr[:,:] = np.NaN
+        for x in missing_hashes:
+            norm_feature_spec = np.insert(norm_feature_spec, x+1, null_arr, 1)
+
+        ax.imshow(np.flip(norm_feature_spec, axis=0), aspect="auto")
+        tstep = float(time_module)/xticks
+        ax.set_xticks(np.arange(0,time_module,tstep))
+        tlabel_step = datetime.timedelta(seconds=time_unit)*time_module / xticks
+        start_tzone = pytz.timezone(cycle_config["start_tzone"])
+
+        ax.set_xticklabels([(min_t+tlabel_step*i).strftime(format=time_format)
+                           for i in range(xticks)])
+
+        ax.invert_yaxis()
+        fstep = float(nfreqs)/yticks
+        ax.set_yticks(np.arange(0,nfreqs+fstep,fstep))
+        flabel_step = float(max_f-min_f)/yticks
+        yticklabels = ["{:.2f}".format(x) for x in list(np.arange(min_f/1000,(max_f+flabel_step)/1000,flabel_step/1000))]
+        ax.set_yticklabels(yticklabels)
+
+        ax.set_ylabel(ylabel)
+        ax.set_xlabel(xlabel)
+
+        return ax
