@@ -182,7 +182,7 @@ class AudioAccessor:
                                   probe_config=probe_config,
                                   **kwargs)
         if read:
-            tpath = os.path.join(workdir, name, "persist", "matches.parquet")
+            tpath = os.path.join(work_dir, name, "persist", "matches.parquet")
             if not os.path.exists(tpath):
                 raise ValueError(f"Cannot read matches. Target file {tpath} does not exist.")
             print("Reading matches from file...")
@@ -214,7 +214,7 @@ class AudioAccessor:
                               recordings=self._obj,
                               **kwargs)
         if read:
-            tpath = os.path.join(workdir, name, "persist", "soundscape.parquet")
+            tpath = os.path.join(work_dir, name, "persist", "soundscape.parquet")
             if not os.path.exists(tpath):
                 raise ValueError(f"Cannot read soundscape. Target file {tpath} does not exist.")
             print("Reading soundscape from file...")
