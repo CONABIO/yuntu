@@ -174,7 +174,7 @@ class AudioAccessor:
         self.id_column = new_column
 
     def apply_probe(self, probe_config, name="apply_probe", work_dir="/tmp", persist=True,
-                    read=True, npartitions=1, client=None, show_progress=True,**kwargs):
+                    read=False, npartitions=1, client=None, show_progress=True,**kwargs):
         """Apply probe and return matches."""
         pipeline = ProbeDataframe(name=name,
                                   work_dir=work_dir,
@@ -206,7 +206,7 @@ class AudioAccessor:
 
 
     def get_soundscape(self, name="get_soundscape", work_dir="/tmp", persist=True,
-                       read=True, npartitions=1, client=None, show_progress=True,
+                       read=False, npartitions=1, client=None, show_progress=True,
                        **kwargs):
         """Apply indices and produce soundscape."""
         pipeline = Soundscape(name=name,

@@ -24,7 +24,7 @@ def read_requirements():
 if sys.version[:3] == '3.6':
     install_requires = read_requirements()
 else:
-    install_requires = ['numpy<1.20.1',
+    install_requires = ['numpy',
                         'psycopg2',
                         'pony',
                         'dill',
