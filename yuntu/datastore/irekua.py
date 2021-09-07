@@ -84,6 +84,7 @@ class IrekuaDatastore(RemoteStorage):
 
     def get_metadata(self):
         meta = {
+            "type": "IrekuaDatastore",
             "dir_path": self.dir_path,
             "metadata_url": self.metadata_url
         }

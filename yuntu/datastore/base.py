@@ -105,3 +105,30 @@ class RemoteStorage(Storage, ABC):
         """Register this datastore into the collection."""
         return collection.db_manager.models.remote_storage(metadata=self.metadata,
                                                            dir_path=self.dir_path)
+
+class DataBaseStore(Datastore, ABC):
+
+    def __init__(self, db_config, query, mapping, base_dir=None):
+        super().__init__()
+        self.db_config = db_config
+        self.query = query
+        self.where = where
+
+        if base_dir is not None:
+            self.base_dir = base_dir
+
+        self.mapping = mapping
+
+    @abstractmethod
+    def fetch(self):
+        """Fetch a number of records and return an iterator"""
+
+    def iter(self):
+        for datum in self.fetch():
+            return self.prepare_datum(datum)
+
+    def get_metadata(self):
+        meta = {"type": "DataBaseStore"}
+        meta["db_config"] = self.db_config
+        meta["query"] = self.query
+        return meta

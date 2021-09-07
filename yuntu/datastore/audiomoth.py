@@ -183,7 +183,7 @@ class AudioMothDatastore(Storage):
         return []
 
     def get_metadata(self):
-        meta = {}
+        meta = {"type": "AudioMothDatastore"}
         for fname in glob.glob(os.path.join(self.dir_path, '*.WAV')):
             header = read_am_header(fname)
             comment = header['icmt']['comment'].decode('utf-8').rstrip('\x00')

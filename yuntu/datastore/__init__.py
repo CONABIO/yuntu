@@ -6,5 +6,6 @@ from . import irekua
 __all__ = [
     'audiomoth',
     'irekua',
+    'postgresql',
     'base'
 ]

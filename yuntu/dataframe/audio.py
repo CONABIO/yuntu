@@ -174,7 +174,8 @@ class AudioAccessor:
         self.id_column = new_column
 
     def apply_probe(self, probe_config, name="apply_probe", work_dir="/tmp", persist=True,
-                    read=False, npartitions=1, client=None, show_progress=True,**kwargs):
+                    read=False, npartitions=1, client=None, show_progress=True,
+                    compute=True, **kwargs):
         """Apply probe and return matches."""
         pipeline = ProbeDataframe(name=name,
                                   work_dir=work_dir,
@@ -192,22 +193,23 @@ class AudioAccessor:
                     .apply(lambda row: parse_json(row, ["labels", "metadata"]), axis=1))
 
         pipeline["matches"].persist = persist
-        print("Applying probe...")
+        if compute:
+            print("Applying probe...")
 
-        if show_progress:
-            with ProgressBar():
+            if show_progress:
+                with ProgressBar():
+                    df = pipeline["matches"].compute(client=client,
+                                                     feed={"npartitions": npartitions})
+            else:
                 df = pipeline["matches"].compute(client=client,
                                                  feed={"npartitions": npartitions})
-        else:
-            df = pipeline["matches"].compute(client=client,
-                                             feed={"npartitions": npartitions})
 
-        return df.apply(lambda row: parse_json(row, ["labels", "metadata"]), axis=1)
-
+            return df.apply(lambda row: parse_json(row, ["labels", "metadata"]), axis=1)
+        return pipeline["matches"].future(client=client, feed={"npartitions": npartitions})
 
     def get_soundscape(self, name="get_soundscape", work_dir="/tmp", persist=True,
                        read=False, npartitions=1, client=None, show_progress=True,
-                       **kwargs):
+                       compute=True, **kwargs):
         """Apply indices and produce soundscape."""
         pipeline = Soundscape(name=name,
                               work_dir=work_dir,
@@ -221,17 +223,18 @@ class AudioAccessor:
             return pipeline["soundscape"].read().compute()
 
         pipeline["soundscape"].persist = persist
-
-        print("Computing soundscape...")
-        if show_progress:
-            with ProgressBar():
+        if compute:
+            print("Computing soundscape...")
+            if show_progress:
+                with ProgressBar():
+                    df = pipeline["soundscape"].compute(client=client,
+                                                        feed={"npartitions": npartitions})
+            else:
                 df = pipeline["soundscape"].compute(client=client,
                                                     feed={"npartitions": npartitions})
-        else:
-            df = pipeline["soundscape"].compute(client=client,
-                                                feed={"npartitions": npartitions})
 
-        return df
+            return df
+        return pipeline["soundscape"].future(client=client, feed={"npartitions": npartitions})
 
 
 def dask_wrapper(func):
