@@ -112,7 +112,6 @@ class DataBaseStore(Datastore, ABC):
         super().__init__()
         self.db_config = db_config
         self.query = query
-        self.where = where
 
         if base_dir is not None:
             self.base_dir = base_dir
