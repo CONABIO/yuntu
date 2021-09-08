@@ -4,6 +4,7 @@ import json
 import shutil
 import numpy as np
 from pony.orm import db_session
+import dask.bag
 
 from yuntu.utils import module_object
 from yuntu import Audio
@@ -163,8 +164,8 @@ def bag_recordings(recordings, npartitions):
     if recordings.empty:
         raise ValueError("Recordings dataframe has no data.")
 
-    return db.from_sequence(recordings.to_dict(orient="records"),
-                            npartitions=npartitions)
+    return dask.bag.from_sequence(recordings.to_dict(orient="records"),
+                                  npartitions=npartitions)
 
 @transition(name="probe_recordings", outputs=["matches"], persist=True,
             signature=((DynamicPlace, DictPlace, ScalarPlace), (DaskDataFramePlace,)))
