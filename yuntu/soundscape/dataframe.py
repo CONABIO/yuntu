@@ -2,10 +2,12 @@
 import numpy as np
 import pandas as pd
 import pytz
+from dask.diagnostics import ProgressBar
 from yuntu.soundscape.utils import absolute_timing
 from yuntu.soundscape.hashers.base import Hasher
 from yuntu.soundscape.hashers.crono import CronoHasher
 from yuntu.soundscape.hashers.crono import DEFAULT_HASHER_CONFIG
+from yuntu.soundscape.pipelines.build_soundscape import HashSoundscape, AbsoluteTimeSoundscape
 import matplotlib.dates as mdates
 
 import pytz
@@ -80,9 +82,72 @@ class SoundscapeAccessor:
         out["abs_end_time"] = self._obj.apply(lambda x: absolute_timing(x["time_utc"], x["end_time"]), axis=1)
         return out
 
+    def apply_absolute_time(self, name="apply_absolute_time", work_dir="/tmp", persist=True,
+                            read=False, npartitions=1, client=None, show_progress=True,
+                            compute=True, time_col="start_time", out_name="abs_start_time", **kwargs):
+        """Add absolute reference from UTC time"""
+        print("Generating absolute time reference...")
+        pipeline = AbsoluteTimeSoundscape(name=name,
+                                          work_dir=work_dir,
+                                          soundscape_pd=self._obj,
+                                          time_col=time_col,
+                                          out_name=out_name,
+                                          **kwargs)
+        if read:
+            tpath = os.path.join(work_dir, name, "persist", "absolute_timed_soundscape.parquet")
+            if not os.path.exists(tpath):
+                raise ValueError(f"Cannot read soundscape. Target file {tpath} does not exist.")
+            print("Reading soundscape from file...")
+            return pipeline["absolute_timed_soundscape"].read().compute()
+
+        pipeline["absolute_timed_soundscape"].persist = persist
+        if compute:
+            print("Computing soundscape...")
+            if show_progress:
+                with ProgressBar():
+                    df = pipeline["absolute_timed_soundscape"].compute(client=client,
+                                                                       feed={"npartitions": npartitions})
+            else:
+                df = pipeline["absolute_timed_soundscape"].compute(client=client,
+                                                                   feed={"npartitions": npartitions})
+
+            return df
+        return pipeline["absolute_timed_soundscape"].future(client=client, feed={"npartitions": npartitions})
+
+    def apply_hash(self, name="apply_hash", work_dir="/tmp", persist=True,
+                   read=False, npartitions=1, client=None, show_progress=True,
+                   compute=True, **kwargs):
+        """Apply indices and produce soundscape."""
+        print("Hashing dataframe...")
+        pipeline = HashSoundscape(name=name,
+                                  work_dir=work_dir,
+                                  soundscape_pd=self._obj,
+                                  **kwargs)
+        if read:
+            tpath = os.path.join(work_dir, name, "persist", "hashed_soundscape.parquet")
+            if not os.path.exists(tpath):
+                raise ValueError(f"Cannot read soundscape. Target file {tpath} does not exist.")
+            print("Reading soundscape from file...")
+            return pipeline["hashed_soundscape"].read().compute()
+
+        pipeline["hashed_soundscape"].persist = persist
+        if compute:
+            print("Computing soundscape...")
+            if show_progress:
+                with ProgressBar():
+                    df = pipeline["hashed_soundscape"].compute(client=client,
+                                                               feed={"npartitions": npartitions})
+            else:
+                df = pipeline["hashed_soundscape"].compute(client=client,
+                                                           feed={"npartitions": npartitions})
+
+            return df
+        return pipeline["hashed_soundscape"].future(client=client, feed={"npartitions": npartitions})
+
     def add_hash(self, hasher, out_name="xhash"):
         """Add row hasher"""
         print("Hashing dataframe...")
+        pipeine = HashSoundscape
         if not hasher.validate(self._obj):
             str_cols = str(hasher.columns)
             message = ("Input dataframe is incompatible with hasher."
@@ -153,7 +218,8 @@ class SoundscapeAccessor:
 
         time_module = cycle_config["time_module"]
         time_unit = cycle_config["time_unit"]
-        all_hashes = list(np.arange(0, time_module))
+        max_hash = self._obj[hash_col].max()
+        all_hashes = list(np.arange(0, max_hash+1))
 
         do_hash = False
         hash_name = "crono_hasher"

@@ -19,7 +19,7 @@ from yuntu.core.pipeline.places import *
 from yuntu.core.pipeline.transitions.decorators import transition
 from yuntu.soundscape.utils import slice_windows
 from yuntu.soundscape.hashers.base import Hasher
-from yuntu.soundscape.dataframe import SoundscapeAccessor
+from yuntu.soundscape.utils import absolute_timing
 
 
 def get_fragment_size(col_config, query):
@@ -47,6 +47,17 @@ def insert_datastore(dstore_config, col_config):
             "recording_inserts": recording_inserts,
             "annotation_inserts": annotation_inserts}
 
+def apply_absolute_time(row, time_col, out_name):
+    new_row = {}
+    new_row[out_name] = absolute_timing(row["time_utc"], row[time_col])
+    return pd.Series(new_row)
+
+def unash_hash(row, unhash, hash_col):
+    uhash = unhash(row[hash_col])
+    new_row = {}
+    new_row[f"{hash_col}_time"] = uhash
+    return pd.Series(new_row)
+
 @transition(name='add_hash', outputs=["hashed_soundscape"],
             keep=True, persist=True, is_output=True,
             signature=((DaskDataFramePlace, PickleablePlace, ScalarPlace),
@@ -66,8 +77,23 @@ def add_hash(dataframe, hasher_config, out_name="xhash"):
     result = dataframe.apply(hasher, out_name=out_name, meta=meta, axis=1)
     dataframe[out_name] = result[out_name]
 
+    meta2 = [(f"{out_name}_time", np.dtype('datetime64[ns]'))]
+    result2 = dataframe.apply(unash_hash, unhash=hasher.unhash, hash_col=out_name, meta=meta2, axis=1)
+    dataframe[f"{out_name}_time"] = result2[f"{out_name}_time"]
+
     return dataframe
 
+
+@transition(name='add_absoute_time', outputs=["absolute_timed_soundscape"],
+            keep=True, persist=True, is_output=True,
+            signature=((DaskDataFramePlace, ScalarPlace, ScalarPlace),
+                       (DaskDataFramePlace, )))
+def add_absoute_time(dataframe, time_col, out_name):
+    meta = [(out_name, np.dtype('datetime64[ns]'))]
+    result = dataframe.apply(apply_absolute_time, time_col=time_col, out_name=out_name, meta=meta, axis=1)
+    dataframe[out_name] = result[out_name]
+
+    return dataframe
 
 @transition(name='as_dd', outputs=["recordings_dd"],
             signature=((PandasDataFramePlace, ScalarPlace),

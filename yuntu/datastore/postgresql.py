@@ -8,6 +8,7 @@ from abc import ABC
 from yuntu.datastore.base import DataBaseStore
 
 class PostgresqlDatastore(DataBaseStore, ABC):
+    _size = None
 
     def get_cursor(self, connection):
         return connection.cursor(cursor_factory=RealDictCursor)
@@ -15,14 +16,22 @@ class PostgresqlDatastore(DataBaseStore, ABC):
     def connect_to_db(self):
         return psycopg2.connect(**self.db_config)
 
-    def fetch(self):
+    def iter(self):
+        size = self.size
+
         connection = self.connect_to_db()
         cursor = self.get_cursor(connection)
         query = self.query
         cursor.execute(self.query)
 
-        for document in cursor:
-            yield document
+        if self.tqdm is not None:
+            with self.tqdm(total=size) as pbar:
+                for document in cursor:
+                    pbar.update(1)
+                    yield document
+        else:
+            for document in cursor:
+                yield document
 
         cursor.close()
         connection.close()
@@ -46,16 +55,19 @@ class PostgresqlDatastore(DataBaseStore, ABC):
 
     @property
     def size(self):
-        connection = psycopg2.connect(**self.db_config)
-        cursor = connection.cursor()
-        query = self.query
-        count_query = f'SELECT count(*) FROM ({query}) as q;'
-        cursor.execute(count_query)
-        size = cursor.fetchone()[0]
-        cursor.close()
-        connection.close()
+        if self._size is None:
+            connection = psycopg2.connect(**self.db_config)
+            cursor = connection.cursor()
+            query = self.query
+            count_query = f'SELECT count(*) FROM ({query}) as q;'
+            cursor.execute(count_query)
+            size = cursor.fetchone()[0]
+            cursor.close()
+            connection.close()
+            
+            self._size = size
 
-        return size
+        return self._size
 
     def get_partitions(self, npartitions):
         chunk_size = int(np.ceil(self.size / npartitions))

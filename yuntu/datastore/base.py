@@ -108,7 +108,7 @@ class RemoteStorage(Storage, ABC):
 
 class DataBaseStore(Datastore, ABC):
 
-    def __init__(self, db_config, query, mapping, base_dir=None):
+    def __init__(self, db_config, query, mapping, base_dir=None, tqdm=None):
         super().__init__()
         self.db_config = db_config
         self.query = query
@@ -117,14 +117,7 @@ class DataBaseStore(Datastore, ABC):
             self.base_dir = base_dir
 
         self.mapping = mapping
-
-    @abstractmethod
-    def fetch(self):
-        """Fetch a number of records and return an iterator"""
-
-    def iter(self):
-        for datum in self.fetch():
-            return self.prepare_datum(datum)
+        self.tqdm = tqdm
 
     def get_metadata(self):
         meta = {"type": "DataBaseStore"}
