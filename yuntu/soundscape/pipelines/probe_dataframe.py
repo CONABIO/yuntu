@@ -12,8 +12,6 @@ class ProbeDataframe(Pipeline):
                  probe_config,
                  **kwargs):
 
-        if not isinstance(collection_config, dict):
-            raise ValueError("Argument 'collection_config' must be a dictionary.")
         if not isinstance(probe_config, dict):
             raise ValueError("Argument 'probe_config' must be a dictionary.")
 
