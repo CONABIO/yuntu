@@ -32,7 +32,7 @@ class RESTModel(ABC):
     def set_auth(self, auth):
         self._auth = auth
 
-    def select(self, query=None, limit=None, offset=None):
+    def select(self, query=None, limit=None, offset=None, fetch_meta=[]):
         """Request results and return"""
         # Add limits to request and traverse pages
         if limit is not None:
@@ -42,14 +42,14 @@ class RESTModel(ABC):
                 for meta in meta_arr:
                     if count > limit:
                         break
-                    parsed = self.parse(meta)
+                    parsed = self.parse(meta, fetch_meta)
                     count += 1
                     yield as_object(parsed)
         else:
             for page in self.iter_pages(query, limit, offset):
                 meta_arr = page[self.target_attr]
                 for meta in meta_arr:
-                    parsed = self.parse(meta)
+                    parsed = self.parse(meta, fetch_meta)
                     yield as_object(parsed)
 
 
@@ -58,7 +58,7 @@ class RESTModel(ABC):
         """Validate input query."""
 
     @abstractmethod
-    def iter_pages(self, query=None, limit=None, offset=None):
+    def iter_pages(self, query=None, limit=None, offset=None, fetch_meta=True):
         """Iterate rest pages and return json response"""
 
     @abstractmethod
@@ -66,5 +66,5 @@ class RESTModel(ABC):
         """Request results count"""
 
     @abstractmethod
-    def parse(self, datum):
+    def parse(self, datum, fetch_meta=True):
         """Parse incoming data to a common format"""

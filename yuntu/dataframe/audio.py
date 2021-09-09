@@ -173,7 +173,7 @@ class AudioAccessor:
     def change_id_column(self, new_column):
         self.id_column = new_column
 
-    def apply_probe(self, probe_config, name="apply_probe", work_dir="/tmp", persist=True,
+    def apply_probe(self, probe_config, batch_size=200, name="apply_probe", work_dir="/tmp", persist=True,
                     read=False, npartitions=1, client=None, show_progress=True,
                     compute=True, **kwargs):
         """Apply probe and return matches."""
@@ -181,6 +181,7 @@ class AudioAccessor:
                                   work_dir=work_dir,
                                   recordings=self._obj,
                                   probe_config=probe_config,
+                                  batch_size=batch_size,
                                   **kwargs)
         if read:
             tpath = os.path.join(work_dir, name, "persist", "matches.parquet")

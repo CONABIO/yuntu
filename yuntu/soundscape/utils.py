@@ -126,5 +126,6 @@ def absolute_timing(time_ref, seconds):
 
 def parse_json(row, columns):
     for col in columns:
-        row[col] = json.loads(row[col])
+        if isinstance(row[col], (str, bytes, bytearray)):
+            row[col] = json.loads(row[col])
     return row

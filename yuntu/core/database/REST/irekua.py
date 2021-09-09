@@ -49,7 +49,7 @@ class IrekuaRecording(RESTModel):
         if base_filter is not None:
             self.base_filter = base_filter
 
-    def parse(self, datum):
+    def parse(self, datum, fetch_meta=[]):
         """Parse audio item from irekua REST api"""
         if self.bucket is None:
             path = datum["item_file"]
@@ -71,6 +71,14 @@ class IrekuaRecording(RESTModel):
         dtime = dateutil_parse(datum["captured_on"])
         dtime_format = "%H:%M:%S %d/%m/%Y (%z)"
         dtime_raw = datetime.datetime.strftime(dtime, format=dtime_format)
+        metadata = dict(datum)
+
+        if len(fetch_meta) > 0:
+            for key in fetch_meta:
+                if key not in datum:
+                    raise ValueError(f"Key {key} is not part of metadata structure")
+                if datum[key] is not None:
+                    metadata[key] = get_sync(self._http, datum[key]["url"], auth=self.auth)[0]
 
         return {
             'id': datum['id'],
@@ -78,7 +86,7 @@ class IrekuaRecording(RESTModel):
             'hash': datum["hash"],
             'timeexp': 1,
             'media_info': media_info,
-            'metadata': datum,
+            'metadata': metadata,
             'spectrum': spectrum,
             'time_raw': dtime_raw,
             'time_format': dtime_format,
@@ -107,8 +115,16 @@ class IrekuaRecording(RESTModel):
 
     def iter_pages(self, query=None, limit=None, offset=None):
         query = self.validate_query(query)
-        npages = math.ceil(float(limit)/float(self.page_size))
+        rec_count = self.count(query)
 
+        if limit is None:
+            npages = math.ceil(float(rec_count)/float(self.page_size))
+        else:
+            npages = math.ceil(float(limit)/float(self.page_size))
+            
+        if offset is None:
+            offset = 0
+        
         for page in range(npages):
             params = {key: query[key] for key in query}
             params.update({"offset": offset + page*self.page_size,
@@ -123,6 +139,9 @@ class IrekuaRecording(RESTModel):
 
 
 class IrekuaREST(RESTManager):
+
+    def build_recordings_url(self):
+        return f"{self.api_url}collections/{self.version}/collection_items/"
 
     def build_models(self):
         """Construct all database entities."""
