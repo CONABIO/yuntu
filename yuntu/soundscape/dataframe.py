@@ -26,8 +26,7 @@ REQUIRED_SOUNDSCAPE_COLUMNS = [ID,
                                START_TIME,
                                END_TIME,
                                MAX_FREQ,
-                               MIN_FREQ,
-                               WEIGHT]
+                               MIN_FREQ]
 TIME = "time_raw"
 TIME_FORMAT = "time_format"
 TIME_ZONE = "time_zone"
