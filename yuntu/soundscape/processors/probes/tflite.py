@@ -1,4 +1,5 @@
-"""Base classes for probes that use keras models as criteria."""
+"""Base classes for probes that use tflite models as criteria."""
+import os
 from abc import ABC
 
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
