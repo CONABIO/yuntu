@@ -1,5 +1,6 @@
 """Base classes for probes that use tflite models as criteria."""
 import os
+import numpy as np
 from abc import ABC
 from yuntu.soundscape.processors.probes.base import ModelProbe
 
@@ -20,7 +21,7 @@ class TFLiteModelProbe(ModelProbe, ABC):
 
     def get_output(self, inputs, output_indices=[0]):
         for i in range(len(inputs)):
-            self.model.set_tensor(self._input_indices[i], inputs[i])
+            self.model.set_tensor(self._input_indices[i], np.array(inputs[i]["value"], dtype=inputs[i]["dtype"]))
         self.model.invoke()
         predictions = []
 
