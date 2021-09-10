@@ -1,6 +1,7 @@
 """Base classes for probes that use tflite models as criteria."""
 import os
 from abc import ABC
+from yuntu.soundscape.processors.probes.base import ModelProbe
 
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
