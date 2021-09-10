@@ -20,7 +20,7 @@ class TFLiteModelProbe(ModelProbe, ABC):
 
     def get_output(self, inputs, output_indices=[0]):
         for i in range(len(inputs)):
-            self.model.set_tensor(self._input_indices[i], np.array(inputs[i]["value"], dtype=inputs[i]["dtype"]))
+            self.model.set_tensor(self._input_indices[i], inputs[i])
         self.model.invoke()
         predictions = []
 
