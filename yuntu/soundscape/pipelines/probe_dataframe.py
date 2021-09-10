@@ -12,8 +12,6 @@ class ProbeDataframe(Pipeline):
                  probe_config,
                  **kwargs):
 
-        if not isinstance(collection_config, dict):
-            raise ValueError("Argument 'collection_config' must be a dictionary.")
         if not isinstance(probe_config, dict):
             raise ValueError("Argument 'probe_config' must be a dictionary.")
 
@@ -30,10 +28,8 @@ class ProbeDataframe(Pipeline):
         self['npartitions'] = place(data=10,
                                     name='npartitions',
                                     ptype='scalar')
-        self["batch_size"] = place(200, 'scalar', 'batch_size')
         self["probe_config"] = place(self.probe_config, 'dict', 'probe_config')
         self['recordings_bag'] = bag_recordings(self['recordings'],
                                                 self['npartitions'])
         self["matches"] = probe_recordings(self["recordings_bag"],
-                                           self["probe_config"],
-                                           self["batch_size"])
+                                           self["probe_config"])

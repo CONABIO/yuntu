@@ -52,10 +52,15 @@ def write_probe_outputs(partition, probe_config, col_config, write_config, batch
 
     return rows
 
-def probe_all(recording_rows, probe_config, batch_size):
+def probe_all(recording_rows, probe_config):
     """Run probe row by row"""
     probe_class = module_object(probe_config["module"])
     probe_kwargs = probe_config["kwargs"]
+
+    if "annotate_args" in probe_config:
+        annotate_args = probe_config["annotate_args"]
+    else:
+        annotate_args = {}
 
     all_annotations = []
     with probe_class(**probe_kwargs) as probe:
@@ -65,8 +70,17 @@ def probe_all(recording_rows, probe_config, batch_size):
             duration = row["duration"]
             timeexp = row["timeexp"]
 
+            if "meta_arg_extractor" in probe_config:
+                extractor_config = probe_config["meta_arg_extractor"]
+                if "kwargs" in extractor_config:
+                    arg_extractor = module_object(extractor_config["module"])(**extractor_config["kwargs"])
+                else:
+                    arg_extractor = module_object(extractor_config["module"])
+
+                annotate_args.update(arg_extractor(row))
+
             with Audio(path=path, timeexp=timeexp) as audio:
-                annotations = probe.annotate(audio, batch_size)
+                annotations = probe.annotate(audio, **annotate_args)
 
             for i in range(len(annotations)):
                 annotations[i]["recording"] = rid
