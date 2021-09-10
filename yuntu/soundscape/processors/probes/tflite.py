@@ -39,7 +39,7 @@ class TFLiteModelProbe(ModelProbe, ABC):
         self._input_indices = [input_details[i]["index"]
                                for i in range(len(input_details))]
         self._output_indices = [output_details[i]["index"]
-                               for i in range(len(input_details))]
+                               for i in range(len(output_details))]
 
     def clean(self):
         """Remove memory footprint."""
