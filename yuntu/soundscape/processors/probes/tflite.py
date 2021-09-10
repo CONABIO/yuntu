@@ -25,8 +25,8 @@ class TFLiteModelProbe(ModelProbe, ABC):
         self.model.invoke()
         predictions = []
 
-        for i in range(len(outputs)):
-            pred = self.model.get_tensor(self._output_indices[i])[0]
+        for i in range(len(output_indices)):
+            pred = self.model.get_tensor(self._output_indices[output_indices[i]])[0]
             predictions.append(pred)
 
         return predictions
