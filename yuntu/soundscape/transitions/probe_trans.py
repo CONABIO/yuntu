@@ -190,8 +190,8 @@ def bag_recordings(recordings, npartitions):
                                   npartitions=npartitions)
 
 @transition(name="probe_recordings", outputs=["matches"], persist=True,
-            signature=((DynamicPlace, DictPlace, ScalarPlace), (DaskDataFramePlace,)))
-def probe_recordings(recordings_bag, probe_config, batch_size):
+            signature=((DynamicPlace, DictPlace), (DaskDataFramePlace,)))
+def probe_recordings(recordings_bag, probe_config):
     """Run probe and annotate bag of recording rows."""
 
     meta = [('recording', np.dtype('int')),
@@ -205,7 +205,6 @@ def probe_recordings(recordings_bag, probe_config, batch_size):
             ('labels', np.dtype('O'))]
 
     results = recordings_bag.map(probe_all,
-                                 probe_config=probe_config,
-                                 batch_size=batch_size).flatten()
+                                 probe_config=probe_config).flatten()
 
     return results.to_dataframe(meta=meta)
