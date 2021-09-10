@@ -187,6 +187,15 @@ class Geometry(ABC):
                     data["start_time"] = start_time
                     data["end_time"] = end_time
                 del data["wkt"]
+        elif Geometry.Types.BBox == geom_class.name:
+            if "wkt" in data:
+                if "start_time" not in data or "end_time" not in data or "max_freq" not in data or "min_freq" not in data:
+                    start_time, min_freq, end_time, max_freq= shapely.wkt.loads(data["wkt"]).bounds
+                    data["start_time"] = start_time
+                    data["end_time"] = end_time
+                    data["min_freq"] = min_freq
+                    data["max_freq"] = max_freq
+                del data["wkt"]
 
         return geom_class(**data)
 

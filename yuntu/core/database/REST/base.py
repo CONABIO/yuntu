@@ -16,15 +16,19 @@ class RESTManager(ABC):
         if "bucket" in config:
             self.bucket = config["bucket"]
 
-        self.recordings_url = f"{self.api_url}items/{self.version}/items/"
+        self.recordings_url = self.build_recordings_url()
         self.models = self.build_models()
 
-    def select(self, query=None, limit=None, offset=None, model="recording"):
+    @abstractmethod
+    def build_recordings_url(self):
+        pass
+    
+    def select(self, query=None, limit=None, offset=None, model="recording", fetch_meta=[]):
         """Query entries from database."""
 
         model_class = self.get_model_class(model)
 
-        return model_class.select(query=query, limit=limit, offset=offset)
+        return model_class.select(query=query, limit=limit, offset=offset, fetch_meta=fetch_meta)
 
     def get_model_class(self, model):
         """Return model class if exists or raise error."""

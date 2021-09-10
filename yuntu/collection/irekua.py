@@ -72,11 +72,16 @@ class IrekuaRESTCollection(Collection):
             query=None,
             limit=None,
             offset=None,
-            with_metadata=False):
+            with_metadata=False,
+            fetch_meta=[]):
+        
+        if not with_metadata:
+            fetch_meta = []
 
         recordings = self.recordings(query=query,
                                      limit=limit,
-                                     offset=offset)
+                                     offset=offset,
+                                     fetch_meta=fetch_meta)
 
         records = []
         for recording in recordings:
@@ -133,9 +138,9 @@ class IrekuaRESTCollection(Collection):
         """Retrieve annotations from database."""
         pass
 
-    def recordings(self, query=None, limit=None, offset=None, iterate=True):
+    def recordings(self, query=None, limit=None, offset=None, iterate=True, fetch_meta=[]):
         """Retrieve audio objects."""
-        matches = self.db_manager.select(query, limit=limit, offset=offset, model="recording")
+        matches = self.db_manager.select(query, limit=limit, offset=offset, model="recording", fetch_meta=fetch_meta)
         if iterate:
             return matches
         return list(matches)
