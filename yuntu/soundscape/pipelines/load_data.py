@@ -1,9 +1,9 @@
 from yuntu.core.pipeline.base import Pipeline
 from yuntu.core.pipeline.places.extended import place
 
-from yuntu.soundscape.transitions.basic_trans import load_datastores
-from yuntu.soundscape.transitions.basic_trans import pg_init_database
-from yuntu.soundscape.transitions.basic_trans import source_partition
+from yuntu.soundscape.transitions.basic import load_datastores
+from yuntu.soundscape.transitions.basic import pg_init_database
+from yuntu.soundscape.transitions.basic import source_partition
 
 class DatastoreLoad(Pipeline):
     """Pipeline to initialize a collection and insert data from datastores."""

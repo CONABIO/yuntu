@@ -10,8 +10,8 @@ from yuntu.soundscape.processors.indices.direct import INFORMATION
 from yuntu.soundscape.processors.indices.direct import CORE
 from yuntu.soundscape.processors.indices.direct import TOTAL
 
-from yuntu.soundscape.transitions.basic_trans import as_dd, add_hash, add_absoute_time
-from yuntu.soundscape.transitions.index_trans import slice_features
+from yuntu.soundscape.transitions.basic import as_dd, add_hash, add_absoute_time
+from yuntu.soundscape.transitions.index import slice_features
 
 INDICES = [TOTAL(), EXAG(), INFORMATION(), CORE()]
 TIME_UNIT = 60

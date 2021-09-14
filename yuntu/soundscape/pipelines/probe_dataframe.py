@@ -1,7 +1,7 @@
 from yuntu.core.pipeline.base import Pipeline
 from yuntu.core.pipeline.places.extended import place
-from yuntu.soundscape.transitions.probe_trans import bag_recordings
-from yuntu.soundscape.transitions.probe_trans import probe_recordings
+from yuntu.soundscape.transitions.basic import bag_dataframe
+from yuntu.soundscape.transitions.probe import probe_recordings
 
 class ProbeDataframe(Pipeline):
     """Pipeline to apply probe using dask."""
@@ -29,7 +29,7 @@ class ProbeDataframe(Pipeline):
                                     name='npartitions',
                                     ptype='scalar')
         self["probe_config"] = place(self.probe_config, 'dict', 'probe_config')
-        self['recordings_bag'] = bag_recordings(self['recordings'],
-                                                self['npartitions'])
+        self['recordings_bag'] = bag_dataframe(self['recordings'],
+                                               self['npartitions'])
         self["matches"] = probe_recordings(self["recordings_bag"],
                                            self["probe_config"])

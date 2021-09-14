@@ -1,10 +1,12 @@
 """Soundscape pipelines modules."""
-from . import basic_trans
-from . import index_trans
-from . import probe_trans
+from . import basic
+from . import index
+from . import probe
+from . import activity
 
 __all__ = [
-    'basic_trans',
-    'index_trans',
-    'probe_trans'
+    'basic',
+    'index',
+    'probe'
+    'activity'
 ]

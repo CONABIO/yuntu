@@ -172,23 +172,6 @@ def probe_annotate(partitions, probe_config, col_config, batch_size):
     return results.to_dataframe(meta=meta)
 
 
-@transition(name="bag_recordings", outputs=["recordings_bag"], persist=False,
-            signature=((PandasDataFramePlace, ScalarPlace), (DynamicPlace,)))
-def bag_recordings(recordings, npartitions):
-    """Transform dataframe to dict bag."""
-    if recordings.empty:
-        raise ValueError("Recordings dataframe has no data.")
-    dict_recs = recordings
-    total = recordings.shape[0]
-    size = int(np.floor(float(total)/float(npartitions)))
-    if size <= 0:
-        raise ValueError(f"Too many partitions. Max is {total} for this dataframe.")
-
-    dict_recs = [recordings.iloc[i*size : min((i+1)*size, total)].to_dict(orient="records") for i in range(npartitions)]
-
-    return dask.bag.from_sequence(dict_recs,
-                                  npartitions=npartitions)
-
 @transition(name="probe_recordings", outputs=["matches"], persist=True,
             signature=((DynamicPlace, DictPlace), (DaskDataFramePlace,)))
 def probe_recordings(recordings_bag, probe_config):

@@ -195,3 +195,20 @@ def load_datastores(col_config, dstore_configs):
             ('annotation_inserts', np.dtype('int'))]
 
     return inserted.to_dataframe(meta=meta)
+
+
+@transition(name="bag_dataframe", outputs=["dataframe_bag"], persist=False,
+            signature=((PandasDataFramePlace, ScalarPlace), (DynamicPlace,)))
+def bag_dataframe(dataframe, npartitions):
+    """Transform dataframe to dict bag."""
+    if recordings.empty:
+        raise ValueError("Dataframe has no data.")
+    total = dataframe.shape[0]
+    size = int(np.floor(float(total)/float(npartitions)))
+    if size <= 0:
+        raise ValueError(f"Too many partitions. Max is {total} for this dataframe.")
+
+    dict_dataframe = [dataframe.iloc[i*size : min((i+1)*size, total)].to_dict(orient="records") for i in range(npartitions)]
+
+    return db.from_sequence(dict_dataframe,
+    |                       npartitions=npartitions)

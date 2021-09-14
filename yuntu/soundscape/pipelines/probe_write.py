@@ -1,8 +1,8 @@
 from yuntu.core.pipeline.base import Pipeline
 from yuntu.core.pipeline.places.extended import place
 
-from yuntu.soundscape.transitions.basic_trans import get_partitions
-from yuntu.soundscape.transitions.probe_trans import probe_write
+from yuntu.soundscape.transitions.basic import get_partitions
+from yuntu.soundscape.transitions.probe import probe_write
 
 
 class ProbeWrite(Pipeline):
