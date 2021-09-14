@@ -210,5 +210,4 @@ def bag_dataframe(dataframe, npartitions):
 
     dict_dataframe = [dataframe.iloc[i*size : min((i+1)*size, total)].to_dict(orient="records") for i in range(npartitions)]
 
-    return db.from_sequence(dict_dataframe,
-    |                       npartitions=npartitions)
+    return db.from_sequence(dict_dataframe, npartitions=npartitions)
