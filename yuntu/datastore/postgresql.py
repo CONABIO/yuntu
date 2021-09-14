@@ -5,9 +5,9 @@ from psycopg2.extras import RealDictCursor
 import psycopg2
 
 from abc import ABC
-from yuntu.datastore.base import DataBaseStore
+from yuntu.datastore.base import DataBaseDatastore
 
-class PostgresqlDatastore(DataBaseStore, ABC):
+class PostgresqlDatastore(DataBaseDatastore, ABC):
     _size = None
 
     def get_cursor(self, connection):
@@ -37,11 +37,8 @@ class PostgresqlDatastore(DataBaseStore, ABC):
         connection.close()
 
     def get_metadata(self):
-        meta = {"type": "PostgresqlDatastore"}
-        meta["db_config"] = self.db_config
-        meta["query"] = self.query
-        meta["mapping"] = self.mapping
-        meta["base_dir"] = self.base_dir
+        meta = super().get_metadata()
+        meta["type"] = "PostgresqlDatastore"
         return meta
 
     @staticmethod
@@ -64,7 +61,7 @@ class PostgresqlDatastore(DataBaseStore, ABC):
             size = cursor.fetchone()[0]
             cursor.close()
             connection.close()
-            
+
             self._size = size
 
         return self._size
