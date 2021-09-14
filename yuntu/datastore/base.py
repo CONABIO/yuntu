@@ -18,6 +18,8 @@ class Datastore(ABC):
         self.base_dir = '.'
 
     def get_abspath(self, path):
+        if base_dir is None:
+            return path
         return os.path.join(self.base_dir, path)
 
     @abstractmethod

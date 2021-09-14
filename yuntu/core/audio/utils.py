@@ -23,7 +23,7 @@ def media_open_s3(path):
 
 def media_open(path, mode='rb'):
     if path[:5] == "s3://":
-        return media_open(path)
+        return media_open_s3(path)
     return open(path, mode)
 
 def media_exists(path):
