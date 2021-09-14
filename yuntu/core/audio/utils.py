@@ -14,21 +14,17 @@ SAMPWIDTHS = {
     'PCM_U8': 1
 }
 
-def load_data_s3(path):
+def media_open_s3(path):
     from s3fs.core import S3FileSystem
     s3 = S3FileSystem()
     bucket = path.replace("s3://", "").split("/")[0]
     key = path.replace(f"s3://{bucket}/", "")
     return s3.open('{}/{}'.format(bucket, key))
 
-def binary_md5_s3(path, blocksize=65536):
-    hasher = hashlib.md5()
-    with load_data_s3(path) as media:
-        buf = media.read(blocksize)
-        while len(buf) > 0:
-            hasher.update(buf)
-            buf = media.read(blocksize)
-    return hasher.hexdigest()
+def media_open(path, mode='rb'):
+    if path[:5] == "s3://":
+        return media_open(path)
+    return open(path, mode)
 
 def media_exists(path):
     if path[:5] == "s3://":
@@ -51,7 +47,7 @@ def load_media_info_s3(path):
     else:
         raise ValueError(f"Could not retrieve size of file {path}")
 
-    audio_info = soundfile.info(load_data_s3(path))
+    audio_info = soundfile.info(media_open_s3(path))
 
     return audio_info.samplerate, audio_info.channels, audio_info.duration, audio_info.subtype, filesize
 
@@ -64,14 +60,13 @@ def load_media_info(path):
 
 def binary_md5(path, blocksize=65536):
     """Hash file by blocksize."""
-    if path[:5] == "s3://":
-        return binary_md5_s3(path, blocksize)
     if path is None:
         raise ValueError("Path is None.")
-    if not os.path.isfile(path):
+    if not media_exists(path):
         raise ValueError("Path does not exist.")
+
     hasher = hashlib.md5()
-    with open(path, "rb") as media:
+    with media_open(path, "rb") as media:
         buf = media.read(blocksize)
         while len(buf) > 0:
             hasher.update(buf)
@@ -112,7 +107,7 @@ def read_media(path,
                duration=None):
     """Read media."""
     if path[:5] == "s3://":
-        path = load_data_s3(path)
+        path = media_open_s3(path)
     return librosa.load(path,
                         sr=samplerate,
                         offset=offset,
