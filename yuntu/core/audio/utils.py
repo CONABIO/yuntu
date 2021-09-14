@@ -30,6 +30,13 @@ def binary_md5_s3(path, blocksize=65536):
             buf = media.read(blocksize)
     return hasher.hexdigest()
 
+def media_exists(path):
+    if path[:5] == "s3://":
+        from s3fs.core import S3FileSystem
+        s3 = S3FileSystem()
+        return s3.exists(path)
+    return os.path.exists(path)
+
 def load_media_info_s3(path):
     """Return media size of s3 locations."""
     from s3fs.core import S3FileSystem

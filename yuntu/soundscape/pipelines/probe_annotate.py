@@ -31,13 +31,10 @@ class ProbeAnnotate(Pipeline):
         self["col_config"] = place(self.collection_config, 'dict', 'col_config')
         self["query"] = place(self.query, 'dynamic', 'query')
         self["npartitions"] = place(1, 'scalar', 'npartitions')
-        self["batch_size"] = place(200, 'scalar', 'batch_size')
         self["probe_config"] = place(self.probe_config, 'dict', 'probe_config')
-
         self["partitions"] = get_partitions(self["col_config"],
                                             self["query"],
                                             self["npartitions"])
         self["annotation_result"] = probe_annotate(self["partitions"],
                                                    self["probe_config"],
-                                                   self["col_config"],
-                                                   self["batch_size"])
+                                                   self["col_config"])

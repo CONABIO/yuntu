@@ -92,7 +92,7 @@ def probe_all(recording_rows, probe_config):
 
     return all_annotations
 
-def insert_probe_annotations(partition, probe_config, col_config, batch_size, overwrite=False):
+def insert_probe_annotations(partition, probe_config, col_config, overwrite=False):
     """Run probe on partition and write results"""
 
     col = collection(**col_config)
@@ -107,12 +107,30 @@ def insert_probe_annotations(partition, probe_config, col_config, batch_size, ov
     probe_class = module_object(probe_config["module"])
     probe_kwargs = probe_config["kwargs"]
 
+    if "annotate_args" in probe_config:
+        annotate_args = probe_config["annotate_args"]
+    else:
+        annotate_args = {}
+
     rows = []
     count = 0
     with probe_class(**probe_kwargs) as probe:
-        for rid, path, duration, timeexp in dataframe[["id", "path", "duration", "timeexp"]].values:
+        for row in dataframe.to_dict(orient="records"):
+            rid = row["id"]
+            path = row["path"]
+            duration = row["duration"]
+            timeexp = row["timeexp"]
+
+            if "meta_arg_extractor" in probe_config:
+                extractor_config = probe_config["meta_arg_extractor"]
+                if "kwargs" in extractor_config:
+                    arg_extractor = module_object(extractor_config["module"])(**extractor_config["kwargs"])
+                else:
+                    arg_extractor = module_object(extractor_config["module"])
+                annotate_args.update(arg_extractor(row))
+
             with Audio(path=path, timeexp=timeexp) as audio:
-                annotations = probe.annotate(audio, batch_size)
+                annotations = probe.annotate(audio, **annotate_args)
 
             if len(annotations) > 0:
                 with db_session:
@@ -158,14 +176,13 @@ def probe_write(partitions, probe_config, col_config, write_config, batch_size, 
 
 
 @transition(name="probe_annotate", outputs=["annotation_result"], persist=True,
-            signature=((DynamicPlace, DictPlace, DictPlace, ScalarPlace), (DaskDataFramePlace,)))
-def probe_annotate(partitions, probe_config, col_config, batch_size):
+            signature=((DynamicPlace, DictPlace, DictPlace), (DaskDataFramePlace,)))
+def probe_annotate(partitions, probe_config, col_config):
     """Run probe and annotate recordings for each partition in parallel"""
 
     results = partitions.map(insert_probe_annotations,
                              probe_config=probe_config,
-                             col_config=col_config,
-                             batch_size=batch_size).flatten()
+                             col_config=col_config).flatten()
 
     meta = [('id', np.dtype('int')), ('annotation_inserts', np.dtype('int'))]
 
