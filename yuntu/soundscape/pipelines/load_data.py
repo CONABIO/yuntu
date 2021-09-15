@@ -26,14 +26,12 @@ class DatastoreLoad(Pipeline):
 
         super().__init__(name, **kwargs)
 
-        self.admin_config = admin_config
         self.collection_config = collection_config
         self.datastore_configs = datastore_configs
         self.build()
 
     def build(self):
-        self["init_config"] = place(self.collection_config, 'dict', 'init_config')
-        self["admin_config"] = place(self.admin_config, 'dynamic', 'admin_config')
+        self["col_config"] = place(self.collection_config, 'dict', 'col_config')
         self["datastore_configs"] = place(self.datastore_configs, 'dynamic', 'datastore_configs')
         self["insert_results"] = load_datastores(self["col_config"],
                                                  self["datastore_configs"])
