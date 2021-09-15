@@ -104,7 +104,8 @@ def hash_file(path, alg="md5"):
 def read_media(path,
                samplerate,
                offset=0.0,
-               duration=None):
+               duration=None,
+               **kwargs):
     """Read media."""
     if path[:5] == "s3://":
         path = media_open_s3(path)
@@ -112,7 +113,8 @@ def read_media(path,
                         sr=samplerate,
                         offset=offset,
                         duration=duration,
-                        mono=True)
+                        mono=True,
+                        **kwargs)
 
 def write_media(path,
                 signal,
