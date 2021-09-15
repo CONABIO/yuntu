@@ -101,7 +101,7 @@ def insert_probe_annotations(partition, probe_config, col_config, overwrite=Fals
         dataframe = col.get_recording_dataframe(query=partition["query"],
                                                 offset=partition["offset"],
                                                 limit=partition["limit"],
-                                                with_annotations=True,
+                                                with_annotations=False,
                                                 with_metadata=True)
 
     probe_class = module_object(probe_config["module"])
