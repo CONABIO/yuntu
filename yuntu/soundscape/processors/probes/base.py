@@ -1,6 +1,7 @@
 """Classes for audio probes."""
 from abc import ABC
 from abc import abstractmethod
+import datetime
 
 class Probe(ABC):
     """Base class for all probes.
@@ -54,17 +55,31 @@ class Probe(ABC):
             'probe_class': self.__class__.__name__
         }
 
-    def annotate(self,*args, **kwargs):
+    def annotate(self, target, record_time=None, **kwargs):
         """Apply probe and produce annotations"""
 
-        outputs = self.apply(*args, **kwargs)
+        outputs = self.apply(target, **kwargs)
         annotations = []
         for o in outputs:
             ann_dict = self.prepare_annotation(o)
+
             if "metadata" not in ann_dict:
                 ann_dict["metadata"] = {}
+
+            if record_time is not None:
+                start_time = ann_dict["start_time"]
+                end_time = ann_dict["end_time"]
+                abs_start_time = record_time + datetime.timedelta(seconds=start_time)
+                abs_end_time = record_time + datetime.timedelta(seconds=end_time)
+                ann_dict["metadata"]["crono_info"] = {
+                    "abs_start_time": abs_start_time,
+                    "abs_end_time": abs_end_time
+                }
+
             ann_dict["metadata"]["probe_info"] = self.info
+            ann_dict["metadata"]["probe_info"]["kwargs"] = kwargs
             annotations.append(ann_dict)
+
         return annotations
 
     def __enter__(self):
