@@ -34,8 +34,8 @@ class Soundscape(Pipeline):
     """Basic soundscape pipeline"""
 
     def __init__(self,
-                 name,
-                 recordings,
+                 name="get_soundscape",
+                 recordings=None,
                  indices=INDICES,
                  time_unit=TIME_UNIT,
                  frequency_bins=FREQUENCY_BINS,
@@ -89,8 +89,8 @@ class AbsoluteTimeSoundscape(Pipeline):
     Adds absolute timing from local reference to file.
     """
     def __init__(self,
-                 name,
-                 soundscape_pd,
+                 name="abs_time_soundscape",
+                 soundscape_pd=None,
                  time_col="start_time",
                  out_name="abs_start_time",
                  **kwargs):
@@ -128,8 +128,8 @@ class HashSoundscape(Pipeline):
     This pipeline adds a hash using a hasher config.
     """
     def __init__(self,
-                 name,
-                 soundscape_pd,
+                 name="hash_soundscape",
+                 soundscape_pd=None,
                  hasher_config=HASHER_CONFIG,
                  hash_name=HASH_NAME,
                  **kwargs):
