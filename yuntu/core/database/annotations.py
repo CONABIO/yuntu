@@ -3,6 +3,7 @@ from pony.orm import Required
 from pony.orm import Optional
 from pony.orm import PrimaryKey
 from pony.orm import Json
+from datetime import datetime
 
 
 WEAK_ANNOTATION = 'WeakAnnotation'
@@ -78,7 +79,7 @@ def build_base_annotation_model(db):
 def build_timed_annotation_model(Annotation):
     class TimedAnnotation(Annotation):
         """Datastore that builds data from a foreign database."""
-        abs_start_time = Required(datetime, precision=6)
-        abs_end_time = Required(datetime, precision=6)
+        abs_start_time = Optional(datetime, precision=6)
+        abs_end_time = Optional(datetime, precision=6)
 
     return TimedAnnotation
