@@ -13,7 +13,6 @@ class DatastoreLoad(Pipeline):
                  name,
                  datastore_configs,
                  collection_config,
-                 admin_config,
                  **kwargs):
         if not isinstance(collection_config, dict):
             raise ValueError(
@@ -36,9 +35,6 @@ class DatastoreLoad(Pipeline):
         self["init_config"] = place(self.collection_config, 'dict', 'init_config')
         self["admin_config"] = place(self.admin_config, 'dynamic', 'admin_config')
         self["datastore_configs"] = place(self.datastore_configs, 'dynamic', 'datastore_configs')
-
-        self["col_config"] = pg_init_database(self["init_config"],
-                                              self["admin_config"])
         self["insert_results"] = load_datastores(self["col_config"],
                                                  self["datastore_configs"])
 

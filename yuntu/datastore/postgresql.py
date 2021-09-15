@@ -81,9 +81,14 @@ class PostgresqlDatastore(DataBaseDatastore, ABC):
 
         partitions = []
         for n in range(npartitions):
+            meta = self.get_metadata()
+            del meta["type"]
+
             limit = chunk_size
             offset = n * chunk_size
             query = f'SELECT * FROM ({self.query}) AS foo ORDER BY id ASC LIMIT {limit} OFFSET {offset}'
-            partitions.append({"base_dir": self.base_dir, "db_config": self.db_config, "query": query, "mapping": self.mapping})
+            meta["query"] = query
+
+            partitions.append(meta)
 
         return partitions
