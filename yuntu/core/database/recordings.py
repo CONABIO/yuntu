@@ -19,8 +19,8 @@ def build_base_recording_model(db):
         """Basic recording entity for yuntu."""
         id = PrimaryKey(int, auto=True)
         datastore = Optional('Datastore')
-        path = Required(str)
-        hash = Required(str)
+        path = Required(str, unique=True)
+        hash = Required(str, unique=True)
         timeexp = Required(float)
         spectrum = Required(str)
         media_info = Required(Json)
