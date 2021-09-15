@@ -17,9 +17,6 @@ class DatastoreLoad(Pipeline):
         if not isinstance(collection_config, dict):
             raise ValueError(
                 "Argument 'collection_config' must be a dictionary.")
-        if not isinstance(admin_config, dict):
-            raise ValueError(
-                "Argument 'admin_config' must be a dictionary.")
         if not isinstance(datastore_configs, list):
             raise ValueError(
                 "Argument 'datastore_configs' must be a list.")
