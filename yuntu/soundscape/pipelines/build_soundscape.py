@@ -21,14 +21,15 @@ FEATURE_TYPE = 'spectrogram'
 FEATURE_CONFIG = {"n_fft": N_FFT,
                   "hop_length": HOP_LENGTH,
                   "window_function": WINDOW_FUNCTION}
+TIME_UTC_COLUMN = "abs_start_time"
+TIME_COL = "start_time"
 HASHER_CONFIG = {
     "module":{
         "object_name": "yuntu.soundscape.hashers.crono.CronoHasher"
     },
-    "kwargs": {}
+    "kwargs": {"time_utc_column": TIME_UTC_COLUMN}
 }
 HASH_NAME = 'crono_hash'
-
 
 class Soundscape(Pipeline):
     """Basic soundscape pipeline"""
@@ -91,13 +92,13 @@ class AbsoluteTimeSoundscape(Pipeline):
     def __init__(self,
                  name="abs_time_soundscape",
                  soundscape_pd=None,
-                 time_col="start_time",
-                 out_name="abs_start_time",
+                 time_col=TIME_COL,
+                 time_utc_column=TIME_UTC_COLUMN,
                  **kwargs):
         super().__init__(name, **kwargs)
         self.soundscape_pd = soundscape_pd
         self.time_col = time_col
-        self.out_name = out_name
+        self.time_utc_column = time_utc_column
         self.build()
 
     def build(self):
@@ -113,12 +114,12 @@ class AbsoluteTimeSoundscape(Pipeline):
         self['time_col'] = place(data=self.time_col,
                                  name='time_col',
                                  ptype='scalar')
-        self['out_name'] = place(data=self.out_name,
-                                 name="out_name",
+        self['time_utc_column'] = place(data=self.time_utc_column,
+                                 name="time_utc_column",
                                  ptype='scalar')
         self['absolute_timed_soundscape'] = add_absoute_time(self['soundscape'],
                                                              self['time_col'],
-                                                             self['out_name'])
+                                                             self['time_utc_column'])
 
 class HashSoundscape(Pipeline):
     """Hash soundscape pipeline.
@@ -149,6 +150,47 @@ class HashSoundscape(Pipeline):
                                     ptype='scalar')
         self['absolute_timed_soundscape'] = as_dd(self['absolute_timed_soundscape_pd'],
                                             self['npartitions'])
+        self['hasher_config'] = place(data=self.hasher_config,
+                                      name='hasher',
+                                      ptype='pickleable')
+        self['hash_name'] = place(data=self.hash_name,
+                                  name="hash_name",
+                                  ptype='scalar')
+        self['hashed_soundscape'] = add_hash(self['absolute_timed_soundscape'],
+                                             self['hasher_config'],
+                                             self['hash_name'])
+
+class CronoSoundscape(Soundscape):
+    """Full cronological soundscape pipeline.
+
+    Build soundscape, add absolute timing and hash.
+    """
+    def __init__(self,
+                 name="full_soundscape",
+                 time_col=TIME_COL,
+                 time_utc_column=TIME_UTC_COLUMN,
+                 hasher_config=HASHER_CONFIG,
+                 hash_name=HASH_NAME,
+                 **kwargs):
+        super().__init__(name, **kwargs)
+        self.time_col = time_col
+        self.time_utc_column = time_utc_column
+        self.hasher_config = hasher_config
+        self.hash_name = hash_name
+        self.build()
+
+    def build(self):
+        """Build soundscape processing pipeline."""
+        super().build()
+        self['time_col'] = place(data=self.time_col,
+                                 name='time_col',
+                                 ptype='scalar')
+        self['time_utc_column'] = place(data=self.time_utc_column,
+                                        name="time_utc_column",
+                                        ptype='scalar')
+        self['absolute_timed_soundscape'] = add_absoute_time(self['soundscape'],
+                                                             self['time_col'],
+                                                             self['time_utc_column'])
         self['hasher_config'] = place(data=self.hasher_config,
                                       name='hasher',
                                       ptype='pickleable')

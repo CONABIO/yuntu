@@ -82,14 +82,14 @@ class SoundscapeAccessor:
 
     def apply_absolute_time(self, name="apply_absolute_time", work_dir="/tmp", persist=True,
                             read=False, npartitions=1, client=None, show_progress=True,
-                            compute=True, time_col="start_time", out_name="abs_start_time", **kwargs):
+                            compute=True, time_col="start_time", time_utc_column="abs_start_time", **kwargs):
         """Add absolute reference from UTC time"""
         print("Generating absolute time reference...")
         pipeline = AbsoluteTimeSoundscape(name=name,
                                           work_dir=work_dir,
                                           soundscape_pd=self._obj,
                                           time_col=time_col,
-                                          out_name=out_name,
+                                          time_utc_column=time_utc_column,
                                           **kwargs)
         if read:
             tpath = os.path.join(work_dir, name, "persist", "absolute_timed_soundscape.parquet")
