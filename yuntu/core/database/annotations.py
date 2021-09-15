@@ -75,7 +75,7 @@ def build_base_annotation_model(db):
                 raise ValueError(message)
     return Annotation
 
-def build_timed_recording_model(Annotation):
+def build_timed_annotation_model(Annotation):
     class TimedAnnotation(Annotation):
         """Datastore that builds data from a foreign database."""
         abs_start_time = Required(datetime, precision=6)
