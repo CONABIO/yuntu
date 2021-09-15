@@ -4,6 +4,7 @@ from pony.orm import Database
 from pony.orm import db_session
 
 from yuntu.core.database.annotations import build_base_annotation_model
+from yuntu.core.database.annotations import build_timed_annotation_model
 from yuntu.core.database.recordings import build_base_recording_model
 from yuntu.core.database.recordings import build_timed_recording_model
 from yuntu.core.database.datastores import build_base_datastore_model
@@ -131,3 +132,7 @@ class TimedDatabaseManager(DatabaseManager):
     def build_recording_model(self):
         recording = super().build_recording_model()
         return build_timed_recording_model(recording)
+
+    def build_annotation_model(self):
+        annotation = super().build_annotation_model()
+        return build_timed_annotation_model(annotation)

@@ -11,12 +11,17 @@ GEOMETRY = 'geometry'
 TYPE = 'type'
 LABELS = 'labels'
 ID = 'id'
+ABS_START_TIME = "abs_start_time"
+ABS_END_TIME = "abs_end_time"
+
 REQUIRED_ANNOTATION_COLUMNS = [
     GEOMETRY,
     TYPE,
 ]
 OPTIONAL_ANNOTATION_COLUMNS = [
     LABELS,
+    ABS_START_TIME,
+    ABS_END_TIME
 ]
 
 
