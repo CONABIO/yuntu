@@ -172,11 +172,11 @@ class CronoSoundscape(Soundscape):
                  hasher_config=HASHER_CONFIG,
                  hash_name=HASH_NAME,
                  **kwargs):
-        super().__init__(name, **kwargs)
         self.time_col = time_col
         self.time_utc_column = time_utc_column
         self.hasher_config = hasher_config
         self.hash_name = hash_name
+        super().__init__(name, **kwargs)
         self.build()
 
     def build(self):
