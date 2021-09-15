@@ -177,7 +177,6 @@ class CronoSoundscape(Soundscape):
         self.hasher_config = hasher_config
         self.hash_name = hash_name
         super().__init__(name, **kwargs)
-        self.build()
 
     def build(self):
         """Build soundscape processing pipeline."""
