@@ -141,20 +141,20 @@ class HashSoundscape(Pipeline):
 
     def build(self):
         """Build soundscape processing pipeline."""
-        self['soundscape_pd'] = place(data=self.soundscape_pd,
-                                      name='soundscape_pd',
+        self['absolute_timed_soundscape_pd'] = place(data=self.soundscape_pd,
+                                      name='absolute_timed_soundscape_pd',
                                       ptype='pandas_dataframe')
         self['npartitions'] = place(data=10,
                                     name='npartitions',
                                     ptype='scalar')
-        self['soundscape'] = as_dd(self['soundscape_pd'],
-                                   self['npartitions'])
+        self['absolute_timed_soundscape'] = as_dd(self['absolute_timed_soundscape_pd'],
+                                            self['npartitions'])
         self['hasher_config'] = place(data=self.hasher_config,
                                       name='hasher',
                                       ptype='pickleable')
         self['hash_name'] = place(data=self.hash_name,
                                   name="hash_name",
                                   ptype='scalar')
-        self['hashed_soundscape'] = add_hash(self['soundscape'],
+        self['hashed_soundscape'] = add_hash(self['absolute_timed_soundscape'],
                                              self['hasher_config'],
                                              self['hash_name'])
