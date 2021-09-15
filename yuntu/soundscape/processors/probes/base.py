@@ -67,14 +67,8 @@ class Probe(ABC):
                 ann_dict["metadata"] = {}
 
             if record_time is not None:
-                start_time = ann_dict["start_time"]
-                end_time = ann_dict["end_time"]
-                abs_start_time = record_time + datetime.timedelta(seconds=start_time)
-                abs_end_time = record_time + datetime.timedelta(seconds=end_time)
-                ann_dict["metadata"]["crono_info"] = {
-                    "abs_start_time": abs_start_time,
-                    "abs_end_time": abs_end_time
-                }
+                ann_dict["abs_start_time"] = record_time + datetime.timedelta(seconds=start_time)
+                ann_dict["abs_end_time"] = record_time + datetime.timedelta(seconds=end_time)
 
             ann_dict["metadata"]["probe_info"] = self.info
             ann_dict["metadata"]["probe_info"]["kwargs"] = kwargs
