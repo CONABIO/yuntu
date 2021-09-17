@@ -97,12 +97,19 @@ def insert_probe_annotations(partition, probe_config, col_config, overwrite=Fals
 
     col = collection(**col_config)
 
+    use_annotations = True
+    use_metadata = True
+    if "use_annotations" in probe_config:
+        use_annotations = probe_config["use_annotations"]
+    if "use_metadata" in probe_config:
+        use_annotations = probe_config["use_metadata"]
+
     with db_session:
         dataframe = col.get_recording_dataframe(query=partition["query"],
                                                 offset=partition["offset"],
                                                 limit=partition["limit"],
-                                                with_annotations=False,
-                                                with_metadata=True)
+                                                with_annotations=use_annotations,
+                                                with_metadata=use_metadata)
 
     probe_class = module_object(probe_config["module"])
     probe_kwargs = probe_config["kwargs"]
