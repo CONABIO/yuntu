@@ -21,27 +21,26 @@ def read_requirements():
     return requirements
 
 
-# if sys.version[:3] == '3.6':
-#     install_requires = read_requirements()
-# else:
-install_requires = ['numpy<1.21.0',
-                    'numba>=0.50.1',
-                    'psycopg2',
-                    'pony',
-                    'dill',
-                    'pickle-mixin',
-                    'matplotlib',
-                    'librosa',
-                    'scikit-image',
-                    'shapely',
-                    'requests',
-                    'tqdm',
-                    'dask',
-                    'distributed',
-                    'fastparquet',
-                    'pyarrow',
-                    'pygraphviz',
-                    'pymongo']
+if sys.version[:3] == '3.6':
+    install_requires = read_requirements()
+else:
+    install_requires = ['numpy<1.21.0',
+                        'numba>=0.50.1',
+                        'psycopg2',
+                        'pony',
+                        'dill',
+                        'pickle-mixin',
+                        'matplotlib',
+                        'librosa',
+                        'scikit-image',
+                        'shapely',
+                        'requests',
+                        'tqdm',
+                        'dask[complete]',
+                        'fastparquet',
+                        'pyarrow',
+                        'pygraphviz',
+                        'pymongo']
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
