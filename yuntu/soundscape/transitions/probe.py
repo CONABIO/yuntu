@@ -70,6 +70,8 @@ def probe_all(recording_rows, probe_config):
             path = row["path"]
             duration = row["duration"]
             timeexp = row["timeexp"]
+            samplerate = row["samplerate"]
+            old_annotations = getattr(row, "annotations", [])
 
             if "meta_arg_extractor" in probe_config:
                 extractor_config = probe_config["meta_arg_extractor"]
@@ -80,7 +82,7 @@ def probe_all(recording_rows, probe_config):
 
                 annotate_args.update(arg_extractor(row))
 
-            with Audio(path=path, timeexp=timeexp) as audio:
+            with Audio(path=path, duration=duration, samplerate=samplerate, timeexp=timeexp, annotations=old_annotations) as audio:
                 annotations = probe.annotate(audio, **annotate_args)
 
             for i in range(len(annotations)):
@@ -99,10 +101,11 @@ def insert_probe_annotations(partition, probe_config, col_config, overwrite=Fals
 
     use_annotations = True
     use_metadata = True
+
     if "use_annotations" in probe_config:
         use_annotations = probe_config["use_annotations"]
     if "use_metadata" in probe_config:
-        use_annotations = probe_config["use_metadata"]
+        use_metadata = probe_config["use_metadata"]
 
     with db_session:
         dataframe = col.get_recording_dataframe(query=partition["query"],
@@ -127,6 +130,8 @@ def insert_probe_annotations(partition, probe_config, col_config, overwrite=Fals
             path = row["path"]
             duration = row["duration"]
             timeexp = row["timeexp"]
+            samplerate = row["samplerate"]
+            old_annotations = getattr(row, "annotations", [])
 
             if "meta_arg_extractor" in probe_config:
                 extractor_config = probe_config["meta_arg_extractor"]
@@ -136,7 +141,7 @@ def insert_probe_annotations(partition, probe_config, col_config, overwrite=Fals
                     arg_extractor = module_object(extractor_config["module"])
                 annotate_args.update(arg_extractor(row))
 
-            with Audio(path=path, timeexp=timeexp) as audio:
+            with Audio(path=path, duration=duration, samplerate=samplerate, timeexp=timeexp, annotations=old_annotations) as audio:
                 annotations = probe.annotate(audio, **annotate_args)
 
             if len(annotations) > 0:
