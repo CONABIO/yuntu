@@ -201,7 +201,7 @@ def load_datastores(col_config, dstore_configs):
             signature=((PandasDataFramePlace, ScalarPlace), (DynamicPlace,)))
 def bag_dataframe(dataframe, npartitions):
     """Transform dataframe to dict bag."""
-    if recordings.empty:
+    if dataframe.empty:
         raise ValueError("Dataframe has no data.")
     total = dataframe.shape[0]
     size = int(np.floor(float(total)/float(npartitions)))
