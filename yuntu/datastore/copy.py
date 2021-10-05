@@ -68,7 +68,7 @@ class CopyDatastore(Datastore):
             yield annotation
 
     def copy_data(self, datum):
-        source_path = datum.path
+        source_path = self.collection.get_abspath(datum.path)
         recid = datum.id
         target_path = os.path.join(self.media_path, f"{recid}_copy.wav")
         shutil.copy(source_path, target_path)

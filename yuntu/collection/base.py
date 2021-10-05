@@ -90,12 +90,7 @@ class Collection:
             data = recording.to_dict()
             media_info = data.pop('media_info')
             data.update(media_info)
-            path = data["path"]
-
-            if path[:5] != "s3://":
-                if not os.path.isabs(path):
-                    path = os.path.join(self.base_path, path)
-                    data["path"] = path
+            data["path"] = self.get_abspath(data["path"])
 
             if not with_metadata:
                 data.pop('metadata')
@@ -140,6 +135,12 @@ class Collection:
 
     def get_db_manager(self):
         return self.db_manager_class(**self.db_config)
+
+    def get_abspath(self, path):
+        if path[:5] != "s3://":
+            if not os.path.isabs(path):
+                return os.path.join(self.base_path, path)
+        return path
 
     def insert(self, meta_arr):
         """Directly insert new media entries without a datastore."""
@@ -198,10 +199,7 @@ class Collection:
 
         metadata = recording.meta_arr if with_metadata else None
 
-        path = recording.path
-        if path[:5] != "s3://":
-            if not os.path.isabs(path):
-                path = os.path.join(self.base_path, path)
+        path = self.get_abspath(recording.path)
 
         return self.audio_class(
             path=path,
