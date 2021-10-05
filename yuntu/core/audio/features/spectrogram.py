@@ -255,7 +255,8 @@ class Spectrogram(TimeFrequencyFeature):
             vmin=vmin,
             vmax=vmax,
             cmap=kwargs.get('cmap', 'gray'),
-            alpha=kwargs.get('alpha', 1.0))
+            alpha=kwargs.get('alpha', 1.0),
+            shading='auto')
 
         if kwargs.get('colorbar', False):
             import matplotlib.pyplot as plt
