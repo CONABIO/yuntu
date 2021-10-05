@@ -33,10 +33,22 @@ class Collection:
     annotation_class = Annotation
     db_manager_class = DatabaseManager
 
-    def __init__(self, db_config=None):
+    def __init__(self, db_config=None, base_path=""):
         """Initialize collection."""
+        self.base_path = base_path
+        if self.base_path != "":
+            if not os.path.isabs(self.base_path):
+                self.base_path = os.path.abspath(self.base_path)
+
         if db_config is not None:
             self.db_config = db_config
+
+        if self.db_config["provider"] == "sqlite":
+            if self.base_path != "":
+                filename = self.db_config["config"]["filename"]
+                if not os.path.isabs(filename):
+                    filename = os.path.join(self.base_path, filename)
+                self.db_config["config"]["filename"] = filename
 
         self.db_manager = self.get_db_manager()
 
@@ -76,6 +88,12 @@ class Collection:
             data = recording.to_dict()
             media_info = data.pop('media_info')
             data.update(media_info)
+            path = data["path"]
+
+            if path[:5] != "s3://":
+                if not os.path.isabs(path):
+                    path = os.path.join(self.base_path, path)
+                    data["path"] = path
 
             if not with_metadata:
                 data.pop('metadata')
@@ -178,8 +196,13 @@ class Collection:
 
         metadata = recording.meta_arr if with_metadata else None
 
+        path = recording.path
+        if path[:5] != "s3://":
+            if not os.path.isabs(path):
+                path = os.path.join(self.base_path, path)
+
         return self.audio_class(
-            path=recording.path,
+            path=path,
             id=recording.id,
             media_info=recording.media_info,
             timeexp=recording.timeexp,
