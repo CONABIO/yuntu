@@ -1,4 +1,5 @@
 """Base classes for collection."""
+import os
 import pandas as pd
 
 from yuntu.core.database.base import DatabaseManager
