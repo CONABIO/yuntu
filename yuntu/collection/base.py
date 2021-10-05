@@ -1,12 +1,13 @@
 """Base classes for collection."""
 import os
+import json
 import pandas as pd
 
 from yuntu.core.database.base import DatabaseManager
 from yuntu.core.database.base import TimedDatabaseManager
 from yuntu.core.audio.audio import Audio
 from yuntu.core.annotation.annotation import Annotation
-
+from yuntu.datastore.copy import CopyDatastore
 
 def _parse_annotation(annotation):
     return {
@@ -215,15 +216,39 @@ class Collection:
         """Pull data from datastore and insert into collection."""
         datastore.insert_into(self)
 
-    def dump(self, dir_path):
-        """Dump collection to 'dir_path'."""
+    def materialize(self, out_name, query=None, out_dir="", tqdm=None):
+        """Create materialized collection."""
+        target_path = os.path.join(out_dir, out_name)
+        copystore = CopyDatastore(collection=self,
+                                  query=query,
+                                  target_path=target_path,
+                                  tqdm=tqdm)
+        col_type = "simple"
+        if isinstance(self.db_manager, TimedDatabaseManager):
+            col_type = "timed"
 
-    def load(self, dir_path):
-        """Load collection from 'dir_path'."""
+        target_config = {
+            "col_type": col_type,
+            "db_config": {
+                "provider": "sqlite",
+                "config": {
+                    "filename": "db.sqlite",
+                    "create_db": True
+                }
+            }
+        }
 
-    def materialize(self, dir_path):
-        """Persist collection in 'dir_path' including recordings."""
+        col_config_path = os.path.join(target_path, f"col_config.json")
 
+        with open(col_config_path, "w") as f:
+            json.dump(target_config, f)
+
+        target_col = self.__class__(db_config=target_config["db_config"],
+                                    base_path=target_path)
+
+        _, _, _, = copystore.insert_into(target_col)
+
+        return target_path
 
 class TimedCollection(Collection):
     """Time aware collection."""
