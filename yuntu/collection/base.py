@@ -39,8 +39,9 @@ class Collection:
         """Initialize collection."""
         self.base_path = base_path
         if self.base_path != "":
-            if not os.path.isabs(self.base_path):
-                self.base_path = os.path.abspath(self.base_path)
+            if self.base_path[:5] != "s3://":
+                if not os.path.isabs(self.base_path):
+                    self.base_path = os.path.abspath(self.base_path)
 
         if db_config is not None:
             self.db_config = db_config
