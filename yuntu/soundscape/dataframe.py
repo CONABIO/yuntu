@@ -146,7 +146,6 @@ class SoundscapeAccessor:
     def add_hash(self, hasher, out_name="xhash"):
         """Add row hasher"""
         print("Hashing dataframe...")
-        pipeine = HashSoundscape
         if not hasher.validate(self._obj):
             str_cols = str(hasher.columns)
             message = ("Input dataframe is incompatible with hasher."
@@ -161,11 +160,14 @@ class SoundscapeAccessor:
         out = self._obj[list(self._obj.columns)]
         out[out_name] = result[out_name]
         out[f"{out_name}_time"] = out[out_name].apply(hasher.unhash)
+
         return out
 
-    def plot_sequence(self, rgb, view_time_zone="America/Mexico_city", xticks=10,
+    def plot_sequence(self, rgb, units=None, view_time_zone="America/Mexico_city", xticks=10,
                       yticks=10, ylabel="Frequency", xlabel="Time", interpolation="bilinear",
-                      time_format='%H:%M:%S', ax=None):
+                      time_format='%d-%m-%Y %H:%M:%S', ax=None):
+        """Plot sequential soundscape."""
+
         if "abs_start_time" not in self._obj.columns or "abs_end_time" not in self._obj.columns:
             df = self.add_absolute_time()
         else:
@@ -177,18 +179,47 @@ class SoundscapeAccessor:
             fig, ax = plt.subplots()
 
         nfreqs = df["max_freq"].unique().size
+        nfeatures = len(rgb)
         min_t = df["abs_start_time"].min()
         max_t = df["abs_end_time"].max()
         max_f = df["max_freq"].max()
         min_f = df["min_freq"].min()
 
-        snd_matrix = np.flip(np.reshape(df.sort_values(by=["max_freq", "abs_start_time"])[rgb].values, [nfreqs,-1,3]),axis=0)
+        max_indices = np.expand_dims(np.expand_dims(df[rgb].max().values, axis=0), axis=0)
+        min_indices = np.expand_dims(np.expand_dims(df[rgb].min().values, axis=0), axis=0)
+        ranges = max_indices - min_indices
 
-        ntimes = snd_matrix.shape[1]
+        if units is not None:
+            time_unit, freq_unit = units
+            total_time = datetime.timedelta.total_seconds(max_t - min_t)
+            nframes = int(np.round(total_time/time_unit))
+            count_matrix = np.zeros([nfreqs, nframes, 1])
+            norm_feature_spec = np.zeros([nfreqs, nframes, len(rgb)])
 
-        max_feature_spec = np.amax(snd_matrix, axis=(0,1))
-        min_feature_spec = np.amin(snd_matrix, axis=(0,1))
-        norm_feature_spec = (snd_matrix - min_feature_spec)/(max_feature_spec - min_feature_spec)
+            for val in df[["abs_start_time", "abs_end_time", "max_freq", "min_freq"]+rgb].values:
+                abs_start_time, abs_end_time, max_freq, min_freq = val[0:4]
+                indices = np.reshape(np.array(val[4:]), [1,1,nfeatures])
+                start = int(np.round(float(datetime.timedelta.total_seconds(abs_start_time - min_t))/time_unit))
+                stop = int(np.round(float(datetime.timedelta.total_seconds(abs_end_time - min_t))/time_unit))
+                maxf = int(np.round((max_freq - min_f)/freq_unit))
+                minf = int(np.round((min_freq - min_f)/freq_unit))
+                count_matrix[minf:maxf, start:stop+1] += 1
+                norm_feature_spec[minf:maxf, start:stop+1, :] = (norm_feature_spec[minf:maxf, start:stop+1,:]
+                                                                 + ((indices-min_indices)/ranges))
+
+            norm_feature_spec = np.flip(norm_feature_spec / np.where(count_matrix > 0, count_matrix, 1), axis=0)
+
+        else:
+            snd_matrix = np.flip(np.reshape(df.sort_values(by=["max_freq", "abs_start_time"])[rgb].values, [nfreqs,-1,len(rgb)]),axis=0)
+            norm_feature_spec = (snd_matrix - min_indices) / ranges
+
+        ntimes = norm_feature_spec.shape[1]
+
+        if norm_feature_spec.shape[-1] == 2:
+            norm_feature_spec = np.concatenate([norm_feature_spec,
+                                                np.zeros([norm_feature_spec.shape[0],
+                                                          norm_feature_spec.shape[1], 1])], axis=-1)
+
 
         ax.imshow(np.flip(norm_feature_spec, axis=0), aspect="auto")
         tstep = float(ntimes)/xticks
@@ -209,7 +240,6 @@ class SoundscapeAccessor:
 
         return ax
 
-
     def plot_cycle(self, rgb, hash_col=None, cycle_config=DEFAULT_HASHER_CONFIG, aggr="mean", xticks=10,
                    yticks=10, ylabel="Frequency", xlabel="Time", interpolation="bilinear",
                    time_format='%H:%M:%S', ax=None):
@@ -217,8 +247,6 @@ class SoundscapeAccessor:
 
         time_module = cycle_config["time_module"]
         time_unit = cycle_config["time_unit"]
-        max_hash = self._obj[hash_col].max()
-        all_hashes = list(np.arange(0, max_hash+1))
 
         do_hash = False
         hash_name = "crono_hasher"
@@ -237,34 +265,47 @@ class SoundscapeAccessor:
         else:
             hashed_df = df
 
+        max_hash = hashed_df[hash_col].max()
+        all_hashes = list(np.arange(0, max_hash+1))
+
         missing_hashes = [x for x in all_hashes if x not in list(hashed_df[hash_name].unique())]
         nfreqs = hashed_df["max_freq"].unique().size
         min_t =  hashed_df[f"{hash_name}_time"].min()
         max_t =  hashed_df[f"{hash_name}_time"].max()
-        max_f = df["max_freq"].max()
-        min_f = df["min_freq"].min()
+        max_f = hashed_df["max_freq"].max()
+        min_f = hashed_df["min_freq"].min()
+        nfeatures = len(rgb)
 
-        snd_matrix = (np.flip(np.reshape(hashed_df[["max_freq", f"{hash_name}_time"]+rgb]
+        max_indices = hashed_df[rgb].max().values
+        min_indices = hashed_df[rgb].min().values
+        ranges = max_indices - min_indices
+
+        proj_df = hashed_df[["max_freq", f"{hash_name}_time"]+rgb].copy()
+
+        for n, ind in enumerate(rgb):
+            proj_df.loc[:, ind] = proj_df[ind].apply(lambda x: (x - min_indices[n]) / ranges[n])
+
+        norm_feature_spec = (np.flip(np.reshape(proj_df
                                          .groupby(by=["max_freq", f"{hash_name}_time"], as_index=False)
-                                         .mean()
-                                         .sort_values(by=["max_freq", f"{hash_name}_time"])[rgb].values, [nfreqs,-1,3]),axis=0))
-        ntimes = snd_matrix.shape[1]
+                                         .agg(aggr)
+                                         .sort_values(by=["max_freq", f"{hash_name}_time"])[rgb].values, [nfreqs,-1,nfeatures]),axis=0))
 
-        max_feature_spec = np.amax(snd_matrix, axis=(0,1))
-        min_feature_spec = np.amin(snd_matrix, axis=(0,1))
-        norm_feature_spec = (snd_matrix - min_feature_spec)/(max_feature_spec - min_feature_spec)
+        ntimes = norm_feature_spec.shape[1]
 
         # Fill missing units
-        null_arr = np.empty([nfreqs,3])
+        null_arr = np.empty([nfreqs,nfeatures])
         null_arr[:,:] = np.NaN
         for x in missing_hashes:
             norm_feature_spec = np.insert(norm_feature_spec, x+1, null_arr, 1)
 
+        if norm_feature_spec.shape[-1] == 2:
+            norm_feature_spec = np.concatenate([norm_feature_spec,
+                                                np.zeros([norm_feature_spec.shape[0],
+                                                          norm_feature_spec.shape[1], 1])], axis=-1)
         ax.imshow(np.flip(norm_feature_spec, axis=0), aspect="auto", interpolation=interpolation)
         tstep = float(time_module)/xticks
         ax.set_xticks(np.arange(0,time_module,tstep))
         tlabel_step = datetime.timedelta(seconds=time_unit)*time_module / xticks
-        start_tzone = pytz.timezone(cycle_config["start_tzone"])
 
         ax.set_xticklabels([(min_t+tlabel_step*i).strftime(format=time_format)
                            for i in range(xticks)])
