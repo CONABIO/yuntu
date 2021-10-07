@@ -78,6 +78,7 @@ class SoundscapeAccessor:
         print("Generating absolute time reference...")
         out = self._obj[list(self._obj.columns)]
         out["abs_start_time"] = self._obj.apply(lambda x: absolute_timing(x["time_utc"], x["start_time"]), axis=1)
+        out["abs_end_time"] = self._obj.apply(lambda x: absolute_timing(x["time_utc"], x["end_time"]), axis=1)
         return out
 
     def apply_absolute_time(self, name="apply_absolute_time", work_dir="/tmp", persist=True,

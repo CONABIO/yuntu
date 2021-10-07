@@ -47,9 +47,11 @@ def insert_datastore(dstore_config, col_config):
             "recording_inserts": recording_inserts,
             "annotation_inserts": annotation_inserts}
 
-def apply_absolute_time(row, time_col, out_name):
+def apply_absolute_time(row, time_col):
     new_row = {}
-    new_row[out_name] = absolute_timing(row["time_utc"], row[time_col])
+    new_row["abs_start_time"] = absolute_timing(row[time_col], row["start_time"])
+    new_row["abs_end_time"] = absolute_timing(row[time_col], row["end_time"])
+
     return pd.Series(new_row)
 
 def unash_hash(row, unhash, hash_col):
@@ -86,12 +88,13 @@ def add_hash(dataframe, hasher_config, out_name="xhash"):
 
 @transition(name='add_absoute_time', outputs=["absolute_timed_soundscape"],
             keep=True, persist=True, is_output=True,
-            signature=((DaskDataFramePlace, ScalarPlace, ScalarPlace),
+            signature=((DaskDataFramePlace, ScalarPlace),
                        (DaskDataFramePlace, )))
-def add_absoute_time(dataframe, time_col, out_name):
-    meta = [(out_name, np.dtype('datetime64[ns]'))]
-    result = dataframe.apply(apply_absolute_time, time_col=time_col, out_name=out_name, meta=meta, axis=1)
-    dataframe[out_name] = result[out_name]
+def add_absoute_time(dataframe, time_col):
+    meta = [("abs_start_time", np.dtype('datetime64[ns]')), ("abs_end_time", np.dtype('datetime64[ns]'))]
+    result = dataframe.apply(apply_absolute_time, time_col=time_col, meta=meta, axis=1)
+    dataframe["abs_start_time"] = result["abs_start_time"]
+    dataframe["abs_end_time"] = result["abs_end_time"]
 
     return dataframe
 

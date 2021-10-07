@@ -92,12 +92,10 @@ class AbsoluteTimeSoundscape(Pipeline):
     def __init__(self,
                  name="abs_time_soundscape",
                  soundscape_pd=None,
-                 time_col=TIME_COL,
                  time_utc_column=TIME_UTC_COLUMN,
                  **kwargs):
         super().__init__(name, **kwargs)
         self.soundscape_pd = soundscape_pd
-        self.time_col = time_col
         self.time_utc_column = time_utc_column
         self.build()
 
@@ -111,14 +109,10 @@ class AbsoluteTimeSoundscape(Pipeline):
                                     ptype='scalar')
         self['soundscape'] = as_dd(self['soundscape_pd'],
                                    self['npartitions'])
-        self['time_col'] = place(data=self.time_col,
-                                 name='time_col',
-                                 ptype='scalar')
         self['time_utc_column'] = place(data=self.time_utc_column,
                                  name="time_utc_column",
                                  ptype='scalar')
         self['absolute_timed_soundscape'] = add_absoute_time(self['soundscape'],
-                                                             self['time_col'],
                                                              self['time_utc_column'])
 
 class HashSoundscape(Pipeline):
@@ -167,12 +161,10 @@ class CronoSoundscape(Soundscape):
     """
     def __init__(self,
                  name="full_soundscape",
-                 time_col=TIME_COL,
                  time_utc_column=TIME_UTC_COLUMN,
                  hasher_config=HASHER_CONFIG,
                  hash_name=HASH_NAME,
                  **kwargs):
-        self.time_col = time_col
         self.time_utc_column = time_utc_column
         self.hasher_config = hasher_config
         self.hash_name = hash_name
@@ -181,14 +173,10 @@ class CronoSoundscape(Soundscape):
     def build(self):
         """Build soundscape processing pipeline."""
         super().build()
-        self['time_col'] = place(data=self.time_col,
-                                 name='time_col',
-                                 ptype='scalar')
         self['time_utc_column'] = place(data=self.time_utc_column,
                                         name="time_utc_column",
                                         ptype='scalar')
         self['absolute_timed_soundscape'] = add_absoute_time(self['soundscape'],
-                                                             self['time_col'],
                                                              self['time_utc_column'])
         self['hasher_config'] = place(data=self.hasher_config,
                                       name='hasher',

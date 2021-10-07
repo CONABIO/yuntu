@@ -3,6 +3,7 @@ import pywt
 from skimage.transform import resize
 from scipy.ndimage import gaussian_filter
 from scipy import stats
+from yuntu.soundscape.processors.indices.base import AcousticIndex
 
 
 def antialiased_resize(im, new_size):
