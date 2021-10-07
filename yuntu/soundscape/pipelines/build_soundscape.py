@@ -21,13 +21,12 @@ FEATURE_TYPE = 'spectrogram'
 FEATURE_CONFIG = {"n_fft": N_FFT,
                   "hop_length": HOP_LENGTH,
                   "window_function": WINDOW_FUNCTION}
-TIME_UTC_COLUMN = "abs_start_time"
-TIME_COL = "start_time"
+TIME_UTC_COLUMN = "time_utc"
 HASHER_CONFIG = {
     "module":{
         "object_name": "yuntu.soundscape.hashers.crono.CronoHasher"
     },
-    "kwargs": {"time_utc_column": TIME_UTC_COLUMN}
+    "kwargs": {"time_utc_column": "abs_start_time"}
 }
 HASH_NAME = 'crono_hash'
 
@@ -110,8 +109,8 @@ class AbsoluteTimeSoundscape(Pipeline):
         self['soundscape'] = as_dd(self['soundscape_pd'],
                                    self['npartitions'])
         self['time_utc_column'] = place(data=self.time_utc_column,
-                                 name="time_utc_column",
-                                 ptype='scalar')
+                                        name="time_utc_column",
+                                        ptype='scalar')
         self['absolute_timed_soundscape'] = add_absoute_time(self['soundscape'],
                                                              self['time_utc_column'])
 
