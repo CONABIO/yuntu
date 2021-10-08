@@ -2,6 +2,7 @@
 
 An audio dataframe is a
 """
+import numpy as np
 import pandas as pd
 import datetime
 from yuntu.core.annotation.annotation import Annotation
