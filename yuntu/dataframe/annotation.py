@@ -107,6 +107,70 @@ class AnnotationAccessor:
             labels_column=labels_column,
             id_column=id_column)
 
+    def get_activity(self, time_unit=60, time_module=None, target_labels=None, min_t=None, max_t=None, exclude=[]):
+        if "abs_start_time" not in self._obj.columns:
+            raise ValueError("Annotations should have an absolute time reference in order to compute activity.")
+
+        if min_t is None:
+            min_t = self._obj.abs_start_time.min()
+        if max_t is None:
+            max_t = self._obj.abs_start_time.max()
+
+        if min_t >= max_t:
+            raise ValueError("Wrong time range. Try a more accurate specification.")
+
+        dann = self._obj[(pd.to_datetime(self._obj.abs_start_time, utc=True) >= min_t) & (pd.to_datetime(self._obj.abs_start_time, utc=True) <= max_t)]
+
+        total_time = datetime.timedelta.total_seconds(max_t - min_t)
+        if time_module is not None:
+            module = datetime.timedelta(seconds=time_unit*time_module)
+            nframes = time_module
+        else:
+            module = None
+            nframes = int(np.round(total_time/time_unit))
+
+        activities = {}
+        if target_labels is None:
+            activity = np.zeros([nframes])
+            for start_time, end_time, abs_start_time, labels in dann[["start_time", "end_time", "abs_start_time", "labels"]].values:
+                toss = False
+                for l in labels:
+                    if (l["key"], l["value"]) in exclude:
+                        toss = True
+                if not toss:
+                    if time_module is None:
+                        start = int(np.round(float(datetime.timedelta.total_seconds(pd.to_datetime(abs_start_time, utc=True) - min_t))/time_unit))
+                        stop = max(int(np.round(float(end_time - start_time)/time_unit)), start)
+                        activity[start:stop+1] += 1
+                    else:
+                        remainder = (pd.to_datetime(abs_start_time, utc=True) - min_t.astimezone("utc")) % module
+                        index = np.int64(int(round((remainder/time_unit).total_seconds())) % time_module)
+                        activity[index] += 1
+            activities["Any"] = activity
+        else:
+            nlabels = len(target_labels)
+            for n in range(nlabels):
+                label_activity = np.zeros([nframes])
+                for start_time, end_time, abs_start_time, labels in dann[["start_time", "end_time", "abs_start_time", "labels"]].values:
+                    for l in labels:
+                        if l["key"] == target_labels[n]["key"] and l["value"] == target_labels[n]["value"] and (l["key"], l["value"]) not in exclude:
+                            if time_module is None:
+                                start = int(np.round(float(datetime.timedelta.total_seconds(pd.to_datetime(abs_start_time, utc=True) - min_t))/time_unit))
+                                stop = max(int(np.round((end_time - start_time)/time_unit)), start)
+                                label_activity[start:stop+1] += 1
+                            else:
+                                remainder = (pd.to_datetime(abs_start_time, utc=True) - min_t.astimezone("utc")) % module
+                                index = np.int64(int(round((remainder/time_unit).total_seconds())) % time_module)
+                                label_activity[index] += 1
+                activities[target_labels[n]["value"]] = label_activity
+
+        labels = list(activities.keys())
+        labels.sort()
+        activities["abs_start_time"] = [min_t.astimezone("utc") + datetime.timedelta(seconds=i*time_unit) for i in range(nframes)]
+        activities["abs_end_time"] = [min_t.astimezone("utc") + datetime.timedelta(seconds=(i+1)*time_unit) for i in range(nframes)]
+
+        return pd.DataFrame(activities)[["abs_start_time", "abs_end_time"]+labels]
+
     def change_type_column(self, new_column):
         self.type_column = new_column
 
