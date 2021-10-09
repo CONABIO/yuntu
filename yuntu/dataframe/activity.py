@@ -211,10 +211,10 @@ class ActivityAccessor:
                             .transpose())
             total_counts.reset_index(inplace=True)
             total_counts.apply(rarefaction_curve, color="green", labels=labels,
-                               plot_label="Total", exact=True, axis=1)
+                               plot_label="Total", exact=True, ax=ax, axis=1)
 
         z["color"] = np.array([x for x in np.arange(0,1,1/z.shape[0])])
-        z.apply(rarefaction_curve, view_time_zone=view_time_zone, labels=labels, cmap=cmap, axis=1)
+        z.apply(rarefaction_curve, view_time_zone=view_time_zone, labels=labels, cmap=cmap, ax=ax, axis=1)
 
         ax.xlabel('Number of detections')
         ax.ylabel('Number of species')
