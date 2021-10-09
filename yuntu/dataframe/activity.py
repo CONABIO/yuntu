@@ -4,6 +4,7 @@ import pandas as pd
 import pytz
 import datetime
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from yuntu.analytics.ecology.basic import diversity, richness, rarefaction, rarefaction_curve
 
 ABS_START_TIME = 'abs_start_time'
