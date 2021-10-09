@@ -72,6 +72,8 @@ class ActivityAccessor:
             labels = self.activity_columns
 
         if size is None:
+            sums = self._obj[labels].apply(sum, axis=1)
+            size = np.min(sums)
             rarefact = self._obj.apply(rarefaction, size=size, labels=labels, axis=1)
         else:
             if isinstance(size, (int, float)):
