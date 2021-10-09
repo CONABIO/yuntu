@@ -105,13 +105,13 @@ class ActivityAccessor:
         nframes = self._obj.shape[0]
         step = float(nframes) / nticks
 
-        total_time = datetime.timedelta.total_seconds(maxt - mint)
+        total_time = datetime.timedelta.total_seconds(max_t - min_t)
         time_step = total_time / nticks
 
         xticks = [x for x in np.arange(0, nframes, step)]
 
         ax.set_xticks(xticks)
-        xticklabels = [(mint+datetime.timedelta(seconds=i*time_step)).strftime(format=time_format)
+        xticklabels = [(min_t+datetime.timedelta(seconds=i*time_step)).strftime(format=time_format)
                        for i in range(len(xticks))]
         ax.set_xticklabels(xticklabels, rotation=90)
         ax.set_ylabel("Detections")
@@ -138,13 +138,13 @@ class ActivityAccessor:
 
             step = float(nframes) / nticks
 
-            total_time = datetime.timedelta.total_seconds(maxt - mint)
+            total_time = datetime.timedelta.total_seconds(max_t - min_t)
             time_step = total_time / nticks
 
             xticks = [x for x in np.arange(0, nframes, step)]
 
             ax.set_xticks(xticks)
-            xticklabels = [(mint+datetime.timedelta(seconds=i*time_step)).strftime(format=time_format)
+            xticklabels = [(min_t+datetime.timedelta(seconds=i*time_step)).strftime(format=time_format)
                            for i in range(len(xticks))]
 
             ax.set_xticklabels(xticklabels, rotation=90)
@@ -175,11 +175,11 @@ class ActivityAccessor:
 
             nframes = rich.shape[0]
             step = float(nframes) / nticks
-            total_time = datetime.timedelta.total_seconds(maxt - mint)
+            total_time = datetime.timedelta.total_seconds(max_t - min_t)
             time_step = total_time / nticks
             xticks = [x for x in np.arange(0, nframes, step)]
             ax.set_xticks(xticks)
-            xticklabels = [(mint+datetime.timedelta(seconds=i*time_step)).strftime(format=time_format)
+            xticklabels = [(min_t+datetime.timedelta(seconds=i*time_step)).strftime(format=time_format)
                            for i in range(len(xticks))]
             ax.set_xticklabels(xticklabels, rotation=90)
 
