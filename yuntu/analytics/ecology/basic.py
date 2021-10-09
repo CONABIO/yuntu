@@ -71,9 +71,7 @@ def rarefaction_curve(row, view_time_zone="America/Mexico_city",
                       cmap = cm.get_cmap('Spectral'), color=None,
                       labels=None, plot_label=None, exact=False):
     """Compute rarefaction curve for each row and plot"""
-    x = row[labels]
-    ix = x['index']
-    z = x.drop('index')
+    z = x = row[labels].values.astype('float')
     notabs = ~np.isnan(z)
     y = z[notabs]
     n = np.sum(y)
@@ -83,7 +81,6 @@ def rarefaction_curve(row, view_time_zone="America/Mexico_city",
         color = cmap(row["color"])
 
     if not exact:
-        y = y.astype("float")
         iPred = np.linspace(0, n, 1000)
         yhat = [rarefy(i, Sn, n, y) for i in iPred]
 
