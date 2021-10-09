@@ -127,7 +127,7 @@ class ActivityAccessor:
         min_t = self._obj.abs_start_time.min().astimezone(view_time_zone)
         max_t = self._obj.abs_end_time.max().astimezone(view_time_zone)
 
-        div = self._obj.diversity(div_type=div_type, component=component, labels=labels)
+        div = self.diversity(div_type=div_type, component=component, labels=labels)
 
         if component in ["beta", "gamma"]:
             div.diversity.plot(ax=ax)
@@ -166,7 +166,7 @@ class ActivityAccessor:
         min_t = self._obj.abs_start_time.min().astimezone(view_time_zone)
         max_t = self._obj.abs_end_time.max().astimezone(view_time_zone)
 
-        rich = self._obj.richness(labels=labels, total=total)
+        rich = self.richness(labels=labels, total=total)
 
         if total:
             rich.richness.plot(ax=ax)

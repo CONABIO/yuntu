@@ -3,6 +3,8 @@ from yuntu.core.audio.audio import Audio
 
 from yuntu.dataframe.audio import AudioAccessor
 from yuntu.dataframe.annotation import AnnotationAccessor
+from yuntu.dataframe.activity import ActivityAccessor
+from yuntu.dataframe.soundscape import SoundscapeAccesor
 
 from .core import audio, database
 from . import collection
@@ -20,4 +22,6 @@ __all__ = [
     'collection',
     'AudioAccessor',
     'AnnotationAccessor',
+    'ActivityAccessor',
+    'SoundscapeAccesor'
 ]

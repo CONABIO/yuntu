@@ -49,7 +49,7 @@ def rarefaction(row, size, labels):
     """Compute rarefaction for each row."""
     x = row[labels]
     if size is None:
-        sums = x.apply(sum, axis=1)
+        sums = x.
         size = np.min(sums)
     notabs = ~np.isnan(x)
     t = x[notabs]
