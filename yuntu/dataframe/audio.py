@@ -7,7 +7,7 @@ from dask.diagnostics import ProgressBar
 
 from yuntu.core.audio.audio import Audio
 from yuntu.soundscape.utils import parse_json
-from yuntu.soundscape.pipelines.build_soundscape import Soundscape
+from yuntu.soundscape.pipelines.build_soundscape import Soundscape, CronoSoundscape
 from yuntu.soundscape.pipelines.probe_dataframe import ProbeDataframe
 
 PATH = 'path'
@@ -210,32 +210,41 @@ class AudioAccessor:
 
     def get_soundscape(self, name="get_soundscape", work_dir="/tmp", persist=True,
                        read=False, npartitions=1, client=None, show_progress=True,
-                       compute=True, **kwargs):
+                       compute=True, crono=True, **kwargs):
         """Apply indices and produce soundscape."""
-        pipeline = Soundscape(name=name,
-                              work_dir=work_dir,
-                              recordings=self._obj,
-                              **kwargs)
+        if crono:
+            pipeline = CronoSoundscape(name=name,
+                                       work_dir=work_dir,
+                                       recordings=self._obj,
+                                       **kwargs)
+            out_place = "hashed_soundscape"
+        else:
+            pipeline = Soundscape(name=name,
+                                  work_dir=work_dir,
+                                  recordings=self._obj,
+                                  **kwargs)
+            out_place = "soundscape"
+
         if read:
-            tpath = os.path.join(work_dir, name, "persist", "soundscape.parquet")
+            tpath = os.path.join(work_dir, name, "persist", f"{out_place}.parquet")
             if not os.path.exists(tpath):
                 raise ValueError(f"Cannot read soundscape. Target file {tpath} does not exist.")
             print("Reading soundscape from file...")
-            return pipeline["soundscape"].read().compute()
+            return pipeline[out_place].read().compute()
 
-        pipeline["soundscape"].persist = persist
+        pipeline[out_place].persist = persist
         if compute:
             print("Computing soundscape...")
             if show_progress:
                 with ProgressBar():
-                    df = pipeline["soundscape"].compute(client=client,
-                                                        feed={"npartitions": npartitions})
+                    df = pipeline[out_place].compute(client=client,
+                                                     feed={"npartitions": npartitions})
             else:
-                df = pipeline["soundscape"].compute(client=client,
-                                                    feed={"npartitions": npartitions})
+                df = pipeline[out_place].compute(client=client,
+                                                 feed={"npartitions": npartitions})
 
             return df
-        return pipeline["soundscape"].future(client=client, feed={"npartitions": npartitions})
+        return pipeline[out_place].future(client=client, feed={"npartitions": npartitions})
 
 
 def dask_wrapper(func):
