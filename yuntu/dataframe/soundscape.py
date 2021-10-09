@@ -33,7 +33,7 @@ TIME_ZONE = "time_zone"
 
 CRONO_SOUNDSCAPE_COLUMNS = [TIME, TIME_FORMAT, TIME_ZONE]
 
-@pd.api.extensions.register_dataframe_accessor("soundscape")
+@pd.api.extensions.register_dataframe_accessor("sndscape")
 class SoundscapeAccessor:
     def __init__(self, pandas_obj):
         id_column = ID
