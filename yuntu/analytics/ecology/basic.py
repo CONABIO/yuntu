@@ -4,13 +4,15 @@ import datetime
 import pytz
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from scipy.special import comb
 
 def pair_counts(row, a, b):
     nm = int(row[a]>0 and row[b]>0)
-    return pd.Series({"label_a": a, "label_b": b, "a_b": nm})
+    data = []
+    data.append({"label_a": a, "label_b": b, "a_b": nm})
+    data.append({"label_a": b, "label_b": a, "a_b": nm})
+    return pd.Series(data)
 
 def coocurrence(activities, labels=None):
     if labels is None:
@@ -23,7 +25,7 @@ def coocurrence(activities, labels=None):
 
     cooc = pd.concat(cocounts)
 
-    return cooc.groupby(by=["label_a", "label_b"]).sum().reset_index()
+    return cooc.groupby(by=["label_a", "label_b"]).sum().unstack()
 
 def diversity(row, keys, div_type="Shannon"):
     """Compute diversity for each row"""
@@ -67,7 +69,7 @@ def rarefy(i, Sn, n, x, exact=False):
         sBar = Sn - np.sum(np.array([comb(n-val, i, exact=True) for val in x]))/comb(n, i, exact=True)
     return sBar
 
-def rarefaction_curve(row, view_time_zone="America/Mexico_city",
+def rarefaction_curve(row, ax, view_time_zone="America/Mexico_city",
                       cmap = cm.get_cmap('Spectral'), color=None,
                       labels=None, plot_label=None, exact=False):
     """Compute rarefaction curve for each row and plot"""
@@ -93,7 +95,5 @@ def rarefaction_curve(row, view_time_zone="America/Mexico_city",
         iPred = np.arange(1, n, int(np.floor(n/1000)))
         yhat = [rarefy(i, Sn, n, y, exact=True) for i in iPred]
 
-    plt.plot(iPred, yhat, color=color)
-    plt.text(iPred[-1], yhat[-1], plot_label, ha='left', va='center')
-
-    return ax
+    ax.plot(iPred, yhat, color=color)
+    ax.text(iPred[-1], yhat[-1], plot_label, ha='left', va='center')

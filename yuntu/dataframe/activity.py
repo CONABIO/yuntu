@@ -216,7 +216,7 @@ class ActivityAccessor:
         z["color"] = np.array([x for x in np.arange(0,1,1/z.shape[0])])
         z.apply(rarefaction_curve, view_time_zone=view_time_zone, labels=labels, cmap=cmap, axis=1)
 
-        plt.xlabel('Number of detections')
-        plt.ylabel('Number of species')
+        ax.xlabel('Number of detections')
+        ax.ylabel('Number of species')
 
         return ax
