@@ -47,16 +47,16 @@ def richness(row, labels):
 
 def rarefaction(row, size, labels):
     """Compute rarefaction for each row."""
-    x = row[labels]
+    x = row[labels].values.astype('float')
     notabs = ~np.isnan(x)
     t = x[notabs]
     N = np.sum(t)
     diff = N - t
     rare_calc = np.sum(1 - comb(diff, size)/comb(N, size))
 
-    return pd.DataFrame({"abs_start_time": row["abs_start_time"],
-                         "abs_end_time": row["abs_end_time"],
-                         "rarefaction" : rare_calc})
+    return pd.Series({"abs_start_time": row["abs_start_time"],
+                      "abs_end_time": row["abs_end_time"],
+                      "rarefaction" : rare_calc})
 
 def rarefy(i, Sn, n, x, exact=False):
     """Simulate values for rarefaction curve."""
