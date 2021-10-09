@@ -1,11 +1,12 @@
 """Basic functions for ecological analysis"""
-import datetime
-import numpy as np
-import pytz
-from scipy.special import comb
 import itertools
+import datetime
+import pytz
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from scipy.special import comb
 
 def pair_counts(row, a, b):
     nm = int(row[a]>0 and row[b]>0)
