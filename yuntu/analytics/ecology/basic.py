@@ -7,28 +7,9 @@ import pandas as pd
 import matplotlib.cm as cm
 from scipy.special import comb
 
-def pair_counts(row, a, b):
-    nm = int(row[a]>0 and row[b]>0)
-    data = []
-    data.append({"label_a": a, "label_b": b, "a_b": nm})
-    data.append({"label_a": b, "label_b": a, "a_b": nm})
-    return pd.Series(data)
-
-def coocurrence(activities, labels=None):
-    if labels is None:
-        labels = [col for col in activities if col not in ["abs_start_time", "abs_end_time"]]
-
-    cocounts = []
-    for pair in itertools.combinations(labels, 2):
-        pcounts = activities.apply(pair_counts, a=pair[0], b=pair[1], axis=1)
-        cocounts.append(pcounts)
-
-    cooc = pd.concat(cocounts)
-
-    return cooc.groupby(by=["label_a", "label_b"]).sum().unstack()
-
-def diversity(row, keys, div_type="Shannon"):
+def diversity(row, labels, div_type="Shannon"):
     """Compute diversity for each row"""
+    x = row[labels].values.astype('float')
     total = np.maximum(np.sum(row),1)
     p = counts / total
     rest_p = p[p>0].astype(float)

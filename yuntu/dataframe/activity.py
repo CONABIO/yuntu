@@ -46,12 +46,12 @@ class ActivityAccessor:
         if labels is None:
             labels = self.activity_columns
 
-        div = self._obj.apply(diversity, keys=labels, div_type=div_type, axis=1)
+        div = self._obj.apply(diversity, labels=labels, div_type=div_type, axis=1)
 
         if component == "alpha":
             return div
 
-        gamma = diversity(self._obj.sum().values, div_type=div_type)
+        gamma = diversity(self._obj.sum(), div_type=div_type)
 
         if component == "beta":
             return div.diversity.mean() / gamma
@@ -216,7 +216,7 @@ class ActivityAccessor:
         z["color"] = np.array([x for x in np.arange(0,1,1/z.shape[0])])
         z.apply(rarefaction_curve, view_time_zone=view_time_zone, labels=labels, cmap=cmap, ax=ax, axis=1)
 
-        ax.xlabel('Number of detections')
-        ax.ylabel('Number of species')
+        ax.set_xlabel('Number of detections')
+        ax.set_ylabel('Number of species')
 
         return ax
