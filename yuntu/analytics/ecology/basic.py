@@ -3,6 +3,26 @@ import datetime
 import numpy as np
 import pytz
 from scipy.special import comb
+import itertools
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+
+def pair_counts(row, a, b):
+    nm = int(row[a]>0 and row[b]>0)
+    return pd.Series({"label_a": a, "label_b": b, "a_b": nm})
+
+def coocurrence(activities, labels=None):
+    if labels is None:
+        labels = [col for col in activities if col not in ["abs_start_time", "abs_end_time"]]
+
+    cocounts = []
+    for pair in itertools.combinations(labels, 2):
+        pcounts = activities.apply(pair_counts, a=pair[0], b=pair[1], axis=1)
+        cocounts.append(pcounts)
+
+    cooc = pd.concat(cocounts)
+
+    return cooc.groupby(by=["label_a", "label_b"]).sum().reset_index()
 
 def diversity(row, keys, div_type="Shannon"):
     """Compute diversity for each row"""
