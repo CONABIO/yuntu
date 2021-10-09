@@ -10,7 +10,7 @@ from scipy.special import comb
 def diversity(row, labels, div_type="Shannon"):
     """Compute diversity for each row"""
     x = row[labels].values.astype('float')
-    total = np.maximum(np.sum(row),1)
+    total = np.maximum(np.sum(x),1)
     p = counts / total
     rest_p = p[p>0].astype(float)
     div = -np.sum(rest_p*np.log(rest_p))
