@@ -198,7 +198,7 @@ class Collection:
             annotation = self.annotation_class.from_record(data)
             annotations.append(annotation)
 
-        metadata = recording.meta_arr if with_metadata else None
+        metadata = recording.metadata if with_metadata else None
 
         path = self.get_abspath(recording.path)
 
