@@ -101,9 +101,9 @@ class AudioAccessor:
 
         return Audio(**data, lazy=lazy)
 
-    def apply(self, func):
+    def apply(self, func,**kwargs):
         return self._obj.apply(
-            lambda row: func(row, self._build_audio(row)),
+            lambda row: func(row, self._build_audio(row), **kwargs),
             axis=1)
 
     def __getitem__(self, key):

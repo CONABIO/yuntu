@@ -44,9 +44,16 @@ def feature_slices(row, audio, config, indices):
 
     for index in indices:
         results = []
-        for fcut in feature_cuts:
-            results.append(index(fcut))
-        new_row[index.name] = results
+        if index.ncomponents > 1:
+            base_name = index.name
+            cut_results = np.concatenate([index(fcut) for fcut in feature_cuts], axis=0)
+            for n in range(index.ncomponents):
+                subindex_name = f'{base_name}_{n}'
+                new_row[subindex_name] = cut_results[:,n]
+        else:
+            for fcut in feature_cuts:
+                results.append(index(fcut))
+            new_row[index.name] = results
 
     return pd.Series(new_row)
 
@@ -163,9 +170,18 @@ def slice_features(recordings, config, indices):
             ('max_freq', np.dtype('float64')),
             ('weight', np.dtype('float64'))]
 
+    single_indices = [index for index in indices if index.ncomponents == 1]
+    multi_indices = [index for index in indices if index.ncomponents > 1]
+
     meta += [(index.name,
              np.dtype('float64'))
-             for index in indices]
+             for index in single_indices]
+
+    for index in multi_indices:
+        base_name = index.name
+        for n in range(index.ncomponents):
+            subindex_name = f'{base_name}_{n}'
+            meta.append((subindex_name, np.dtype('float64')))
 
     result = recordings.audio.apply(feature_slices,
                                     meta=meta,
@@ -191,9 +207,16 @@ def slice_features(recordings, config, indices):
              "max_freq": "float64",
              "weight": "float64"}
 
-    for index in indices:
+    for index in single_indices:
         slices[index.name] = result[index.name].explode()
         types[index.name] = "float64"
+
+    for index in multi_indices:
+        base_name = index.name
+        for n in range(index.ncomponents):
+            subindex_name = f'{base_name}_{n}'
+            slices[subindex_name] = result[subindex_name].explode()
+            types[subindex_name] = "float64"
 
     return slices.astype(types)
 

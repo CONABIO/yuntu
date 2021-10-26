@@ -51,7 +51,7 @@ class ActivityAccessor:
         if component == "alpha":
             return div
 
-        gamma = diversity(self._obj.sum(), div_type=div_type)
+        gamma = diversity(self._obj[labels].sum(), labels=labels, div_type=div_type)
 
         if component == "beta":
             return div.diversity.mean() / gamma

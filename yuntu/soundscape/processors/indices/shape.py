@@ -27,12 +27,6 @@ def pack_wavelet_coeffs(w, level=4):
 def get_sparse_haar_coefficients(im, ncoeffs = 40, level=4):
     w = pywt.wavedec2(im, 'Haar')
     pw = pack_wavelet_coeffs(w, level=level)
-
-    # set all except the maximum ncoeffs coefficients to 0
-    maxi = np.argsort(np.abs(pw))
-    pw[maxi[:-ncoeffs]] = 0
-
-    # normalize coefficients
     pw = pw / np.sqrt(np.sum(pw**2))
 
     return pw
@@ -40,12 +34,18 @@ def get_sparse_haar_coefficients(im, ncoeffs = 40, level=4):
 def get_fingerprint(array, ncoeffs=40, level=2, latus=128):
     norm_array = stats.zscore(array)
     im = antialiased_resize(array, [latus, latus])
-    # return the syntactic fingerprint
     fingerprint = get_sparse_haar_coefficients(im, ncoeffs=ncoeffs, level=level)
     return fingerprint
 
-class WAVELET_FINGERPRINT(AcousticIndex):
+class WAVELET(AcousticIndex):
     name = 'WAVELET_FINGERPRINT'
 
-    def run(self, array):
-        return get_fingerprint(array)
+    def __init__(self,*args, ncoeffs=40, level=2, latus=128, **kwargs):
+        self.ncoeffs = ncoeffs
+        self.latus = latus
+        self.level = level
+        self.ncomponents = 2**((level-1)*2)
+        super().__init__(*args,**kwargs)
+
+    def run(self, array, **kwargs):
+        return get_fingerprint(array, **kwargs)

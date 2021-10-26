@@ -5,6 +5,8 @@ from abc import abstractmethod
 class AcousticIndex(ABC):
     """Base class for acoustic indices."""
     name = None
+    multi = False
+    ncomponents = 1
 
     def __init__(self, name=None):
         if name is not None:
