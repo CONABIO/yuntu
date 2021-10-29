@@ -101,11 +101,16 @@ class Audio(TimeMedia):
             message = 'Either array or path must be supplied'
             raise ValueError(message)
 
+        if timeexp is None:
+            timeexp = 1.0
+
         self.path = path
         self._timeexp = timeexp
 
-        if id is None:
+        if id is None and path is not None:
             id = os.path.basename(path)
+        else:
+            id = "array"
         self.id = id
 
         if metadata is None:
@@ -114,6 +119,12 @@ class Audio(TimeMedia):
 
         if samplerate is None:
             samplerate = resolution
+
+        if samplerate is not None and duration is None and array is not None:
+            duration = len(array)/samplerate
+
+        if samplerate is None and duration is not None and array is not None:
+            samplerate = np.round(float(len(array))/duration).astype(int)
 
         if ((samplerate is None) or (duration is None)) and media_info is None:
             media_info = self.read_info()

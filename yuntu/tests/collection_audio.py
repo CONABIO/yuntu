@@ -3,8 +3,7 @@ from yuntu.collection.base import Collection
 from yuntu.core.audio.audio import Audio
 
 test_col = Collection()
-meta = {"path": "./test_data/selvaAltaPerennifolia_estacionLos" +
-        "Tuxtlas_Ver_830am.wav",
+meta = {"path": "./test_data/20210804_055000.WAV",
         "timeexp": 1.0}
 
 score = 0
